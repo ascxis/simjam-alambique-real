@@ -11,12 +11,27 @@ import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
 import { dibujarTanques } from '../hmi/tanques.js';
-import { detenerSesionCamara } from '../vision/servicioCamara.js';
 import { MAPA_CONTROL, leerSenal } from './mapaControl.js';
 
 export class Simulacion extends EscenaBase {
   constructor() { super('Simulacion'); }
   create() {
+    this.terminado = false;
+    this.ultimoVista = 0;
+    this.tiempoAnteriorRegistro = 0;
+    this.noManosDesde = null;
+    this.paramPanel = null;
+    this.graf = null;
+    this.grafValvulas = null;
+    this.barras = [];
+    this.tiempoEnBandaSeguido = 0;
+    this.ultimoTiempoMuestra = 0;
+    this.ultimoHmi = -Infinity;
+    this.ultimoDebug = -Infinity;
+    this.selectStart = null;
+    this.selectWasLong = false;
+    this.ultimaAlarma = {};
+    this.tiempoJuego = 0;
     this.nivel = cargarNiveles().find((n) => n.id === Number(contextoJuego.nivelElegido)) || cargarNiveles()[0];
     this.gestor = contextoJuego.gestor = new GestorEntrada({ fuente: contextoJuego.fuenteElegida || undefined });
     this.gestor.elegir(contextoJuego.fuenteElegida || this.gestor.fuente);
@@ -26,25 +41,79 @@ export class Simulacion extends EscenaBase {
     this.sistema = crearSistemaTanques(this.nivel);
     const encabezados = ['t', 'u_crudo', 'u', 'x1', 'x2', 'y', 'v2', 'q_d', 'h_sp'];
     this.registro = new Registro({ encabezados });
-    this.muestras = []; this.muestrasVista = []; this.alarmas = []; this.tiempoJuego = 0; this.pausado = false; this.pausaPorManos = false; this.debug = false;
+    this.muestras = []; this.muestrasVista = []; this.alarmas = []; this.pausado = false; this.pausaPorManos = false; this.debug = false;
+    this.ultimoUpdateReal = performance.now();
+    this.ultimoTiempoMuestra = 0;
     this.crearFondo(`${this.nivel.nombre} · Operador de tanques`);
     this.add.text(36, 105, 'Tanques en cascada · A·dh/dt = caudales · válvulas con slew 0.25 s⁻¹', { fontSize: '16px', color: '#424c4f' });
-    this.graf = null; this.grafValvulas = null; this.barras = []; this.render = this.add.graphics();
+    this.render = this.add.graphics();
     this.refTexto = this.add.text(660, 132, '', { fontSize: '15px', color: '#252b2d' });
     this.alarmText = this.add.text(36, 615, '', { fontSize: '18px', color: '#252b2d', fontStyle: 'bold' });
     this.pausaTexto = this.add.text(640, 350, '', { fontSize: '28px', color: '#7c332c', backgroundColor: '#ffffffcc', padding: { x: 20, y: 12 } }).setOrigin(.5).setDepth(10);
     this.panelDepuracion = crearPanelDepuracion(this, { intercambiar: contextoJuego.camara?.intercambiar ?? (leerPreferencia('alambique.intercambiarEtiquetas', 'false') === 'true'), onIntercambiar: (value) => { guardarPreferencia('alambique.intercambiarEtiquetas', String(value)); if (contextoJuego.camara) contextoJuego.camara.intercambiar = value; } });
     this.panelDepuracion.setVisible(false);
-    this.events.once('shutdown', () => { detenerSesionCamara(); this.panelDepuracion.destruir(); mostrarVistaCamaraDepuracion(false); this.graf?.destruir(); this.grafValvulas?.destruir(); });
-    this.input.keyboard.on('keydown', (e) => { this.gestor.tecla(e.code, true); if (e.code === 'KeyD') this.debug = !this.debug; if (e.code === 'KeyP') this.toggleParametros(); });
-    this.input.keyboard.on('keyup', (e) => this.gestor.tecla(e.code, false)); this.finKey = this.input.keyboard.addKey('F');
+    document.activeElement?.blur?.();
+    if (this.game.canvas) { this.game.canvas.setAttribute('tabindex', '0'); this.game.canvas.focus({ preventScroll: true }); }
+    this.documentKeyDown = (e) => {
+      if (!this.sys.isActive()) return;
+      if (['KeyF', 'KeyP', 'KeyD', 'Enter'].includes(e.code)) e.preventDefault();
+      if (e.code === 'KeyF' || e.key?.toLowerCase() === 'f') {
+        console.info('[DIAG] tecla F', { terminado: this.terminado, sysIsActive: this.sys.isActive(), tiempoJuego: this.tiempoJuego });
+        this.terminar(false); return;
+      }
+      if (e.code === 'Enter') {
+        if (!e.repeat) { this.pausado = !this.pausado; this.pausaPorManos = false; }
+        return;
+      }
+      this.gestor.tecla(e.code, true);
+      if (!e.repeat && e.code === 'KeyD') this.debug = !this.debug;
+      if (!e.repeat && e.code === 'KeyP') this.toggleParametros();
+    };
+    this.documentKeyUp = (e) => { if (this.sys.isActive() && e.code !== 'Enter') this.gestor.tecla(e.code, false); };
+    document.addEventListener('keydown', this.documentKeyDown, true);
+    document.addEventListener('keyup', this.documentKeyUp, true);
+    this.events.once('shutdown', () => {
+      console.info('[DIAG] Simulacion shutdown');
+      const limpiar = (accion) => { try { accion(); } catch (error) { console.error('[ERROR JUEGO] limpieza Simulacion', error); } };
+      limpiar(() => document.removeEventListener('keydown', this.documentKeyDown, true));
+      limpiar(() => document.removeEventListener('keyup', this.documentKeyUp, true));
+      limpiar(() => this.panelDepuracion.destruir());
+      limpiar(() => mostrarVistaCamaraDepuracion(false));
+      limpiar(() => this.graf?.destruir());
+      limpiar(() => this.grafValvulas?.destruir());
+      this.barras.forEach((barra) => limpiar(() => barra.destruir()));
+      this.paramPanel?.forEach((elemento) => limpiar(() => elemento.destroy()));
+      limpiar(() => this.render.destroy());
+    });
     this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
     this.ayuda = this.add.text(36, 675, '', { fontSize: '13px', color: '#414b4e' }); this.estadoCamara = this.add.text(1080, 65, '', { fontSize: '13px', color: '#414b4e' });
-    this.selectStart = null; this.selectWasLong = false; this.ultimaAlarma = {};
+    this.botonTerminar = this.boton(1090, 660, 'Terminar', () => {
+      console.info('[DIAG] botón Terminar', { terminado: this.terminado, sysIsActive: this.sys.isActive(), tiempoJuego: this.tiempoJuego });
+      this.terminar(false);
+    }).setDepth(20);
+    const controlesIniciales = this.gestor.actualizar(0) ?? {};
+    const x0 = [...this.sistema.x], y0 = this.nivel.tanques === 2 ? x0[1] : x0[0];
+    const v10 = this.actuador1.salida(), v20 = this.actuador2.salida();
+    const ref0 = obtenerReferencia(this.nivel, 0), banda0 = obtenerTolerancia(this.nivel, 0), qd0 = obtenerPerturbacion(this.nivel, 0);
+    const muestraInicial = { t: 0, u_crudo: leerSenal(controlesIniciales, MAPA_CONTROL.v1, 'u_crudo', v10), u: v10, x: x0, y: y0, v2: v20, q_d: qd0, h_sp: ref0, referencia: ref0, tolerancia: banda0, banda_inf: ref0 - banda0, banda_sup: ref0 + banda0 };
+    this.muestras.push(muestraInicial);
+    this.muestrasVista.push(muestraInicial);
+    this.registro.filas.push([0, muestraInicial.u_crudo, v10, x0[0], x0[1] ?? '', y0, v20, qd0, ref0]);
   }
 
-  update(_, deltaMs) {
-    const dt = Math.min(deltaMs / 1000, .1), c = this.gestor.actualizar(dt) ?? {}, camara = contextoJuego.camara;
+  update(time, deltaMs) {
+    try {
+      this.actualizarCuadro(time, deltaMs);
+    } catch (error) {
+      console.error('[ERROR JUEGO] update', error);
+    }
+  }
+
+  actualizarCuadro(_, deltaMs) {
+    const ahoraReal = performance.now();
+    const dt = Math.max(0, (ahoraReal - this.ultimoUpdateReal) / 1000);
+    this.ultimoUpdateReal = ahoraReal;
+    const c = this.gestor.actualizar(dt) ?? {}, camara = contextoJuego.camara;
     if (camara?.activo && this.gestor.fuente === 'camara') {
       const hayManos = Boolean(c?.der?.presente || c?.izq?.presente);
       if (hayManos) { this.noManosDesde = null; if (this.pausaPorManos) { this.pausado = false; this.pausaPorManos = false; } }
@@ -54,41 +123,75 @@ export class Simulacion extends EscenaBase {
       const mando1 = leerSenal(c, MAPA_CONTROL.v1, null, this.actuador1.salida());
       const crudo = leerSenal(c, MAPA_CONTROL.v1, 'u_crudo', mando1);
       const mando2 = this.nivel.tanques === 2 ? leerSenal(c, MAPA_CONTROL.v2, null, this.actuador2.salida()) : 1;
-      const v1 = this.actuador1.avanzar(mando1, dt), v2 = this.actuador2.avanzar(mando2, dt);
-      const qd = obtenerPerturbacion(this.nivel, this.sistema.t), ref = obtenerReferencia(this.nivel, this.sistema.t);
-      this.sistema.avanzar([v1, v2, qd], dt); this.tiempoJuego = this.sistema.t;
+      let restante = dt, v1 = this.actuador1.salida(), v2 = this.actuador2.salida();
+      while (restante > 1e-9) {
+        const paso = Math.min(restante, .1);
+        v1 = this.actuador1.avanzar(mando1, paso); v2 = this.actuador2.avanzar(mando2, paso);
+        const qdPaso = obtenerPerturbacion(this.nivel, this.sistema.t);
+        this.sistema.avanzar([v1, v2, qdPaso], paso);
+        restante -= paso;
+      }
+      this.tiempoJuego = this.sistema.t;
+      const qd = obtenerPerturbacion(this.nivel, this.tiempoJuego), ref = obtenerReferencia(this.nivel, this.tiempoJuego);
       const hs = [...this.sistema.x], y = this.nivel.tanques === 2 ? hs[1] : hs[0];
       const referenciaActual = obtenerReferencia(this.nivel, this.tiempoJuego), toleranciaActual = obtenerTolerancia(this.nivel, this.tiempoJuego);
+      const dtMuestra = this.ultimoTiempoMuestra === null ? 0 : Math.max(0, this.tiempoJuego - this.ultimoTiempoMuestra);
+      this.ultimoTiempoMuestra = this.tiempoJuego;
       const muestra = { t: this.tiempoJuego, u_crudo: crudo, u: v1, x: hs, y, v2, q_d: qd, h_sp: referenciaActual, referencia: ref, tolerancia: toleranciaActual, banda_inf: referenciaActual - toleranciaActual, banda_sup: referenciaActual + toleranciaActual };
       this.muestras.push(muestra);
-      this.registro.reloj += dt;
+      if (this.nivel.criterio.tipo === 'consecutivo') {
+        const dentro = Math.abs(y - referenciaActual) <= toleranciaActual;
+        this.tiempoEnBandaSeguido = dentro ? this.tiempoEnBandaSeguido + dtMuestra : 0;
+      }
+      this.registro.reloj += Math.max(0, this.tiempoJuego - (this.tiempoAnteriorRegistro ?? 0));
+      this.tiempoAnteriorRegistro = this.tiempoJuego;
       if (this.registro.reloj + 1e-9 >= this.registro.periodo) { this.registro.reloj %= this.registro.periodo; this.registro.filas.push([muestra.t, muestra.u_crudo, muestra.u, hs[0], hs[1] ?? '', y, v2, qd, muestra.h_sp]); }
       if (this.tiempoJuego - (this.ultimoVista || 0) >= 1 / 30) { this.muestrasVista.push(muestra); this.ultimoVista = this.tiempoJuego; }
       this.registrarAlarmas(hs);
       const desborde = hs.some((h) => h >= PARAMETROS_TANQUES.alturaMaxima);
-      if (desborde || this.tiempoJuego >= this.nivel.duracion) { this.terminar(desborde); return; }
+      if (desborde) { this.terminar(true); return; }
+      if (this.tiempoJuego >= this.nivel.duracion) { this.terminar(false); return; }
+      if (this.nivel.criterio.tipo === 'consecutivo' && this.tiempoEnBandaSeguido >= this.nivel.criterio.segundos) { this.terminar(false); return; }
     }
-    this.pausaTexto.setText(this.pausado ? (this.pausaPorManos ? 'Muestra las manos' : 'PAUSA · Enter para reanudar') : '');
-    dibujarTanques(this.render, this.sistema.x, this.nivel.tanques, { alarmas: this.ultimaAlarma });
-    const hs = this.sistema.x, yActual = this.nivel.tanques === 2 ? hs[1] : hs[0], referencia = obtenerReferencia(this.nivel, this.tiempoJuego), banda = obtenerTolerancia(this.nivel, this.tiempoJuego);
-    this.refTexto.setText(`h${this.nivel.tanques === 2 ? '2' : '1'} ${yActual.toFixed(2)} m · referencia ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(3)} m³/s`);
-    const alarmasActivas = hs.map((h, i) => h >= 2.8 ? `HH${i + 1}` : h >= 2.4 ? `H${i + 1}` : '').filter(Boolean);
-    this.alarmText.setText(alarmasActivas.length ? `ALARMA ${alarmasActivas.join(' · ')}` : ''); this.alarmText.setColor(alarmasActivas.some((a) => a.startsWith('HH')) ? '#d52222' : '#c57a00');
-    this.graf?.destruir(); this.grafValvulas?.destruir(); this.barras.forEach((b) => b.destruir()); this.barras = [];
-    const seriesAltura = [{ clave: 'x', indice: 0, nombre: 'h1', color: 0x325f68 }, ...(this.nivel.tanques === 2 ? [{ clave: 'x', indice: 1, nombre: 'h2', color: 0x4b7a56 }] : [])];
-    this.graf = dibujarTendencia(this, { x: 660, y: 164, ancho: 570, alto: 225, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda de tolerancia', clave: 'y', referencia, banda, series: seriesAltura, alarma: alarmasActivas.length > 0 });
-    this.grafValvulas = dibujarTendencia(this, { x: 660, y: 405, ancho: 570, alto: 165, muestras: this.muestrasVista, min: 0, max: 1, unidad: 'apertura', titulo: 'Válvulas v1 / v2', series: [{ clave: 'u', nombre: 'v1', color: 0x425e67 }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x875a3e }] : [])] });
-    this.barras.push(dibujarBarraActuador(this, 680, 584, 'Válvula entrada v1', this.actuador1.salida(), hs[0], 'm'));
-    if (this.nivel.tanques === 2) this.barras.push(dibujarBarraActuador(this, 950, 584, 'Válvula salida v2', this.actuador2.salida(), hs[1], 'm'));
-    const sinManos = camara?.activo && this.gestor.fuente === 'camara' && this.noManosDesde && performance.now() - this.noManosDesde > 3000;
-    this.estadoCamara.setText(this.gestor.fuente === 'camara' ? (camara?.activo ? 'CÁMARA ACTIVA' : 'CÁMARA INACTIVA') : '');
-    this.ayuda.setText(`${sinManos ? 'Muestra las manos · ' : ''}${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`} · ${this.gestor.fuente} · P linealización · D depuración · F terminar`);
     mostrarVistaCamaraDepuracion(this.debug); this.panelDepuracion.setVisible(this.debug);
     const selectPressed = this.gestor.selectPulsado();
     if (selectPressed) { this.selectStart ??= performance.now(); if (!this.selectWasLong && performance.now() - this.selectStart >= 700) { this.debug = !this.debug; this.selectWasLong = true; } }
     else { this.selectStart = null; this.selectWasLong = false; }
-    if (this.debug) { const dep = this.gestor.camara.depuracion(); this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: hs }); }
-    if (Phaser.Input.Keyboard.JustDown(this.finKey)) this.terminar(false);
+    const ahoraHmi = performance.now();
+    if (ahoraHmi - this.ultimoHmi >= 100) { this.actualizarHmi(camara, ahoraHmi); this.ultimoHmi = ahoraHmi; }
+    if (this.debug && ahoraHmi - this.ultimoDebug >= 200) {
+      const dep = this.gestor.camara.depuracion();
+      const fpsJuego = this.game.loop.actualFps || (dt > 0 ? 1 / dt : 0);
+      const alertaFPS = camara?.activo && camara.fps < 15 ? ' · detección lenta: más luz, cerrar pestañas o bajar resolución' : '';
+      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x });
+      this.ultimoDebug = ahoraHmi;
+    }
+  }
+
+  actualizarHmi(camara) {
+    const hs = this.sistema.x, yActual = this.nivel.tanques === 2 ? hs[1] : hs[0];
+    const referencia = obtenerReferencia(this.nivel, this.tiempoJuego), banda = obtenerTolerancia(this.nivel, this.tiempoJuego);
+    this.pausaTexto.setText(this.pausado ? (this.pausaPorManos ? 'Muestra las manos' : 'PAUSA · Enter para reanudar') : '');
+    this.pausaTexto.setVisible(this.pausado);
+    dibujarTanques(this.render, hs, this.nivel.tanques, { alarmas: this.ultimaAlarma });
+    this.refTexto.setText(`h${this.nivel.tanques === 2 ? '2' : '1'} ${yActual.toFixed(2)} m · referencia ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(3)} m³/s`);
+    const alarmasActivas = hs.map((h, i) => h >= 2.8 ? `HH${i + 1}` : h >= 2.4 ? `H${i + 1}` : '').filter(Boolean);
+    this.alarmText.setText(alarmasActivas.length ? `ALARMA ${alarmasActivas.join(' · ')}` : '');
+    this.alarmText.setColor(alarmasActivas.some((a) => a.startsWith('HH')) ? '#d52222' : '#c57a00');
+    const sinManos = camara?.activo && this.gestor.fuente === 'camara' && this.noManosDesde && performance.now() - this.noManosDesde > 3000;
+    this.estadoCamara.setText(this.gestor.fuente === 'camara' ? (camara?.activo ? 'CÁMARA ACTIVA' : 'CÁMARA INACTIVA') : '');
+    this.ayuda.setText(`${sinManos ? 'Muestra las manos · ' : ''}${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`} · ${this.gestor.fuente} · P linealización · D depuración · F terminar`);
+    const seriesAltura = [{ clave: 'x', indice: 0, nombre: 'h1', color: 0x325f68 }, ...(this.nivel.tanques === 2 ? [{ clave: 'x', indice: 1, nombre: 'h2', color: 0x4b7a56 }] : [])];
+    const opcionesNiveles = { x: 660, y: 164, ancho: 570, alto: 225, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda de tolerancia', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0x75643d }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true };
+    const opcionesValvulas = { x: 660, y: 405, ancho: 570, alto: 165, muestras: this.muestrasVista, min: 0, max: 1, unidad: 'apertura', titulo: 'Válvulas v1 / v2', ejeTiempo: true, series: [{ clave: 'u', nombre: 'v1', color: 0x425e67 }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x875a3e }] : [])] };
+    if (!this.graf) this.graf = dibujarTendencia(this, opcionesNiveles); else this.graf.actualizar(opcionesNiveles);
+    if (!this.grafValvulas) this.grafValvulas = dibujarTendencia(this, opcionesValvulas); else this.grafValvulas.actualizar(opcionesValvulas);
+    if (!this.barras[0]) this.barras[0] = dibujarBarraActuador(this, 680, 584, 'Válvula entrada v1', this.actuador1.salida(), hs[0], 'm');
+    else this.barras[0].actualizar(this.actuador1.salida(), hs[0]);
+    if (this.nivel.tanques === 2) {
+      if (!this.barras[1]) this.barras[1] = dibujarBarraActuador(this, 950, 584, 'Válvula salida v2', this.actuador2.salida(), hs[1], 'm');
+      else this.barras[1].actualizar(this.actuador2.salida(), hs[1]);
+    }
   }
 
   registrarAlarmas(hs) {
@@ -108,9 +211,17 @@ export class Simulacion extends EscenaBase {
     this.paramPanel = [bg, texto];
   }
   terminar(desborde) {
-    if (this.terminado) return; this.terminado = true;
+    if (this.terminado) { console.info('[DIAG] terminar ignorado: ya terminado'); return; }
+    this.terminado = true;
+    console.info('terminar: inicio');
     const evaluacion = evaluarNivel(this.nivel, this.muestras, this.alarmas);
-    const resultado = { ...evaluacion, superado: evaluacion.superado && !desborde };
-    this.scene.start('Fin', { nivel: this.nivel, muestras: this.muestras, registro: this.registro, alarmas: this.alarmas, desborde, resultado, parametros: { ...this.sistema.p }, tauTeorico: constanteTiempoTanque(this.nivel.referencia), KTeorica: gananciaTanque(this.nivel.referencia) });
+    const evaluacionCompleta = this.nivel.criterio.tipo === 'consecutivo' || this.tiempoJuego >= this.nivel.duracion;
+    const resultado = { ...evaluacion, superado: evaluacion.superado && evaluacionCompleta && !desborde };
+    const datosFin = { nivel: this.nivel, muestras: this.muestras, registro: this.registro, alarmas: this.alarmas, desborde, resultado, parametros: { ...this.sistema.p }, tauTeorico: constanteTiempoTanque(this.nivel.referencia), KTeorica: gananciaTanque(this.nivel.referencia) };
+    console.info('terminar: cambio de escena');
+    this.scene.start('Fin', datosFin);
+    setTimeout(() => {
+      console.info('[DIAG] escenas activas', this.game.scene.getScenes(true).map((escena) => escena.scene.key));
+    }, 1000);
   }
 }

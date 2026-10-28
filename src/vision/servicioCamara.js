@@ -11,7 +11,7 @@ export function obtenerSesionCamara() {
   return contextoJuego.camara;
 }
 
-export function detenerSesionCamara() { contextoJuego.camara?.detener(); }
+export function detenerSesionCamara() { return contextoJuego.camara?.detener() ?? Promise.resolve(); }
 
 export async function listarCamaras() {
   if (!navigator.mediaDevices?.enumerateDevices) return [];
