@@ -4,6 +4,14 @@ import { Calibracion } from './juego/Calibracion.js';
 import { Simulacion } from './juego/Simulacion.js';
 import { Fin } from './juego/Fin.js';
 
+window.addEventListener('error', (event) => {
+  console.error('[ERROR JUEGO]', event.message, event.error?.stack || '');
+});
+window.addEventListener('unhandledrejection', (event) => {
+  const error = event.reason;
+  console.error('[ERROR JUEGO]', error?.message || String(error), error?.stack || '');
+});
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
