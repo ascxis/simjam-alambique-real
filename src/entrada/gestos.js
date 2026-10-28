@@ -6,6 +6,8 @@ export class EntradaGestos {
   cargarCalibracion() { try { this.calibracion = JSON.parse(localStorage.getItem('alambique.calibracion') || '{}'); } catch { this.calibracion = {}; } }
   guardarCalibracion() { try { localStorage.setItem('alambique.calibracion', JSON.stringify(this.calibracion)); } catch {} }
   procesar({ manos = [], tiempo = performance.now() }) {
+    if (this.tiempoAnterior !== undefined) this.Ts = Math.max(0.001, (tiempo - this.tiempoAnterior) / 1000);
+    this.tiempoAnterior = tiempo;
     for (const id of ['der', 'izq']) this.controles[id].presente = false;
     for (const hand of manos) {
       const { puntos: p, etiqueta: id } = hand; if (!p?.[20]) continue;
@@ -13,8 +15,10 @@ export class EntradaGestos {
       const m = this.controles[id], raw = { altura: 1 - (c.y - .1) / .8, x: ((c.x - .1) / .8) * 2 - 1, pellizco: Math.min(1, dist(p[4], p[8]) / Math.max(.001, dist(p[0], p[9]))), giro: Math.max(-1, Math.min(1, Math.atan2(p[9].x - p[0].x, p[0].y - p[9].y) / (Math.PI / 4))) };
       this.ultimaMano[id] = tiempo; m.presente = true;
       for (const key of Object.keys(raw)) {
-        const cal = this.calibracion[id]?.[key]; if (cal && cal.max !== cal.min) raw[key] = Math.max(0, Math.min(1, (raw[key] - cal.min) / (cal.max - cal.min))); // Ajuste fino opcional por canal.
-        m.u_crudo[key] = raw[key]; const previo = this.cache[`${id}.${key}`] ?? raw[key]; const suavizado = previo + this.alfa * (raw[key] - previo); this.cache[`${id}.${key}`] = suavizado;
+        const sinEscalar = raw[key]; m.medidaCruda ||= {}; m.medidaCruda[key] = sinEscalar;
+        const cal = this.calibracion[id]?.[key]; if (cal && Number.isFinite(cal.min) && Number.isFinite(cal.max) && cal.max !== cal.min) raw[key] = Math.max(0, Math.min(1, (sinEscalar - cal.min) / (cal.max - cal.min)));
+        m.u_crudo[key] = raw[key];
+        const previo = this.cache[`${id}.${key}`] ?? raw[key]; const suavizado = previo + this.alfa * (raw[key] - previo); this.cache[`${id}.${key}`] = suavizado;
         const umbral = this.opciones.zonaMuerta ?? 0.015; m[key] = Math.abs(suavizado - (m[key] ?? suavizado)) < umbral ? m[key] : suavizado;
       }
       const cerrado = [8, 12, 16, 20].every((tip, i) => dist(p[tip], p[0]) < dist(p[[6, 10, 14, 18][i]], p[0]));
@@ -26,5 +30,5 @@ export class EntradaGestos {
     }
     return this.controles;
   }
-  depuracion() { return { tau: -((1 / 60) / Math.log(1 - this.alfa)), controles: this.controles }; }
+  depuracion() { return { tau: -((this.Ts || 1 / 60) / Math.log(1 - this.alfa)), Ts: this.Ts || 1 / 60, alfa: this.alfa, controles: this.controles }; }
 }

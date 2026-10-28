@@ -25,6 +25,8 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 18 | 5.4 | Gemini | Escenario y baldosas | Fondo y baldosas aceptados; capas descartadas |
 | 19 | 5.4 | Gemini | HMI, logotipo y fondo final | Útil; hubo que recortar en 3 archivos |
 | 20 | 5.4 | Gemini | Lista final de recursos | Funcionó; 3 ajustes de la pareja |
+| 21 | 5.6 | Codex | Prompt base común | Funcionó parcialmente; quedaron pendientes |
+| 22 | 5.6 | Codex | Completar pendientes de la base | Funcionó (falta validar con cámara real) |
 
 ---
 
@@ -384,6 +386,43 @@ El juego corre a 1280x720 en Phaser 3 y la escala es 1 m = 100 px (el alambique 
   1. La columna "tamaño original" no coincide con los archivos reales (por ejemplo, los recortes de la HMI miden 493 × 251, 416 × 266 y 483 × 559 px).
   2. Propuso el panel final a 1280 × 720, pero el panel es vertical (proporción ≈ 0,86): estirarlo lo deformaría. Se fijó en 588 × 680.
   3. Se fijó el alambique en 300 px de alto para respetar la escala 1 m = 100 px.
+
+---
+
+## 21. Prompt base común (5.6)
+
+- **Herramienta:** vista Codex de ChatGPT Desktop, con la carpeta `juego-simulacion` abierta.
+- **Prompt:** el de la sección 5.6 de la guía, literal, con estos datos:
+  - Nombre del juego: Alambique Real: El Arte de la Alquimia
+  - Simulador: Operador de tanques
+  - Concepto de sistemas continuos: No linealidad, punto de operación y linealización; sistema hidráulico (U3, U4)
+- **Resultado:** funcionó parcialmente.
+  - Creó la arquitectura de cuatro capas (cámara y gestos, gamepad, teclado y escalón; integradores Euler y RK4, actuador, registro CSV, métricas y niveles; HMI; escenas de arranque, menú, calibración, simulación y resultados).
+  - Respetó `index.html` y `vite.config.js`.
+  - `npm test` pasó las 3 pruebas: error máximo de RK4 de 3,53 × 10⁻¹⁰ (primer orden) y 1,33 × 10⁻⁸ (segundo orden), menores que 1e-4. `npm run build` también pasó.
+- **Pendientes reconocidos por Codex:**
+  1. No implementó la elección de cámara cuando hay varias (`enumerateDevices`).
+  2. No implementó la opción para intercambiar las etiquetas derecha/izquierda.
+  3. La calibración guiada, la detección y la vista de depuración quedaron como "implementación inicial", sin validar con cámara real.
+- **Observación:** Codex no pidió permisos antes de crear archivos ni de ejecutar comandos, así que los cambios se revisaron con `git status` antes del commit.
+
+---
+
+## 22. Completar los pendientes de la base común (5.6)
+
+```
+Completa lo que quedó pendiente de la base común, sin cambiar lo que ya funciona:
+1. Selección de cámara: si enumerateDevices encuentra más de una cámara, permite elegirla desde el menú y recuerda la elección en localStorage (dentro de try/catch).
+2. Opción para intercambiar las etiquetas derecha/izquierda si salen invertidas por el espejo, accesible desde el menú y desde la vista de depuración, guardada en localStorage.
+3. Revisa que la calibración cumpla la guía: por cada mano, cuenta de 3 segundos en cada paso (mano abajo, mano arriba, pellizco cerrado, pellizco abierto, giro a la izquierda y a la derecha); guarda el rango de cada señal en localStorage y se puede repetir desde el menú.
+4. Revisa que la vista de depuración (tecla D o botón Select) muestre: video en espejo en una esquina, los 21 puntos de cada mano con su etiqueta, FPS de detección, el valor de cada señal antes y después del filtro, tau = -Ts/ln(1-alfa) y el estado x(t) del modelo.
+5. Revisa que funcionen: la pausa "Muestra las manos" si las dos manos salen de la zona más de 3 s (sin integrar el modelo), el aviso si la detección baja de 15 FPS, y el mensaje con ofrecimiento de gamepad o teclado si no hay cámara o se niega el permiso.
+No instales phaser ni @mediapipe/tasks-vision por npm. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. Al terminar ejecuta npm test y npm run build y explica qué cambiaste.
+```
+
+- **Resultado:** funcionó. Agregó la elección de cámara y el intercambio de etiquetas (ambos guardados en `localStorage`), la calibración de 6 pasos por mano con cuenta de 3 s (repite el paso si no detecta la mano), la vista de depuración completa (incluye Ts, α y τ del filtro), la pausa "Muestra las manos", el aviso de menos de 15 FPS y el cambio a gamepad o teclado si falla la cámara.
+- `npm test` (3 pruebas) y `npm run build` pasaron. No modificó `docs/`, `vensim/`, `index.html`, `vite.config.js` ni `PROMPTS.md`.
+- **Pendiente:** Codex no pudo probar la cámara física; se valida con la lista de verificación de la sección 5.6.
 
 ---
 
