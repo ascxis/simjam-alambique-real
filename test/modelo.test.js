@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { rk4, euler } from '../src/modelo/integrador.js';
 import { Actuador } from '../src/modelo/actuador.js';
 import { GestorEntrada } from '../src/entrada/gestorEntrada.js';
+import { Registro } from '../src/modelo/registro.js';
 
 const simular = (integrador, f, x0, h, total) => { let x = x0, t = 0; while (t < total - h / 2) { x = integrador(f, x, 1, t, h); t += h; } return x[0]; };
 test('RK4 reproduce sistema de primer orden K=2, tau=0.5 con escalón', () => {
@@ -37,4 +38,9 @@ test('la fuente escalón entrega controles completos y cambia der.altura a los 2
   const despues = entrada.actualizar(1);
   assert.equal(despues.der.altura, 1);
   assert.equal(despues.der.u_crudo.altura, 1);
+});
+test('el registro exporta CSV con coma, punto decimal y encabezados exactos', () => {
+  const registro = new Registro({ frecuencia: 30, encabezados: ['t', 'u_crudo', 'u', 'x1', 'y'] });
+  registro.agregar(1 / 30, { t: 2.5, u_crudo: 1, u: 0.75, x: [0.25], y: 0.25 });
+  assert.equal(registro.csv(), 't,u_crudo,u,x1,y\n2.5,1,0.75,0.25,0.25');
 });
