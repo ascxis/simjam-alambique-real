@@ -1,0 +1,113 @@
+{UTF-8}
+h1  = A FUNCTION OF( q in,-q12,-q d)
+	~	m
+	~	Nivel del alambique 1.
+	|
+
+q12  = A FUNCTION OF( h1)
+	~	m*m*m/Second
+	~	Caudal de salida por el orificio.
+	|
+
+q in  = A FUNCTION OF( v1)
+	~	m*m*m/Second
+	~	Caudal de entrada.
+	|
+
+v1  = A FUNCTION OF( Jugador)
+	~	Dmnl
+	~	Apertura de la valvula de entrada (mano derecha).
+	|
+
+Jugador  = A FUNCTION OF( error)
+	~
+	~	El jugador mira la HMI (sensor), decide (controlador) y mueve la mano.
+	|
+
+error  = A FUNCTION OF( h sp,-h1)
+	~	m
+	~	e = h_sp - h1.
+	|
+
+h sp  = A FUNCTION OF( )
+	~	m
+	~	Setpoint del nivel.
+	|
+
+q d  = A FUNCTION OF( )
+	~	m*m*m/Second
+	~	Consumo del caldero (perturbacion).
+	|
+
+********************************************************
+	.Control
+********************************************************~
+		Simulation Control Parameters
+	|
+
+FINAL TIME  = 20
+	~	Second
+	~	The final time for the simulation.
+	|
+
+INITIAL TIME  = 0
+	~	Second
+	~	The initial time for the simulation.
+	|
+
+SAVEPER  =
+        TIME STEP
+	~	Second [0,?]
+	~	The frequency with which output is stored.
+	|
+
+TIME STEP  = 0.01
+	~	Second [0,?]
+	~	The time step for the simulation.
+	|
+
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*View 1
+$192-192-192,0,Times New Roman|12||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,100,0
+10,1,v1,150,170,20,12,8,3,0,0,0,0,0,0
+10,2,q in,320,170,25,12,8,3,0,0,0,0,0,0
+10,3,h1,450,290,20,12,8,3,0,0,0,0,0,0
+10,4,q12,660,290,25,12,8,3,0,0,0,0,0,0
+10,5,q d,450,430,25,12,8,3,0,0,0,0,0,0
+10,6,error,290,410,25,12,8,3,0,0,0,0,0,0
+10,7,h sp,140,470,25,12,8,3,0,0,0,0,0,0
+10,8,Jugador,140,300,30,12,8,3,0,0,0,0,0,0
+1,9,1,2,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,10,2,3,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,11,3,4,1,0,43,0,0,64,0,-1--1--1,,1|(555,250)|
+1,12,4,3,1,0,45,0,0,64,0,-1--1--1,,1|(555,335)|
+1,13,5,3,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,14,3,6,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,15,7,6,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,16,6,8,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,17,8,1,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+12,18,0,555,292,15,15,8,7,0,0,-1,0,0,0
+B1
+12,19,0,290,290,15,15,8,7,0,0,-1,0,0,0
+B2
+///---\\\
+:L<%^E!@
+9:Current
+15:0,0,0,0,0,0
+19:100,0
+27:2,
+34:0,
+4:Time
+5:h1
+35:Date
+36:YYYY-MM-DD
+37:2000
+38:1
+39:1
+40:2
+41:0
+42:1
+24:0
+25:20
+26:20
