@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rk4, euler } from '../src/modelo/integrador.js';
 import { Actuador } from '../src/modelo/actuador.js';
+import { GestorEntrada } from '../src/entrada/gestorEntrada.js';
 
 const simular = (integrador, f, x0, h, total) => { let x = x0, t = 0; while (t < total - h / 2) { x = integrador(f, x, 1, t, h); t += h; } return x[0]; };
 test('RK4 reproduce sistema de primer orden K=2, tau=0.5 con escalón', () => {
@@ -19,4 +20,21 @@ test('RK4 reproduce sistema de segundo orden zeta=0.3, wn=4 con escalón', () =>
 test('Actuador respeta saturación y velocidad máxima', () => {
   const a = new Actuador({ minimo: 0, maximo: 1, velocidadMaxima: .25 });
   assert.equal(a.avanzar(3, 1), .25); assert.equal(a.avanzar(3, 1), .5); assert.equal(a.avanzar(-2, 10), 0);
+});
+test('la fuente escalón entrega controles completos y cambia der.altura a los 2 s', () => {
+  const entrada = new GestorEntrada({ fuente: 'escalon' });
+  const antes = entrada.actualizar(1);
+  assert.equal(antes.der.altura, 0);
+  for (const mano of [antes.der, antes.izq]) {
+    assert.deepEqual(Object.keys(mano).sort(), ['altura', 'dedos', 'giro', 'medidaCruda', 'pellizco', 'presente', 'puno', 'u_crudo', 'x'].sort());
+    for (const campo of ['altura', 'x', 'pellizco', 'giro']) {
+      assert.ok(Number.isFinite(mano[campo]));
+      assert.ok(Number.isFinite(mano.u_crudo[campo]));
+      assert.ok(Number.isFinite(mano.medidaCruda[campo]));
+    }
+  }
+  assert.equal(typeof antes.pausa, 'boolean');
+  const despues = entrada.actualizar(1);
+  assert.equal(despues.der.altura, 1);
+  assert.equal(despues.der.u_crudo.altura, 1);
 });
