@@ -1,0 +1,5 @@
+[
+  { "id": 1, "nombre": "El Primer Destilado", "estadoInicial": [0.5], "referencia": 1.5, "duracion": 120, "banda": 0.15, "criterio": { "tipo": "consecutivo", "segundos": 30 }, "perturbacion": null },
+  { "id": 2, "nombre": "La Demanda del Caldero Real", "estadoInicial": [1], "referencia": 1, "duracion": 120, "banda": 0.05, "criterio": { "tipo": "porcentaje", "porcentaje": 80 }, "perturbacion": { "tipo": "escalon", "valor": 0.08, "desde": 40, "hasta": 80 } },
+  { "id": 3, "nombre": "El Elixir Doble en Cascada", "estadoInicial": [1.2, 1.2], "referencia": 1.2, "duracion": 150, "banda": 0.06, "criterio": { "tipo": "porcentaje", "porcentaje": 70 }, "perturbacion": { "tipo": "senoidal", "amplitud": 0.04, "periodo": 40 } }
+]
