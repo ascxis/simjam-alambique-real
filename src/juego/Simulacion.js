@@ -10,7 +10,7 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
-import { dibujarTanques } from '../hmi/tanques.js';
+import { dibujarTanques, posicionEscalaTanque } from '../hmi/tanques.js';
 import { MAPA_CONTROL, leerSenal } from './mapaControl.js';
 
 export class Simulacion extends EscenaBase {
@@ -25,6 +25,7 @@ export class Simulacion extends EscenaBase {
     this.grafValvulas = null;
     this.barras = [];
     this.tiempoEnBandaSeguido = 0;
+    this.tiempoEnBandaAcumulado = 0;
     this.ultimoTiempoMuestra = 0;
     this.ultimoHmi = -Infinity;
     this.ultimoDebug = -Infinity;
@@ -47,8 +48,18 @@ export class Simulacion extends EscenaBase {
     this.crearFondo(`${this.nivel.nombre} · Operador de tanques`);
     this.add.text(36, 105, 'Tanques en cascada · A·dh/dt = caudales · válvulas con slew 0.25 s⁻¹', { fontSize: '16px', color: '#424c4f' });
     this.render = this.add.graphics();
+    this.etiquetasEscala = [];
+    for (let tanque = 0; tanque < this.nivel.tanques; tanque++) {
+      for (let metro = 0; metro <= 3; metro++) {
+        const p = posicionEscalaTanque(tanque, metro);
+        this.etiquetasEscala.push(this.add.text(p.x, p.y, String(metro), { fontSize: '12px', color: '#4c5a5e' }).setOrigin(1, 0));
+      }
+      const p = posicionEscalaTanque(tanque, 3);
+      this.etiquetasEscala.push(this.add.text(p.x - 2, p.y - 18, 'm', { fontSize: '10px', color: '#4c5a5e' }).setOrigin(1, 0));
+    }
     this.refTexto = this.add.text(660, 132, '', { fontSize: '15px', color: '#252b2d' });
     this.alarmText = this.add.text(36, 615, '', { fontSize: '18px', color: '#252b2d', fontStyle: 'bold' });
+    this.criterioTexto = this.add.text(660, 615, '', { fontSize: '15px', color: '#252b2d', fontStyle: 'bold' });
     this.pausaTexto = this.add.text(640, 350, '', { fontSize: '28px', color: '#7c332c', backgroundColor: '#ffffffcc', padding: { x: 20, y: 12 } }).setOrigin(.5).setDepth(10);
     this.panelDepuracion = crearPanelDepuracion(this, { intercambiar: contextoJuego.camara?.intercambiar ?? (leerPreferencia('alambique.intercambiarEtiquetas', 'false') === 'true'), onIntercambiar: (value) => { guardarPreferencia('alambique.intercambiarEtiquetas', String(value)); if (contextoJuego.camara) contextoJuego.camara.intercambiar = value; } });
     this.panelDepuracion.setVisible(false);
@@ -84,6 +95,7 @@ export class Simulacion extends EscenaBase {
       this.barras.forEach((barra) => limpiar(() => barra.destruir()));
       this.paramPanel?.forEach((elemento) => limpiar(() => elemento.destroy()));
       limpiar(() => this.render.destroy());
+      this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
     this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
     this.ayuda = this.add.text(36, 675, '', { fontSize: '13px', color: '#414b4e' }); this.estadoCamara = this.add.text(1080, 65, '', { fontSize: '13px', color: '#414b4e' });
@@ -139,10 +151,9 @@ export class Simulacion extends EscenaBase {
       this.ultimoTiempoMuestra = this.tiempoJuego;
       const muestra = { t: this.tiempoJuego, u_crudo: crudo, u: v1, x: hs, y, v2, q_d: qd, h_sp: referenciaActual, referencia: ref, tolerancia: toleranciaActual, banda_inf: referenciaActual - toleranciaActual, banda_sup: referenciaActual + toleranciaActual };
       this.muestras.push(muestra);
-      if (this.nivel.criterio.tipo === 'consecutivo') {
-        const dentro = Math.abs(y - referenciaActual) <= toleranciaActual;
-        this.tiempoEnBandaSeguido = dentro ? this.tiempoEnBandaSeguido + dtMuestra : 0;
-      }
+      const dentro = Math.abs(y - referenciaActual) <= toleranciaActual;
+      this.tiempoEnBandaAcumulado += dentro ? dtMuestra : 0;
+      this.tiempoEnBandaSeguido = dentro ? this.tiempoEnBandaSeguido + dtMuestra : 0;
       this.registro.reloj += Math.max(0, this.tiempoJuego - (this.tiempoAnteriorRegistro ?? 0));
       this.tiempoAnteriorRegistro = this.tiempoJuego;
       if (this.registro.reloj + 1e-9 >= this.registro.periodo) { this.registro.reloj %= this.registro.periodo; this.registro.filas.push([muestra.t, muestra.u_crudo, muestra.u, hs[0], hs[1] ?? '', y, v2, qd, muestra.h_sp]); }
@@ -173,11 +184,25 @@ export class Simulacion extends EscenaBase {
     const referencia = obtenerReferencia(this.nivel, this.tiempoJuego), banda = obtenerTolerancia(this.nivel, this.tiempoJuego);
     this.pausaTexto.setText(this.pausado ? (this.pausaPorManos ? 'Muestra las manos' : 'PAUSA · Enter para reanudar') : '');
     this.pausaTexto.setVisible(this.pausado);
-    dibujarTanques(this.render, hs, this.nivel.tanques, { alarmas: this.ultimaAlarma });
+    dibujarTanques(this.render, hs, this.nivel.tanques, {
+      tanqueControlado: this.nivel.tanques === 2 ? 1 : 0,
+      referencia,
+      tolerancia: banda,
+      dentroBanda: Math.abs(yActual - referencia) <= banda,
+      alarmas: this.ultimaAlarma,
+    });
     this.refTexto.setText(`h${this.nivel.tanques === 2 ? '2' : '1'} ${yActual.toFixed(2)} m · referencia ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(3)} m³/s`);
     const alarmasActivas = hs.map((h, i) => h >= 2.8 ? `HH${i + 1}` : h >= 2.4 ? `H${i + 1}` : '').filter(Boolean);
     this.alarmText.setText(alarmasActivas.length ? `ALARMA ${alarmasActivas.join(' · ')}` : '');
     this.alarmText.setColor(alarmasActivas.some((a) => a.startsWith('HH')) ? '#d52222' : '#c57a00');
+    const criterio = this.nivel.criterio;
+    if (criterio.tipo === 'consecutivo') {
+      const progreso = Math.min(criterio.segundos, this.tiempoEnBandaSeguido);
+      this.criterioTexto.setText(`En banda: ${progreso.toFixed(1).replace('.', ',')} / ${criterio.segundos} s seguidos`);
+    } else {
+      const porcentaje = this.tiempoJuego > 0 ? this.tiempoEnBandaAcumulado / this.tiempoJuego * 100 : 0;
+      this.criterioTexto.setText(`En banda: ${porcentaje.toFixed(0)} % del tiempo (meta ${criterio.porcentaje} %)`);
+    }
     const sinManos = camara?.activo && this.gestor.fuente === 'camara' && this.noManosDesde && performance.now() - this.noManosDesde > 3000;
     this.estadoCamara.setText(this.gestor.fuente === 'camara' ? (camara?.activo ? 'CÁMARA ACTIVA' : 'CÁMARA INACTIVA') : '');
     this.ayuda.setText(`${sinManos ? 'Muestra las manos · ' : ''}${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`} · ${this.gestor.fuente} · P linealización · D depuración · F terminar`);
@@ -216,7 +241,14 @@ export class Simulacion extends EscenaBase {
     console.info('terminar: inicio');
     const evaluacion = evaluarNivel(this.nivel, this.muestras, this.alarmas);
     const evaluacionCompleta = this.nivel.criterio.tipo === 'consecutivo' || this.tiempoJuego >= this.nivel.duracion;
-    const resultado = { ...evaluacion, superado: evaluacion.superado && evaluacionCompleta && !desborde };
+    const resultado = this.nivel.criterio.tipo === 'consecutivo'
+      ? {
+          ...evaluacion,
+          valor: Math.max(evaluacion.valor, this.tiempoEnBandaSeguido),
+          texto: `${Math.max(evaluacion.valor, this.tiempoEnBandaSeguido).toFixed(1)} s / ${this.nivel.criterio.segundos} s`,
+          superado: this.tiempoEnBandaSeguido >= this.nivel.criterio.segundos && !desborde,
+        }
+      : { ...evaluacion, superado: evaluacion.superado && evaluacionCompleta && !desborde };
     const datosFin = { nivel: this.nivel, muestras: this.muestras, registro: this.registro, alarmas: this.alarmas, desborde, resultado, parametros: { ...this.sistema.p }, tauTeorico: constanteTiempoTanque(this.nivel.referencia), KTeorica: gananciaTanque(this.nivel.referencia) };
     console.info('terminar: cambio de escena');
     this.scene.start('Fin', datosFin);
