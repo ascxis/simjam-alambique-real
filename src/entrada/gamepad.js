@@ -14,4 +14,5 @@ export class EntradaGamepad {
     actualizarCrudos(this.controles.der); actualizarCrudos(this.controles.izq);
     return this.controles;
   }
+  selectPulsado() { return Boolean(navigator.getGamepads?.().find(Boolean)?.buttons?.[8]?.pressed); }
 }

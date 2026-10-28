@@ -41,5 +41,6 @@ export class GestorEntrada {
     controles = completarControles(controles);
     return this.fuente === 'camara' ? controles : actualizarCrudosDesdeSalidas(controles);
   }
+  selectPulsado() { return this.gamepad.selectPulsado(); }
   tecla(codigo, down) { this.teclado.tecla(codigo, down); }
 }

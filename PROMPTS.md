@@ -29,6 +29,10 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 22 | 5.6 | Codex | Completar pendientes de la base | Funcionó (falta validar con cámara real) |
 | 23 | 5.6 | Codex | Corregir menú y favicon | Funcionó |
 | 24 | 5.6 | Codex | FPS, panel de depuración y signo de x | Panel y x corregidos; FPS limitados por la cámara |
+| 25 | 5.6 | Codex | Escalón y panel de depuración en el menú | Dañó el menú; hubo que corregir |
+| 26 | 5.6 | Codex | Restaurar el menú | Menú restaurado; el escalón aún se caía |
+| 27 | 5.6 | Codex | Error 'altura' de undefined en el escalón | Funcionó |
+| 28 | 5.6 | Codex | Gráficas de la pantalla final y formato del CSV | Funcionó |
 
 ---
 
@@ -460,6 +464,77 @@ No cambies la lógica de los demás gestos, el modelo ni las escenas. No modifiq
   - Los FPS no cambiaron: Ts = 0,0694 s antes y después (≈ 14,4 FPS). Como la detección ya corre una vez por cuadro de video, el límite era la cámara, que con contraluz entrega menos cuadros por segundo.
 - **Solución aplicada por la pareja:** mejorar la iluminación (luz de frente, sin contraluz) y no grabar la pantalla durante la prueba. Con eso la detección llegó a unos 20 FPS, aunque no de forma constante.
 - **Etiquetas:** se verificó que la mano derecha mueve el actuador y la izquierda no, así que no hace falta intercambiar las etiquetas.
+
+---
+
+## 25. Escalón y panel de depuración en el menú (5.6)
+
+```
+Dos errores en el menú:
+1. Al abrir la URL con ?control=escalon, el selector de "Fuente de control" desaparece (queda vacío) y al pulsar "Iniciar simulación" no pasa a la escena de simulación. Corrígelo: con ?control=escalon (y con ?control=teclado, ?control=gamepad o ?control=camara) el selector debe mostrar la fuente correspondiente ya seleccionada, incluida la opción "Escalón de prueba", y "Iniciar simulación" debe arrancar la simulación con esa fuente. En modo escalón, der.altura pasa de 0 a 1 a los 2 s sin usar la cámara.
+2. El panel de la vista de depuración (con la casilla "Intercambiar etiquetas der./izq.") aparece en el menú encima del título aunque no se haya pulsado D. Debe mostrarse solo durante la simulación y solo cuando la vista de depuración está activa.
+No cambies la lógica de gestos ni el modelo. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. Al terminar ejecuta npm test y npm run build, y comprueba que con ?control=escalon la simulación inicia y la pantalla final permite descargar el CSV.
+```
+
+- **Errores detectados por la pareja antes del prompt:** con `?control=escalon` el selector de fuente desaparecía y la simulación no arrancaba; el panel de depuración aparecía en el menú sobre el título.
+- **Resultado:** **hubo que corregir.** Codex reemplazó el selector por un control dibujado con Phaser.
+- **Errores de la IA detectados:**
+  1. El nuevo selector **no se desplegaba**, así que no se podía cambiar la fuente de control.
+  2. **Eliminó** del menú el selector de cámara y la casilla "Intercambiar derecha / izquierda".
+  3. El panel de depuración **siguió apareciendo** en el menú.
+  4. Intentó usar "Computer Use" para controlar el navegador del equipo y se detuvo sin verificar.
+
+## 26. Restaurar el menú (5.6)
+
+```
+La corrección anterior dañó el menú. Tres problemas:
+1. El nuevo selector de "Fuente de control" dibujado con Phaser no se despliega al hacer clic, así que no se puede cambiar la fuente. Vuelve a usar un <select> HTML creado con this.add.dom (que sí funcionaba y se escalaba bien), con las opciones Cámara, Gamepad, Teclado y Escalón de prueba, y conserva la preselección desde ?control=.
+2. Desaparecieron del menú el selector de cámara y la casilla "Intercambiar derecha / izquierda". Deben volver a estar a la derecha, junto al botón "Probar / actualizar cámaras", como antes.
+3. El panel de depuración (con la casilla "Intercambiar etiquetas der./izq.") sigue apareciendo en el menú encima del título. Debe crearse solo en la escena de simulación, ocultarse mientras no se pulse D y destruirse al salir de esa escena.
+Además confirma que con ?control=escalon, "Iniciar simulación" arranca la simulación sin pedir la cámara.
+No intentes controlar el computador ni el navegador: nosotros hacemos las pruebas. No cambies la lógica de gestos ni el modelo. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado según Codex:** restauró el `<select>` HTML con las 4 fuentes y la preselección desde `?control=`; devolvió el selector de cámara y la casilla de intercambio; el panel de depuración solo existe en la simulación y se oculta hasta pulsar D. Verificó en código que `der.altura` vale 0 antes de los 2 s y 1 después. `npm test` y `npm run build` pasaron.
+- **Resultado en el navegador:** el menú quedó bien (selector con "Escalón de prueba", selector de cámara y casilla de intercambio), pero al pulsar "Iniciar simulación" el juego se caía (entrada 27).
+
+---
+
+## 27. Error al iniciar el escalón (5.6)
+
+```
+Al pulsar "Iniciar simulación" con ?control=escalon el juego se cae con este error en la consola del navegador:
+
+Uncaught TypeError: Cannot read properties of undefined (reading 'altura')
+    at main.js:134:178
+    at Array.map (<anonymous>)
+    at formatMano (main.js:134:143)
+    at Simulacion.update (main.js:135:221)
+
+Corrígelo así:
+1. Todas las fuentes de entrada (cámara, gamepad, teclado y escalón) deben entregar exactamente la misma estructura de "controles", incluidas las señales crudas de cada mano (der e izq), aunque sea con el último valor o con 0. El registro CSV también necesita u_crudo en todas las fuentes.
+2. formatMano y el texto de depuración no deben fallar si falta algún dato, y solo deben calcularse cuando la vista de depuración está activa (no en cada cuadro con el panel oculto).
+3. Revisa si hay otros accesos a controles.der / controles.izq / datos crudos en Simulacion.update u otras escenas que puedan fallar con gamepad, teclado o escalón, y protégelos igual.
+4. Agrega a test/modelo.test.js (o a un test nuevo con node:test) una prueba que cree la fuente escalón y verifique que entrega la estructura completa de controles con der.altura = 0 antes de 2 s y 1 después.
+No intentes controlar el computador ni el navegador: nosotros probamos. No cambies el modelo. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Error de la IA detectado:** la fuente escalón no entregaba las señales crudas de cada mano y la escena de simulación las leía en cada cuadro (aunque el panel de depuración estuviera oculto), lo que tumbaba el juego al iniciar.
+- **Resultado:** funcionó. Las cuatro fuentes entregan la misma estructura, la depuración solo se calcula cuando está activa y se agregó una prueba automática de la fuente escalón.
+- **Verificación de la pareja (escalón con K = 1, τ = 5 s):** el escalón entra en t = 2,0 s; en t = 7,0 s el CSV da y = 0,6327 (teórico 1 − e⁻¹ = 0,6321); valor final 0,99086 en t = 25,5 s (teórico 0,99084); error máximo frente a la solución analítica en toda la curva: 7 × 10⁻⁶. La pantalla final muestra ts = 21,56 s (= 2 + 5·ln 50) y Mp = 0 %.
+
+## 28. Gráficas de la pantalla final y formato del CSV (5.6)
+
+```
+La prueba con ?control=escalon funciona y el modelo es correcto, pero hay dos problemas en la pantalla final y el registro:
+1. Las gráficas de "Lo que pasó en el modelo" no muestran la partida: se ve solo una línea en el borde superior. Deben dibujar TODA la partida, con el eje del tiempo desde 0 hasta la duración total: u(t) debe verse como un escalón de 0 a 1 a los 2 s y y(t) como la curva que sube de 0 a 0.99. Escala el eje vertical de cada gráfica según sus datos (de 0 a 1 en este caso) e incluye etiquetas del eje de tiempo en segundos.
+2. El CSV usa punto y coma y pone las unidades dentro del nombre de las columnas ("t (s);u_crudo (0-1);..."). El script de Python de la guía (sección 5.10) lee las columnas por nombre exacto con pandas.read_csv y separador coma. Cambia el CSV a: separador coma, punto decimal, y encabezados exactos sin unidades: t,u_crudo,u,x1,y (si hay más estados, x2, x3...). Las unidades no van en el encabezado; muéstralas en la pantalla final debajo del botón de descarga (t en s, u_crudo y u de 0 a 1, x y y en las unidades del modelo).
+No cambies el modelo ni la entrada. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Errores de la IA detectados:** las gráficas finales no mostraban la partida (solo una línea en el borde superior) y el CSV usaba punto y coma con unidades dentro del nombre de las columnas, incompatible con `analisis/identificar.py`.
+- **Resultado:** funcionó. La pantalla final muestra u(t) como escalón de 0 a 1 a los 2 s y y(t) subiendo hasta 0,99, con eje de tiempo de 0 a 25 s; el CSV quedó con encabezado `t,u_crudo,u,x1,y`, separador coma y punto decimal, y las unidades aparecen debajo del botón de descarga.
+- **Con esto se completó la lista "Verificación antes de continuar" de la sección 5.6** (gamepad no probado por falta de dispositivo).
 
 ---
 
