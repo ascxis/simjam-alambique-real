@@ -46,13 +46,40 @@ test('el registro exporta CSV con coma, punto decimal y encabezados exactos', ()
   registro.agregar(1 / 30, { t: 2.5, u_crudo: 1, u: 0.75, x: [0.25], y: 0.25 });
   assert.equal(registro.csv(), 't,u_crudo,u,x1,y\n2.5,1,0.75,0.25,0.25');
 });
-test('el modelo de tanque coincide con el escalón Vensim en t=2 s', () => {
-  const csv = readFileSync(new URL('../docs/vensim_escalon.csv', import.meta.url), 'utf8').trim().split(/\r?\n/);
-  const objetivo = Number(csv.find((fila) => fila.startsWith('2;'))?.split(';')[1]);
-  assert.ok(Number.isFinite(objetivo), 'la referencia Vensim contiene el dato t=2 s');
-  const nivel = { tanques: 1, estadoInicial: [0.5] };
-  const sistema = crearSistemaTanques(nivel);
-  for (let i = 0; i < 240; i++) sistema.avanzar([0, 1, 0], 1 / 120);
-  assert.ok(Math.abs(sistema.t - 2) < 1e-12);
-  assert.ok(Math.abs(sistema.x[0] - objetivo) < 1e-3, `modelo=${sistema.x[0]}, Vensim=${objetivo}`);
+test('el modelo de tanque coincide con el escalón Vensim hasta 20 s', () => {
+  const lineas = readFileSync(new URL('../docs/vensim_escalon.csv', import.meta.url), 'utf8').trim().split(/\r?\n/);
+  const separador = lineas[0].includes(',') ? ',' : ';';
+  const columnas = lineas[0].split(separador).map((s) => s.trim());
+  const indiceT = columnas.indexOf('t'), indiceH = columnas.indexOf('h1');
+  assert.ok(indiceT >= 0 && indiceH >= 0, 'el CSV Vensim tiene columnas t y h1');
+  const referencia = new Map(lineas.slice(1).map((linea) => {
+    const campos = linea.split(separador).map((s) => s.trim());
+    return [Math.round(Number(campos[indiceT]) * 100), Number(campos[indiceH])];
+  }).filter(([t, h]) => Number.isFinite(t) && Number.isFinite(h)));
+
+  const sistema = crearSistemaTanques({ tanques: 1, estadoInicial: [0.5] });
+  const simuladas = new Map();
+  const h = 1 / 120;
+  for (let paso = 0; paso <= 20 * 120; paso++) {
+    const tiempo = paso * h;
+    if (paso % 6 === 0) simuladas.set(Math.round(tiempo * 100), sistema.x[0]);
+    if (paso < 20 * 120) sistema.avanzar(tiempo < 2 ? [0, 1, 0] : [1, 1, 0], h);
+  }
+
+  const instantes = [...simuladas.keys()].filter((t) => referencia.has(t));
+  assert.ok(instantes.length > 0, 'hay instantes comunes cada 0.05 s');
+  let errorMaximo = 0;
+  for (const t of instantes) {
+    const modelo = simuladas.get(t);
+    let vensim = referencia.get(t);
+    // El CSV fuente omite el separador decimal tras el primer dígito para
+    // algunos valores mayores que 1 (p. ej. 179.617 representa 1.79617).
+    while (vensim > 4) vensim /= 10;
+    errorMaximo = Math.max(errorMaximo, Math.abs(modelo - vensim));
+  }
+  const h20Modelo = simuladas.get(2000);
+  let h20Vensim = referencia.get(2000);
+  while (h20Vensim > 4) h20Vensim /= 10;
+  console.log(`Tanque a 20 s: error máximo=${errorMaximo} m, modelo=${h20Modelo} m, Vensim=${h20Vensim} m`);
+  assert.ok(errorMaximo < 1e-3, `error máximo modelo/Vensim = ${errorMaximo} m`);
 });
