@@ -1,5 +1,13 @@
 export const MAPA_CONTROL = Object.freeze({
-  actuadorU: Object.freeze({ mano: 'der', senal: 'altura' })
+  v1: Object.freeze({ mano: 'der', senal: 'altura', gamepad: 'stick derecho vertical', teclado: 'flechas arriba/abajo' }),
+  v2: Object.freeze({ mano: 'izq', senal: 'pellizco', gamepad: 'gatillo izquierdo', teclado: 'E aumenta / Q reduce' }),
+  eventos: Object.freeze({
+    puno: { gamepad: 'acción 1 / botón A', teclado: 'espacio' },
+    dedos: { gamepad: 'cruceta (acciones 2–4)', teclado: 'teclas 1–5' },
+    pausa: { gamepad: 'Start', teclado: 'Enter' },
+    x: { gamepad: 'stick derecho horizontal', teclado: 'flechas izquierda/derecha' },
+    giro: { gamepad: 'stick derecho horizontal', teclado: 'flechas izquierda/derecha' }
+  })
 });
 
 export function leerSenal(controles, mapeo, campo = null, defecto = 0) {

@@ -1,5 +1,41 @@
 [
-  { "id": 1, "nombre": "El Primer Destilado", "estadoInicial": [0.5], "referencia": 1.5, "duracion": 120, "banda": 0.15, "criterio": { "tipo": "consecutivo", "segundos": 30 }, "perturbacion": null },
-  { "id": 2, "nombre": "La Demanda del Caldero Real", "estadoInicial": [1], "referencia": 1, "duracion": 120, "banda": 0.05, "criterio": { "tipo": "porcentaje", "porcentaje": 80 }, "perturbacion": { "tipo": "escalon", "valor": 0.08, "desde": 40, "hasta": 80 } },
-  { "id": 3, "nombre": "El Elixir Doble en Cascada", "estadoInicial": [1.2, 1.2], "referencia": 1.2, "duracion": 150, "banda": 0.06, "criterio": { "tipo": "porcentaje", "porcentaje": 70 }, "perturbacion": { "tipo": "senoidal", "amplitud": 0.04, "periodo": 40 } }
+  {
+    "id": 1,
+    "nombre": "El Primer Destilado",
+    "tanques": 1,
+    "estadoInicial": [0.5],
+    "referencia": 1.5,
+    "duracion": 120,
+    "tolerancia": { "tipo": "absoluta", "valor": 0.15 },
+    "criterio": { "tipo": "consecutivo", "segundos": 30 },
+    "perturbacion": null,
+    "valvulaSalidaActiva": false
+  },
+  {
+    "id": 2,
+    "nombre": "La Demanda del Caldero Real",
+    "tanques": 1,
+    "estadoInicial": [1.0],
+    "referencia": 1.0,
+    "duracion": 120,
+    "tolerancia": { "tipo": "absoluta", "valor": 0.05 },
+    "criterio": { "tipo": "porcentaje", "porcentaje": 80 },
+    "perturbacion": { "tipo": "escalon", "valor": 0.08, "desde": 40, "hasta": 80 },
+    "valvulaSalidaActiva": false,
+    "falloAlarmaHH": true
+  },
+  {
+    "id": 3,
+    "nombre": "El Elixir Doble en Cascada",
+    "tanques": 2,
+    "estadoInicial": [1.2, 1.2],
+    "referencia": 1.2,
+    "cambioReferencia": { "tiempo": 75, "valor": 0.8 },
+    "duracion": 150,
+    "tolerancia": { "tipo": "relativa", "fraccion": 0.05 },
+    "criterio": { "tipo": "porcentaje", "porcentaje": 70 },
+    "perturbacion": { "tipo": "senoidal", "amplitud": 0.04, "periodo": 40 },
+    "valvulaSalidaActiva": true,
+    "falloAlarmaHH": false
+  }
 ]

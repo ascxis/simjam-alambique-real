@@ -12,15 +12,14 @@ function escalaBonita(valores) {
 
 export function dibujarTendencia(scene, {
   x, y, ancho, alto, muestras, clave = 'y', min = 0, max = 3, unidad = '', referencia = null, banda = 0, titulo = '',
-  tiempoCompleto = false, ejeTiempo = false, autoEscala = false
+  tiempoCompleto = false, ejeTiempo = false, autoEscala = false, series = null, alarma = false, bandaInferiorClave = null, bandaSuperiorClave = null
 }) {
   const g = scene.add.graphics(), textos = [];
   g.fillStyle(0xe2e3e3).fillRect(x, y, ancho, alto); g.lineStyle(1, 0x777777).strokeRect(x, y, ancho, alto);
   const serie = tiempoCompleto ? muestras : muestras.slice(-30 * 30);
-  const puntos = serie.map((m, i) => ({
-    t: Number.isFinite(m.t) ? m.t : i,
-    valor: Number(Array.isArray(m[clave]) ? m[clave][0] : m[clave])
-  })).filter((p) => Number.isFinite(p.valor) && Number.isFinite(p.t));
+  const definiciones = series || [{ clave, indice: 0, nombre: '', color: alarma ? 0xc42020 : 0x425e67 }];
+  const lineas = definiciones.map((d) => ({ d, puntos: serie.map((m, i) => ({ t: Number.isFinite(m.t) ? m.t : i, valor: Number(Array.isArray(m[d.clave]) ? m[d.clave][d.indice || 0] : m[d.clave]) })).filter((p) => Number.isFinite(p.valor) && Number.isFinite(p.t)) }));
+  const puntos = lineas[0]?.puntos || [];
   if (autoEscala) ({ min, max } = escalaBonita(puntos.map((p) => p.valor)));
   if (!(max > min)) max = min + 1;
 
@@ -42,11 +41,26 @@ export function dibujarTendencia(scene, {
     g.lineStyle(1, 0x4c5c62, .8).lineBetween(plotX, yMap(referencia), plotX + plotW, yMap(referencia));
   }
   const inicioT = 0, finalMuestra = puntos.at(-1)?.t ?? 0, duracion = Math.max(finalMuestra, 1e-9);
-  g.lineStyle(2, 0x425e67);
-  for (let i = 1; i < puntos.length; i++) {
-    const x1 = plotX + Math.max(0, Math.min(1, (puntos[i - 1].t - inicioT) / duracion)) * plotW;
-    const x2 = plotX + Math.max(0, Math.min(1, (puntos[i].t - inicioT) / duracion)) * plotW;
-    g.lineBetween(x1, yMap(puntos[i - 1].valor), x2, yMap(puntos[i].valor));
+  if (bandaInferiorClave && bandaSuperiorClave) {
+    const mapX = (t) => plotX + Math.max(0, Math.min(1, t / duracion)) * plotW;
+    for (let i = 1; i < serie.length; i++) {
+      const a = serie[i - 1], b = serie[i];
+      const loA = yMap(Number(a[bandaInferiorClave])), loB = yMap(Number(b[bandaInferiorClave]));
+      const hiA = yMap(Number(a[bandaSuperiorClave])), hiB = yMap(Number(b[bandaSuperiorClave]));
+      if ([loA, loB, hiA, hiB].every(Number.isFinite)) {
+        g.fillStyle(0x71858b, .18);
+        g.fillPoints([{ x: mapX(a.t), y: loA }, { x: mapX(b.t), y: loB }, { x: mapX(b.t), y: hiB }, { x: mapX(a.t), y: hiA }], true);
+      }
+    }
+  }
+  for (const linea of lineas) {
+    g.lineStyle(2, linea.d.color ?? (alarma ? 0xc42020 : 0x425e67));
+    for (let i = 1; i < linea.puntos.length; i++) {
+      const x1 = plotX + Math.max(0, Math.min(1, (linea.puntos[i - 1].t - inicioT) / duracion)) * plotW;
+      const x2 = plotX + Math.max(0, Math.min(1, (linea.puntos[i].t - inicioT) / duracion)) * plotW;
+      g.lineBetween(x1, yMap(linea.puntos[i - 1].valor), x2, yMap(linea.puntos[i].valor));
+    }
+    if (linea.d.nombre) textos.push(scene.add.text(plotX + 8 + (textos.length % 3) * 70, plotY + 2, linea.d.nombre, { fontSize: '11px', color: `#${(linea.d.color ?? 0x425e67).toString(16).padStart(6, '0')}` }));
   }
   if (ejeTiempo) {
     for (let i = 0; i <= 4; i++) {
