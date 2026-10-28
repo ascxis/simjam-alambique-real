@@ -1,4 +1,6 @@
-const nuevaMano = () => ({ altura: 0.5, x: 0, pellizco: 0, giro: 0, puno: false, dedos: 0, presente: false, u_crudo: {} });
+import { crearManoControl } from './controles.js';
+
+const nuevaMano = () => crearManoControl();
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const centro = (p) => [0, 5, 9, 13, 17].reduce((s, i) => ({ x: s.x + p[i].x / 5, y: s.y + p[i].y / 5 }), { x: 0, y: 0 });
 export class EntradaGestos {
