@@ -33,6 +33,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 26 | 5.6 | Codex | Restaurar el menú | Menú restaurado; el escalón aún se caía |
 | 27 | 5.6 | Codex | Error 'altura' de undefined en el escalón | Funcionó |
 | 28 | 5.6 | Codex | Gráficas de la pantalla final y formato del CSV | Funcionó |
+| 29 | 5.6 | Codex | Reorganización en cuatro capas | Funcionó |
 
 ---
 
@@ -538,4 +539,26 @@ No cambies el modelo ni la entrada. No modifiques docs/, vensim/, PROMPTS.md, in
 
 ---
 
-<!-- Siguientes entradas: 5.6–5.8 (Codex), 5.9 y 5.11 (prompts de corrección). -->
+## 29. Reorganización en cuatro capas (5.6)
+
+```
+Reorganiza el código para cumplir la arquitectura en cuatro capas de la guía, SIN cambiar ningún comportamiento:
+1. Mueve cada escena de Phaser que hoy está en src/main.js a su propio archivo en src/juego/: Arranque.js, Menu.js, Calibracion.js, Simulacion.js y Fin.js (usa los nombres de clase que ya existen). src/main.js debe quedar solo como punto de entrada: configuración del juego (parent 'game-container', 1280x720, escalado FIT, Arcade, dom.createContainer) y la lista de escenas importadas.
+2. Si hay funciones auxiliares de dibujo o de interfaz dentro de main.js (paneles, botones, selectores, texto de depuración), muévelas a src/hmi/ o src/juego/ según corresponda. Las escenas siguen sin calcular física por su cuenta ni acceder a MediaPipe o a la Gamepad API.
+3. Crea src/juego/mapaControl.js con el mapeo actual del simulador base (der.altura -> actuador u) y haz que la escena de simulación lo use en lugar de tener el mapeo escrito dentro de la escena.
+4. Elimina los archivos de la plantilla de Vite que no se usan: src/counter.js, src/style.css y src/assets/ (hero.png, javascript.svg, vite.svg), solo si ningún archivo los importa.
+No cambies la lógica de entrada, cámara, modelo, HMI ni el formato del CSV. Usa solo el objeto global Phaser (sin import Phaser). No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build y muestra el árbol final de src/.
+```
+
+- **Error de la IA detectado (en el prompt base):** Codex había puesto las cinco escenas dentro de `src/main.js` (22 KB) y no había creado `src/juego/` ni `src/juego/mapaControl.js`, que la guía exige. También dejó archivos sin usar de la plantilla de Vite.
+- **Resultado:** funcionó.
+  - `main.js` quedó solo como punto de entrada.
+  - Las escenas pasaron a `src/juego/` (Arranque, Menu, Calibracion, Simulacion, Fin, más EscenaBase, contexto y preferencias), junto con `mapaControl.js`.
+  - Los paneles y la vista de cámara pasaron a `src/hmi/` (panelDepuracion, vistaCamara).
+  - Se eliminaron `counter.js`, `style.css` y `src/assets/`.
+  - `npm test` pasó 5 pruebas y `npm run build` terminó bien.
+- **Prueba de la pareja en el navegador:** pasaron todas (menú, escalón con pantalla final y CSV, cámara con depuración y pausa, consola sin errores).
+
+---
+
+<!-- Siguientes entradas: 5.7 (prompt específico del simulador), 5.8 (arte), 5.9 y 5.11 (prompts de corrección). -->

@@ -4,6 +4,8 @@ import { rk4, euler } from '../src/modelo/integrador.js';
 import { Actuador } from '../src/modelo/actuador.js';
 import { GestorEntrada } from '../src/entrada/gestorEntrada.js';
 import { Registro } from '../src/modelo/registro.js';
+import { crearSistemaTanques } from '../src/modelo/tanques.js';
+import { readFileSync } from 'node:fs';
 
 const simular = (integrador, f, x0, h, total) => { let x = x0, t = 0; while (t < total - h / 2) { x = integrador(f, x, 1, t, h); t += h; } return x[0]; };
 test('RK4 reproduce sistema de primer orden K=2, tau=0.5 con escalón', () => {
@@ -43,4 +45,14 @@ test('el registro exporta CSV con coma, punto decimal y encabezados exactos', ()
   const registro = new Registro({ frecuencia: 30, encabezados: ['t', 'u_crudo', 'u', 'x1', 'y'] });
   registro.agregar(1 / 30, { t: 2.5, u_crudo: 1, u: 0.75, x: [0.25], y: 0.25 });
   assert.equal(registro.csv(), 't,u_crudo,u,x1,y\n2.5,1,0.75,0.25,0.25');
+});
+test('el modelo de tanque coincide con el escalón Vensim en t=2 s', () => {
+  const csv = readFileSync(new URL('../docs/vensim_escalon.csv', import.meta.url), 'utf8').trim().split(/\r?\n/);
+  const objetivo = Number(csv.find((fila) => fila.startsWith('2;'))?.split(';')[1]);
+  assert.ok(Number.isFinite(objetivo), 'la referencia Vensim contiene el dato t=2 s');
+  const nivel = { tanques: 1, estadoInicial: [0.5] };
+  const sistema = crearSistemaTanques(nivel);
+  for (let i = 0; i < 240; i++) sistema.avanzar([0, 1, 0], 1 / 120);
+  assert.ok(Math.abs(sistema.t - 2) < 1e-12);
+  assert.ok(Math.abs(sistema.x[0] - objetivo) < 1e-3, `modelo=${sistema.x[0]}, Vensim=${objetivo}`);
 });
