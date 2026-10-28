@@ -34,6 +34,13 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 27 | 5.6 | Codex | Error 'altura' de undefined en el escalón | Funcionó |
 | 28 | 5.6 | Codex | Gráficas de la pantalla final y formato del CSV | Funcionó |
 | 29 | 5.6 | Codex | Reorganización en cuatro capas | Funcionó |
+| 30 | 5.7 | Codex | Prompt específico: Operador de tanques + bloque común | Funcionó con errores |
+| 31 | 5.7 | Codex | Correcciones del simulador de tanques | Tendencias corregidas; tecla F sigue fallando con cámara |
+| 32 | 5.7 | Codex | Correcciones intermedias: reloj en tiempo real, Web Worker, mensajes en consola | Reloj corregido; el worker rompió MediaPipe y se revirtió; F sigue fallando con cámara |
+| 33 | 5.7 | Codex | Fin de partida con cámara y FPS | Hubo que corregir (error al pulsar D) |
+| 34 | 5.7 | Codex | Error "hs is not defined" al pulsar D | D funciona; F falla después de los 30 s |
+| 35 | 5.7 | Codex | Reinicio del estado de la partida y diagnóstico de F | Funcionó |
+| 36 | 5.7 | Codex | Banda de tolerancia en el alambique y avance del criterio | (pendiente) |
 
 ---
 
@@ -558,6 +565,130 @@ No cambies la lógica de entrada, cámara, modelo, HMI ni el formato del CSV. Us
   - Se eliminaron `counter.js`, `style.css` y `src/assets/`.
   - `npm test` pasó 5 pruebas y `npm run build` terminó bien.
 - **Prueba de la pareja en el navegador:** pasaron todas (menú, escalón con pantalla final y CSV, cámara con depuración y pausa, consola sin errores).
+
+---
+
+## 30. Prompt específico del Simulador 1 (5.7)
+
+- **Prompt:** el del "Simulador 1. Operador de tanques" de la sección 5.7, literal, con el bloque común de reglas al final (archivo `prompt_5_7_tanques.txt`).
+- **Resultado según Codex:** implementó los tres niveles (perturbaciones, referencias, tolerancias), actuadores con límite de velocidad, alarmas H/HH y fin por desborde, el dibujo de los tanques, las tendencias, las barras de válvulas, el panel de linealización y la pantalla final; mapeó altura de la mano derecha → v1 y pellizco izquierdo → v2, y agregó una prueba que compara el modelo con `docs/vensim_escalon.csv`. `npm test` pasó 6 pruebas y `npm run build` terminó bien.
+- **Verificación de la pareja:**
+  - Funciona: menú con los 3 niveles; nivel 1 arranca en 0,5 m; la válvula abre en rampa (4 s); alarma H a los 14,5 s (2,40 m), HH a los 19,7 s (2,80 m) y fin por desborde a 3,0 m; nivel 3 con dos tanques, referencia 1,20 ± 0,06 m, q_d senoidal y v2 controlada por el pellizco izquierdo; pantalla final con ecuación, parámetros, alarmas, IAE, texto educativo y CSV `t,u_crudo,u,x1,x2,y,v2,q_d,h_sp`.
+- **Errores de la IA detectados:**
+  1. La tecla F no terminaba la partida.
+  2. La partida no terminaba al cumplir la duración del nivel (120 s).
+  3. Al cumplir 30 s seguidos en banda el nivel no se declaraba superado.
+  4. El "τ medido en el primer llenado" (4,75 s frente a 12,25 s teórico) se medía durante un desborde con la válvula al 100 %, así que no era comparable.
+  5. Quedaba un rectángulo blanco tras la pausa "Muestra las manos".
+  6. Las tendencias en vivo no se dibujaban (vacías en el nivel 3, solo un tramo corto en el nivel 1).
+
+## 31. Correcciones del simulador de tanques (5.7)
+
+```
+Correcciones del simulador de tanques:
+1. La tecla F (terminar) no funciona en la simulación de tanques, ni con cámara ni con ?control=escalon. Debe terminar la partida en cualquier momento (también en pausa) y mostrar la pantalla "Lo que pasó en el modelo".
+2. La partida no termina al llegar a la duración del nivel (120 s en el nivel 1, 120 s en el nivel 2, 150 s en el nivel 3, según docs/niveles.md). Al cumplir la duración debe pasar a la pantalla final con el resultado.
+3. Cuando el jugador cumple el criterio del nivel (nivel 1: 30 s seguidos con h1 en 1.5 m ±10 %), el nivel debe marcarse como SUPERADO y la partida terminar en ese momento, mostrando en la pantalla final "Nivel superado" y el valor alcanzado frente al requerido. Los niveles 2 y 3 se evalúan al cumplir su duración (porcentaje del tiempo en banda y sin alarma HH / sin desbordar).
+4. El "tau medido en el primer llenado" no es comparable con el teórico: se midió con la válvula al 100 % durante un desborde. Mídelo así: toma el primer tramo en que v1 queda estable (cambia menos de 0.02 durante al menos 2 s) después de un cambio; calcula el equilibrio de ese v1, h_eq = (0.4*v1/c1)^2; tau medido = tiempo desde que v1 se estabiliza hasta que h1 recorre el 63.2 % del camino hacia h_eq. Compáralo con el tau teórico en ese mismo punto, tau = 2*A*sqrt(h_eq)/c1. Si no hubo un tramo válido, muestra "no disponible".
+5. Al terminar la pausa "Muestra las manos" queda un rectángulo blanco en el centro de la pantalla. Elimina por completo el aviso cuando se reanuda.
+6. Las gráficas de tendencia en vivo ("Niveles y banda de tolerancia" y "Válvulas v1 / v2") no se dibujan bien: en el nivel 3 quedan vacías y en el nivel 1 con escalón solo aparece un tramo corto al final. Deben mostrar siempre los últimos 30 s completos de h1 (y h2 en el nivel 3) con la banda de tolerancia y la referencia, y de v1 (y v2 en el nivel 3), desde el inicio de la partida, en los tres niveles y con cualquier fuente de control.
+No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** las tendencias ya se dibujan con eje de tiempo en los niveles 1 y 3 (h1, h2, referencia, banda, v1 y v2) y desapareció el rectángulo blanco. Con `?control=escalon` la partida se pudo terminar y el CSV llega hasta t = 20,4 s.
+- **Error que persiste:** con la cámara como fuente de control, la tecla F sigue sin terminar la partida (niveles 1 y 3).
+- **Verificación del modelo con el CSV del escalón (nivel 1):** al integrar con RK4 la misma apertura u(t) registrada en el CSV, el nivel calculado coincide con el del juego con un error máximo de 0,0045 m (0,72 %); h1(20 s) = 2,566 m en el juego frente a 2,564 m de la referencia. El juego arranca con v1 ≈ 0,35 (equilibrio en 0,5 m), la válvula cierra en rampa hasta los 2 s y luego abre en rampa hasta 1 a los 6 s; por eso no se compara directamente con el STEP instantáneo de Vensim (se ajusta en la sección 5.9).
+
+---
+
+## 32. Correcciones intermedias del simulador de tanques (5.7)
+
+- **Prompts:** (copiar aquí, en orden, los textos enviados a Codex desde el historial de la conversación: reloj en tiempo real, detección en un Web Worker y mensajes "terminar: ..." en la consola).
+- **Resultado:** el reloj del juego avanza en tiempo real (dt medido con performance.now()). Los mensajes "terminar: inicio" y "terminar: cambio de escena" aparecen en la consola al pulsar F, al pulsar Terminar y a los 120 s.
+- **Errores de la IA:** movió la detección de manos a un Web Worker de tipo módulo, donde MediaPipe falla porque usa importScripts; se volvió a la detección en el hilo principal. La partida con cámara sigue sin pasar a la pantalla final y el juego se congela.
+
+---
+
+## 33. Fin de partida con cámara y FPS (5.7)
+
+```
+Corrección: con la cámara como fuente de control la partida no pasa a la pantalla final.
+Con la cámara, al pulsar F, al pulsar el botón Terminar o al cumplirse los 120 s, la consola muestra "terminar: inicio" y "terminar: cambio de escena", pero la escena Fin nunca aparece y el juego queda congelado. Con ?control=escalon sí funciona. La única diferencia entre ambos casos es que con la cámara existen el stream y el detector de MediaPipe, y al terminar se llama a detenerCamaraDespues() → detenerSesionCamara() → CamaraManos.detener(), que pausa el video, detiene los tracks y llama a detector.close().
+
+1. Al terminar la partida no cierres ni detengas la cámara. Elimina detenerCamaraDespues() de Simulacion.js (en terminar() y en el evento shutdown). Agrega a CamaraManos un método pausarDeteccion() que solo ponga activo = false y cancele requestVideoFrameCallback / requestAnimationFrame, sin pausar el video, sin detener los tracks y sin llamar a detector.close(). Llámalo desde Fin.create() con this.time.delayedCall(500, ...), cuando la pantalla final ya se haya dibujado.
+2. Reutiliza el detector de MediaPipe: en CamaraManos.iniciar(), si this.detector ya existe, no lo cierres ni crees otro; solo cambia el stream si cambia la cámara elegida, y reanuda el bucle de detección. detector.close() no debe llamarse durante el juego.
+3. En el evento shutdown de Simulacion, envuelve cada limpieza (quitar listeners, panelDepuracion.destruir(), mostrarVistaCamaraDepuracion(false), destruir tendencias y barras) en su propio try/catch con console.error('[ERROR JUEGO] limpieza Simulacion', error).
+4. Envuelve el contenido de Fin.create() en try/catch: si falla, escribe console.error('[ERROR JUEGO] Fin.create', error) y muestra igual el resultado del nivel, el botón "Descargar CSV" y el botón "Volver al menú".
+5. En main.js agrega window.addEventListener('error') y window.addEventListener('unhandledrejection') que escriban en la consola '[ERROR JUEGO]' con el mensaje y el stack.
+6. El juego corre a unos 20 FPS. Para llegar a 30 FPS o más: no destruyas y vuelvas a crear las tendencias, las barras ni los textos en cada cuadro; crea los objetos una vez y redibuja las tendencias y las barras como máximo 10 veces por segundo (Graphics.clear() y setText()). Actualiza el panel de depuración como máximo 5 veces por segundo. Para el criterio consecutivo lleva un contador incremental del tiempo seguido en banda en lugar de llamar a evaluarNivel() sobre todas las muestras en cada cuadro (el resultado debe ser el mismo). La integración del modelo, el registro de muestras y el CSV siguen igual, en cada cuadro.
+Prueba con la cámara en los niveles 1 y 3: F a los 10 s, el botón Terminar, el fin a los 120 s / 150 s y "Nivel superado" tras 30 s seguidos en banda en el nivel 1; después usa "Volver al menú" y juega otra partida con la cámara.
+No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Causa probable (revisión del código):** con ?control=escalon la partida termina bien; con la cámara, terminar() se ejecuta completa, pero justo después se detiene la cámara (pausa del video, parada de los tracks y detector.close() de MediaPipe). Es la única parte del cierre que solo ocurre con la cámara. Además, las tendencias, las barras y unos 30 textos se destruyen y se vuelven a crear en cada cuadro, lo que deja el juego en unos 20 FPS.
+- **Resultado:** el registro de errores con "[ERROR JUEGO]" funciona y permitió ver la causa del siguiente fallo.
+- **Errores de la IA:** al mover el redibujado a 10 veces por segundo dejó la variable `hs` fuera de su alcance: al pulsar D aparece "ReferenceError: hs is not defined" (Simulacion.js:127) y el juego se congela. El panel de depuración aparece pegado al borde superior, encima del título, y vacío.
+
+---
+
+## 34. Error "hs is not defined" al pulsar D (5.7)
+
+```
+Error al pulsar D (panel de depuración) en la simulación con la cámara. El juego se congela y la consola muestra:
+[ERROR JUEGO] Uncaught ReferenceError: hs is not defined
+    at Simulacion.update (src/juego/Simulacion.js:127:169)
+Después del último cambio, la variable hs ya no existe en la parte de update() que actualiza el panel de depuración (x: hs). Corrígelo usando el estado actual del sistema (this.sistema.x) y revisa que ninguna otra variable usada en update() haya quedado fuera de su alcance tras mover el redibujado a 10 veces por segundo.
+Además, el panel de depuración aparece pegado al borde superior de la pantalla, encima del título, y queda vacío. Debe aparecer debajo del título, en la posición (18, 105), y mostrar los FPS, α, Ts, τf, las señales de las dos manos y x(t).
+Un error en update() detiene todo el juego. Envuelve el contenido de update() en try/catch: si ocurre un error, escríbelo con console.error('[ERROR JUEGO] update', error) y sigue en el siguiente cuadro, sin congelar la partida.
+Prueba con la cámara en el nivel 1: pulsa D varias veces, pulsa F a los 10 s y deja otra partida hasta los 120 s.
+No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** el panel de depuración ya se abre con D, debajo del título y con datos (juego a 37 FPS, detección a 10 FPS). F y el botón Terminar funcionan antes de los 30 s.
+- **Error que persiste:** pasados los 30 s, al pulsar F la consola muestra "terminar: inicio", "terminar: cambio de escena" y "cámara detenida" (este último lo escribe la escena Fin), pero la pantalla se queda congelada en la simulación (tiempo y panel quietos) y no aparece "Lo que pasó en el modelo".
+
+- **Pruebas de la pareja:** (1) con ?control=teclado, F a los 40 s sí muestra la pantalla final; (2) con la cámara y sin D, la pantalla no se congela, pero F no hace nada; (3) con Phaser.CANVAS en lugar de WebGL sigue sin terminar. Se descarta un problema de WebGL.
+
+---
+
+## 35. Reinicio del estado de la partida y diagnóstico de F (5.7)
+
+```
+La partida con la cámara sigue sin terminar con F ni con el botón Terminar. Con ?control=teclado sí termina, también después de los 30 s.
+Encontré esto en src/juego/Simulacion.js: Phaser reutiliza la misma instancia de la escena en cada partida y create() no reinicia this.terminado. Después de la primera partida terminado queda en true, y en las siguientes terminar() sale en la primera línea: F, el botón Terminar y el fin por duración dejan de funcionar. Tampoco se reinician this.ultimoVista, this.tiempoAnteriorRegistro, this.noManosDesde, this.paramPanel ni this.graf / this.grafValvulas / this.barras, por lo que en la segunda partida las tendencias y el CSV arrancan mal.
+
+1. Al inicio de create() de Simulacion reinicia todo el estado de la partida: terminado = false, ultimoVista = 0, tiempoAnteriorRegistro = 0, noManosDesde = null, paramPanel = null, graf = null, grafValvulas = null, barras = [], tiempoEnBandaSeguido = 0, ultimoTiempoMuestra = null, ultimoHmi y ultimoDebug = -Infinity. Revisa también Fin, Menu y Calibracion para que ninguna escena dependa de valores de una partida anterior.
+2. Agrega mensajes de diagnóstico en la consola, todos con el prefijo [DIAG]:
+   - En el listener de teclado de Simulacion, al pulsar F: "[DIAG] tecla F", con this.terminado, this.sys.isActive() y this.tiempoJuego.
+   - Al pulsar el botón Terminar: "[DIAG] botón Terminar", con los mismos datos.
+   - En terminar(), si sale porque ya estaba terminado: "[DIAG] terminar ignorado: ya terminado".
+   - En el evento shutdown de Simulacion: "[DIAG] Simulacion shutdown".
+   - Al inicio y al final de Fin.create(): "[DIAG] Fin.create inicio" y "[DIAG] Fin.create fin", con el tiempo que tardó en ms.
+   - En el primer render de Fin (this.events.once('render')): "[DIAG] Fin primer render".
+   - 1 s después de llamar a this.scene.start('Fin'): "[DIAG] escenas activas", con this.game.scene.getScenes(true).map((s) => s.scene.key).
+3. Prueba con la cámara en el nivel 1, sin recargar la página entre partidas: partida 1 con F a los 10 s; Volver al menú; partida 2 con F a los 40 s; Volver al menú; partida 3 hasta el fin a los 120 s. Las tres deben mostrar la pantalla "Lo que pasó en el modelo", y el CSV y las tendencias de cada partida deben empezar en t = 0.
+No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Causa encontrada en el código:** `this.terminado` solo se pone en true y nunca vuelve a false. Phaser reutiliza la instancia de la escena, así que desde la segunda partida sin recargar la página, terminar() se ignora. Tampoco se reinician `ultimoVista` ni `tiempoAnteriorRegistro`, lo que afecta las tendencias y el CSV de las partidas siguientes.
+- **Resultado:** las tres partidas seguidas con la cámara, sin recargar la página (F a los 10 s, F a los 40 s y fin a los 120 s), llegan a la pantalla "Lo que pasó en el modelo".
+- **Error detectado al jugar:** el nivel 1 nunca se supera. Las dos líneas grises del alambique están fijas en unos 1,82 m y 2,45 m y parecen la banda de tolerancia, pero la banda real es de 1,35 a 1,65 m. El alambique no muestra ni la referencia ni la banda.
+
+---
+
+## 36. Banda de tolerancia en el alambique y avance del criterio (5.7)
+
+```
+En el dibujo del alambique (src/hmi/tanques.js) las dos líneas grises horizontales están fijas al 20 % y al 40 % de la altura del rectángulo, que equivalen a unos 2,45 m y 1,82 m. No corresponden a la referencia ni a la banda de tolerancia, y el jugador cree que el espacio entre ellas es la banda: mantiene h1 ahí 30 s y el nivel 1 no se supera, porque la banda real es 1,35 a 1,65 m.
+1. Quita esas dos líneas fijas. Dibuja en cada alambique, con la escala 1 m = (alto útil)/3 que ya usa el líquido: la banda de tolerancia actual como franja sombreada (referencia ± tolerancia, obtenida con obtenerReferencia y obtenerTolerancia según el tiempo, así cambia a los 75 s en el nivel 3), la referencia como línea continua, y marcas cortas de alarma H (2,4 m, amarilla) y HH (2,8 m, roja). Agrega a la izquierda del alambique una escala con 0, 1, 2 y 3 m. La banda y la referencia van en el alambique controlado (alambique 1 en los niveles 1 y 2, alambique 2 en el nivel 3).
+2. Pinta el líquido con un color distinto cuando el nivel controlado está dentro de la banda.
+3. Muestra en la pantalla de la simulación el avance del criterio del nivel, que se actualiza junto con la HMI: en el nivel 1 "En banda: 12,4 / 30 s seguidos" (vuelve a 0 al salir de la banda); en los niveles 2 y 3 "En banda: 63 % del tiempo (meta 80 %)" o "(meta 70 %)".
+4. Comprueba que la pantalla final usa el mismo cálculo: si el jugador mantiene 30 s seguidos h1 entre 1,35 y 1,65 m en el nivel 1, la partida termina en ese momento y muestra NIVEL SUPERADO con "30,0 s / 30 s".
+Prueba el nivel 1 con ?control=teclado: sube la válvula al 100 % hasta que h1 llegue a 1,25 m, déjala en 61 % y espera; la partida debe terminar como superada hacia los 36 s.
+No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** (pendiente)
 
 ---
 
