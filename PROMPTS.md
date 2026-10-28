@@ -40,7 +40,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 33 | 5.7 | Codex | Fin de partida con cámara y FPS | Hubo que corregir (error al pulsar D) |
 | 34 | 5.7 | Codex | Error "hs is not defined" al pulsar D | D funciona; F falla después de los 30 s |
 | 35 | 5.7 | Codex | Reinicio del estado de la partida y diagnóstico de F | Funcionó |
-| 36 | 5.7 | Codex | Banda de tolerancia en el alambique y avance del criterio | (pendiente) |
+| 36 | 5.7 | Codex | Banda de tolerancia en el alambique y avance del criterio | Funcionó |
 
 ---
 
@@ -688,7 +688,7 @@ Prueba el nivel 1 con ?control=teclado: sube la válvula al 100 % hasta que h1 l
 No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
 ```
 
-- **Resultado:** (pendiente)
+- **Resultado:** el alambique muestra la banda de tolerancia, la referencia y las marcas H y HH, junto con el contador "En banda". El nivel 1 se supera con el teclado y con la cámara. Si h1 sale de la banda, el contador vuelve a 0, como pide el criterio de docs/niveles.md (30 s seguidos en ±10 %).
 
 ---
 
