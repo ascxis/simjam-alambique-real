@@ -28,6 +28,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 21 | 5.6 | Codex | Prompt base común | Funcionó parcialmente; quedaron pendientes |
 | 22 | 5.6 | Codex | Completar pendientes de la base | Funcionó (falta validar con cámara real) |
 | 23 | 5.6 | Codex | Corregir menú y favicon | Funcionó |
+| 24 | 5.6 | Codex | FPS, panel de depuración y signo de x | Panel y x corregidos; FPS limitados por la cámara |
 
 ---
 
@@ -440,6 +441,25 @@ No cambies la lógica de control, cámara ni modelo. No modifiques docs/, vensim
   1. Los selectores del menú estaban posicionados con coordenadas fijas de la página: quedaban fuera del área del juego y tapaban el texto "Nivel de práctica".
   2. El navegador pedía `favicon.ico` y respondía 404, que la sección 5.11 pide evitar.
 - **Resultado:** funcionó. Los selectores quedan alineados con el canvas con la ventana grande y con las herramientas F12 abiertas (ventana reducida), y la consola ya no muestra el error 404.
+
+---
+
+## 24. FPS, panel de depuración y signo de x (5.6)
+
+```
+Tres correcciones de la base:
+1. La detección corre a unos 14 FPS (la guía exige 20 o más). Reduce la resolución del video de la cámara a 480x360, como indica la guía, y asegúrate de que detectForVideo se ejecute como máximo una vez por cuadro nuevo de video (sin detecciones repetidas sobre el mismo cuadro).
+2. El panel de texto de la vista de depuración (tecla D) usa posición fija de la página: queda parcialmente fuera del área del juego y tapa el título. Ubícalo dentro del canvas (por ejemplo en la esquina superior izquierda del área del juego, con fondo semitransparente) y que se escale con él, igual que se corrigieron los selectores del menú.
+3. La señal x está invertida: con la imagen en espejo, la mano derecha que se ve a la derecha del video marca x negativo (por ejemplo -0.84). Según la guía, x va de -1 (izquierda) a 1 (derecha) con la imagen en espejo. Corrige solo el signo de x en src/entrada/gestos.js; las etiquetas derecha/izquierda ya son correctas y no deben cambiar.
+No cambies la lógica de los demás gestos, el modelo ni las escenas. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Errores de la IA detectados (en los prompts anteriores):** la detección iba a 14,4 FPS (la guía pide 20 o más), el panel de depuración se salía del área del juego y la señal x tenía el signo invertido (mano derecha con x negativo).
+- **Resultado:**
+  - El panel de depuración quedó dentro del canvas y la x quedó corregida (mano derecha x = +0,79; izquierda x = −0,71).
+  - Los FPS no cambiaron: Ts = 0,0694 s antes y después (≈ 14,4 FPS). Como la detección ya corre una vez por cuadro de video, el límite era la cámara, que con contraluz entrega menos cuadros por segundo.
+- **Solución aplicada por la pareja:** mejorar la iluminación (luz de frente, sin contraluz) y no grabar la pantalla durante la prueba. Con eso la detección llegó a unos 20 FPS, aunque no de forma constante.
+- **Etiquetas:** se verificó que la mano derecha mueve el actuador y la izquierda no, así que no hace falta intercambiar las etiquetas.
 
 ---
 
