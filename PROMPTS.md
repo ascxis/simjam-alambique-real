@@ -27,6 +27,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 20 | 5.4 | Gemini | Lista final de recursos | Funcionó; 3 ajustes de la pareja |
 | 21 | 5.6 | Codex | Prompt base común | Funcionó parcialmente; quedaron pendientes |
 | 22 | 5.6 | Codex | Completar pendientes de la base | Funcionó (falta validar con cámara real) |
+| 23 | 5.6 | Codex | Corregir menú y favicon | Funcionó |
 
 ---
 
@@ -423,6 +424,22 @@ No instales phaser ni @mediapipe/tasks-vision por npm. No modifiques docs/, vens
 - **Resultado:** funcionó. Agregó la elección de cámara y el intercambio de etiquetas (ambos guardados en `localStorage`), la calibración de 6 pasos por mano con cuenta de 3 s (repite el paso si no detecta la mano), la vista de depuración completa (incluye Ts, α y τ del filtro), la pausa "Muestra las manos", el aviso de menos de 15 FPS y el cambio a gamepad o teclado si falla la cámara.
 - `npm test` (3 pruebas) y `npm run build` pasaron. No modificó `docs/`, `vensim/`, `index.html`, `vite.config.js` ni `PROMPTS.md`.
 - **Pendiente:** Codex no pudo probar la cámara física; se valida con la lista de verificación de la sección 5.6.
+
+---
+
+## 23. Corrección del menú y del favicon (5.6)
+
+```
+En el menú hay dos problemas:
+1. Los <select> HTML (fuente de control y cámara) usan position: absolute con coordenadas de la página, por eso quedan fuera del área del juego y tapan el texto "Nivel de práctica" cuando cambia el tamaño de la ventana. Corrígelo para que siempre queden alineados con el canvas y se escalen con él (escalado FIT): usa los DOM Elements de Phaser 3.87 (this.add.dom, con dom: { createContainer: true } en la configuración del juego) o reemplázalos por selectores dibujados con Phaser. El selector de fuente de control debe quedar justo debajo del texto "Fuente de control", y el de cámara junto a "Intercambiar derecha / izquierda", sin tapar ningún texto.
+2. La consola muestra "favicon.ico 404 (Not Found)". Crea public/favicon.ico (puede ser una copia o conversión de public/favicon.svg) para que no haya errores 404. No modifiques index.html.
+No cambies la lógica de control, cámara ni modelo. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Errores de la IA detectados (en el prompt anterior):**
+  1. Los selectores del menú estaban posicionados con coordenadas fijas de la página: quedaban fuera del área del juego y tapaban el texto "Nivel de práctica".
+  2. El navegador pedía `favicon.ico` y respondía 404, que la sección 5.11 pide evitar.
+- **Resultado:** funcionó. Los selectores quedan alineados con el canvas con la ventana grande y con las herramientas F12 abiertas (ventana reducida), y la consola ya no muestra el error 404.
 
 ---
 
