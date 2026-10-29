@@ -54,7 +54,12 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 47 | 5.8 | Codex | Planta: cascada apilada (nivel 3) y alambique apoyado (niveles 1 y 2) | Funcionó con errores |
 | 48 | 5.4 | Gemini | Nuevos elementos: mesa de laboratorio y Caldero Real | Funcionó |
 | 49 | 5.8 | Codex | Planta: líquido del nivel 3, mesa, caldero y tuberías | Funcionó con errores |
-| 50 | 5.8 | Codex | Uniones de tuberías, mesa en el piso y nivel 3 sobre la mesa | (pendiente) |
+| 50 | 5.8 | Codex | Uniones de tuberías, mesa en el piso y nivel 3 sobre la mesa | Funcionó; falta unir la salida del alambique (niveles 1 y 2) |
+| 51 | 5.8 | Codex | Unión del tubo de salida con el alambique | Funcionó en parte |
+| 52 | 5.8 | Codex | Salida soldada al cuerpo del alambique y flujo visible en el tubo | Funcionó |
+| 53 | 5.8 | Codex | Rendimiento de la cámara y respuesta de las barras | Funcionó en parte |
+| 54 | 5.8 | Codex | Calibración saturada y costo de los textos | Funcionó en parte (falla el paso de giro) |
+| 55 | 5.8 | Codex | Sentido del giro y calibración solo de los canales usados | Funcionó |
 
 ---
 
@@ -1092,7 +1097,121 @@ Revisa con ?control=teclado los niveles 1, 2 y 3 y confirma: la mesa y el calder
 No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
 ```
 
-- **Resultado:** (pendiente)
+- **Resultado:**
+  - El nivel 3 quedó bien según la pareja: la cascada está sobre la mesa, el brillo q12 queda dentro del vidrio y el tubo de salida cae al caldero.
+  - En los niveles 1 y 2, la mesa y el caldero están en el piso, la entrada sale de una brida con soportes colgantes y el chorro cae en el caldero.
+- **Detalle pendiente:** en los niveles 1 y 2, el tubo de salida empieza en el aire, separado del alambique.
+
+---
+
+## 51. Unión del tubo de salida con el alambique (5.8)
+
+```
+Niveles 1 y 2, unión del tubo de salida con el alambique (5.8). Solo cambia esto; el resto de la planta quedó bien.
+El tubo de salida empieza en el aire, unos 20 px a la derecha del alambique, a la altura del borde del tablero. Debe verse que sale del alambique:
+1. Detecta en el sprite escalado de alambique_cuerpo_vacio el borde derecho de su cuerpo a la altura de la parte baja (justo por encima del aro inferior de la base) y guarda ese punto en src/hmi/layout.js como salidaAlambique.
+2. El tubo empieza 8 px dentro del sprite en ese punto: dibuja ese tramo por debajo del alambique (setDepth menor) para que quede tapado por él, y en la unión pon una brida de cobre (un anillo un poco más grueso que el tubo, #B85A24 con borde #1A1B1D y dos remaches) por encima del sprite, como las uniones del arte.
+3. Desde ahí el tubo sigue en horizontal a la misma altura hasta pasar el borde derecho de la mesa y continúa como ahora: codos de 90°, bajada y pico vertical sobre la boca del caldero, con el chorro proporcional a c1·√h1. Si al subir la altura del tramo horizontal hace falta mover los codos, recalcúlalos desde los puntos de anclaje.
+No cambies el nivel 3. Revisa con ?control=teclado los niveles 1 y 2.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** el tubo ya nace en el alambique y tiene brida.
+- **Observación de la pareja:** la brida quedó sobre el pie ensanchado de la base y parece que el tubo cuelga del borde. Se pide que salga del cuerpo del tanque y que se vea el líquido salir.
+
+---
+
+## 52. Salida soldada al cuerpo del alambique y flujo visible en el tubo (5.8)
+
+```
+Niveles 1 y 2, salida del alambique (5.8). Ya está casi bien, pero la brida quedó sobre el pie ensanchado de la base y parece que el tubo cuelga del borde, no que sale del tanque. Cámbialo así:
+1. Mueve el punto salidaAlambique a la pared vertical del cuerpo cilíndrico, en su parte más baja: justo por encima del aro donde termina el cilindro y empieza el pie ensanchado. Detecta ese punto en el sprite escalado (el borde derecho del cuerpo a esa altura) y guárdalo en src/hmi/layout.js.
+2. En ese punto dibuja una boquilla corta de cobre que sale del cuerpo (12 px, un poco más ancha que el tubo), con una brida redonda de cobre más grande que la actual y cuatro remaches, encima del sprite, para que se lea como una salida soldada al tanque. El tubo empieza en la boquilla y sigue en horizontal a esa misma altura hasta pasar el borde derecho de la mesa. Después los codos de 90°, la bajada y el pico sobre la boca del caldero siguen como ahora, recalculados desde el nuevo punto.
+3. Para que se vea que el líquido sale del tanque, dibuja dentro de todo el tubo, desde la boquilla hasta el pico, un canal verde (#2ECC71) de la mitad del grosor del tubo con trazos que avanzan en el sentido del flujo. La velocidad de los trazos es proporcional a c1·√h1, y sin caudal el canal no se ve. El chorro sobre el caldero sigue igual.
+No cambies el nivel 3. Revisa con ?control=teclado los niveles 1 y 2.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** en los niveles 1 y 2, el tubo sale de una brida soldada a la pared del cuerpo cilíndrico, y un canal verde muestra la poción saliendo del alambique hasta el Caldero Real. El nivel 3 sigue igual (cascada sobre la mesa, brillo q12 dentro del vidrio y salida al caldero).
+
+---
+
+## 53. Rendimiento de la cámara y respuesta de las barras (5.8)
+
+- **Problema detectado en la revisión de la pareja:** la detección de manos baja a menos de 10 FPS y nunca llega a 20 (la lista de comprobación de la 5.6 pide 20 o más), y la barra de v1 se mueve a saltos y con retraso. Una parte del retraso es del modelo: la válvula tiene una velocidad máxima de 0,25 1/s, así que tarda 4 s de 0 a 100 %. Otra parte es de rendimiento: el arte nuevo se redibuja en cada cuadro, en el mismo hilo que MediaPipe, y las barras solo se actualizan 10 veces por segundo.
+
+```
+Rendimiento de la cámara y respuesta de las barras, sin cambiar el modelo (la válvula sigue con velocidad máxima de 0,25 1/s), los niveles ni el CSV.
+Problema: desde que se integró el arte, la detección de manos baja a menos de 10 FPS y nunca llega a 20 (la guía pide 20 o más), y la barra de v1 se mueve a saltos y con retraso.
+
+1. Diagnóstico: en el panel de depuración (D) agrega el tiempo medio de detectForVideo en ms, el tiempo medio de cada cuadro de Phaser en ms, el delegado de MediaPipe en uso (GPU o CPU) y la resolución real del video. Escribe también en la consola, una vez al iniciar la cámara, el delegado y la resolución.
+2. Menos carga en el hilo principal:
+   - Limita Phaser a 30 FPS (fps: { target: 30, limit: 30 } en main.js).
+   - Dibuja una sola vez las partes fijas de la planta (mesa, tuberías, bridas, soportes, sombras, escalas y etiquetas fijas) en un Graphics o RenderTexture estático. En cada cuadro actualiza solo lo que cambia: el líquido, el canal y el chorro, la runa, los volantes, las barras y los textos con valores.
+   - Las tendencias se siguen redibujando 10 veces por segundo, y el panel de depuración 5 veces por segundo.
+   - dibujarPuntosDepuracion solo debe ejecutarse cuando el panel D está visible.
+3. MediaPipe más liviano:
+   - numHands = 1 en los niveles 1 y 2 (solo se usa la mano derecha) y 2 en el nivel 3 y en la calibración. Cámbialo con detector.setOptions al iniciar cada nivel, sin crear otro detector.
+   - Conserva el delegado GPU, con respaldo en CPU.
+   - Si después de 5 s la detección promedia menos de 18 FPS, baja el video a 320 × 240 y avísalo en el panel D.
+4. Barras de las válvulas:
+   - Actualiza las barras de v1 y v2 y sus textos en cada cuadro, no 10 veces por segundo.
+   - Sobre cada barra, dibuja una marca blanca (un triángulo pequeño) en la posición que pide la mano (el mando, antes del actuador), para que el jugador vea al instante que su gesto se detecta. El relleno naranja sigue siendo la apertura real de la válvula, que alcanza al mando a 0,25 1/s.
+   - Debajo de las barras, una línea corta de ayuda: "▲ mano · ■ válvula (tarda 4 s de 0 a 100 %)".
+Prueba con la cámara en los niveles 1 y 3 y anota en tu respuesta los FPS de detección, de cámara y del juego, y los tiempos del panel D.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:**
+  - La detección sube a 20,6 FPS (46 ms por detección, delegado GPU), después de bajar el video a 320 × 240 de forma automática.
+  - Las barras muestran la marca ▲ de la mano y la ayuda "tarda 4 s de 0 a 100 %".
+- **Problemas que quedan:**
+  - El juego corre a 17,5 FPS (64 ms por cuadro).
+  - Con la mano a media altura, el panel D muestra "altura 1.00→0.99": la calibración guardada tiene un rango tan corto que v1 se queda en 100 % aunque la mano no esté arriba.
+
+---
+
+## 54. Calibración saturada y costo de los textos (5.8)
+
+- **Antes de enviarlo:** la pareja volvió a calibrar y la altura siguió saturada. Revisando src/juego/Calibracion.js se encontró la causa: cada paso usa solo 3 muestras promediadas, y la primera se toma con la mano todavía en movimiento. Se agregó al prompt la forma correcta de medir (percentiles 10 y 90 durante 2 s, después de 1,5 s de preparación).
+
+```
+Calibración de la altura de la mano y rendimiento del juego, sin cambiar el modelo, los niveles ni el CSV.
+
+1. Calibración saturada: con la mano derecha a media altura de la zona, el panel D muestra "der en zona | altura 1.00→0.99" y v1 se queda en 100 %. La calibración guardada en localStorage tiene un rango demasiado corto: el valor medido llega al "máximo" calibrado con la mano todavía baja, y el resto del recorrido queda recortado en 1.
+   - En el panel D muestra por cada canal tres valores: la medida sin calibrar (medidaCruda), el valor calibrado y el rango guardado [min, max].
+   - Al guardar la calibración, rechaza un canal si max − min < 0.30 (en unidades sin calibrar), muestra "Rango muy corto, repite el paso moviendo la mano hasta el borde de la zona" y repite ese paso.
+   - Al cargar una calibración guardada con un rango menor que 0.30 en algún canal, ignora ese canal (usa el valor sin calibrar) y avísalo en la consola.
+   - Causa en src/juego/Calibracion.js: cada paso toma solo 3 muestras, una por segundo, y la primera llega 1 s después de empezar el paso (250 ms después del paso anterior), cuando la mano todavía se está moviendo. Además, el promedio de las tres acerca el máximo y el mínimo al centro. Cámbialo así: cada paso muestra "Prepárate…" durante 1,5 s sin medir; después mide en cada cuadro durante 2 s, mientras la mano esté en la zona. Para "abajo", "cerrado" e "izquierda" guarda el percentil 10 de las muestras, y para "arriba", "abierto" y "derecha" el percentil 90. Si hay menos de 15 muestras válidas, repite el paso.
+   - Agrega en el menú el botón "Restablecer calibración", que borra alambique.calibracion de localStorage.
+   - En la calibración, para "Mano abajo" y "Mano arriba", dibuja sobre la vista de la cámara una franja en el borde inferior y otra en el superior de la zona, y muestra en vivo el valor medido para que el jugador vea que llega al extremo.
+2. Rendimiento del juego (el panel D marca 17.5 FPS y 64 ms por cuadro):
+   - Cada setText de Phaser vuelve a dibujar la textura del texto. Llama a setText solo cuando el texto que se muestra cambia de verdad (guarda el último texto de cada objeto), en las barras, las etiquetas, el tiempo, las tendencias, el avance del criterio y el panel D.
+   - Las barras y la marca ▲ de la mano se siguen moviendo en cada cuadro (son Graphics), pero sus textos de porcentaje solo se actualizan cuando cambia el número entero.
+   - Agrega al panel D el desglose del tiempo por cuadro: modelo, HMI y planta, tendencias y render.
+Prueba con la cámara en los niveles 1 y 3, después de pulsar "Restablecer calibración" y de calibrar de nuevo, y anota en tu respuesta los FPS del juego y de la detección.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** la calibración ya toma muestras continuas y comprueba el rango, pero el paso del giro de la mano derecha falla siempre con "Rango giro menor que 0,30", aunque se gire 45° a cada lado.
+
+---
+
+## 55. Sentido del giro y calibración solo de los canales usados (5.8)
+
+- **Causa encontrada en el código:** el giro se calcula sobre la imagen sin espejar y la vista del jugador está espejada, así que "izquierda" da un valor positivo y "derecha" uno negativo. Con eso, max − min siempre sale negativo y la comprobación del rango nunca se cumple. Además, el juego no usa el giro: solo usa la altura de la mano derecha y el pellizco de la izquierda.
+
+```
+Calibración del giro: el paso "Giro a la izquierda / derecha" falla siempre con "Rango giro menor que 0,30", aunque el jugador gire la mano 45° como se pide.
+Causa: giro = atan2(p9.x − p0.x, p0.y − p9.y) se calcula sobre la imagen de la cámara sin espejar, y la vista que ve el jugador sí está espejada. Por eso, al girar hacia SU izquierda el giro sale positivo, y al girar hacia su derecha sale negativo: max − min es negativo y la comprobación del rango nunca se cumple.
+1. Corrige el signo del giro para que coincida con la vista espejada: girar los dedos hacia la derecha del jugador da un giro positivo. Comprueba también que "x" (izquierda / derecha) tenga el mismo sentido que la vista.
+2. En la comprobación del rango usa |max − min| ≥ 0.30, y en la conversión con la calibración acepta rangos invertidos (min > max) sin recortar todo a 0 o a 1.
+3. Calibra solo los canales que usa este juego, según src/juego/mapaControl.js: la altura de la mano derecha (v1) y el pellizco de la mano izquierda (v2). Quita los pasos de giro y de la altura y el pellizco de la otra mano.
+4. Guarda la calibración después de cada canal aceptado (no solo al final), para que "Omitir calibración" conserve lo que ya se calibró.
+No cambies el modelo, los niveles ni el CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** la calibración pide solo la altura de la mano derecha y el pellizco de la izquierda. Ya no falla, y la barra de v1 sigue a la mano en todo el recorrido.
 
 ---
 

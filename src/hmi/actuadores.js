@@ -1,13 +1,15 @@
 import { fuenteInterfaz } from './estilo.js';
 
-export function dibujarBarraActuador(scene, x, y, etiqueta, apertura, variable, unidad = '', nombreVariable = 'h', ancho = 250) {
+export function dibujarBarraActuador(scene, x, y, etiqueta, apertura, variable, unidad = '', nombreVariable = 'h', ancho = 250, mando = apertura) {
   const g = scene.add.graphics();
   const texto = scene.add.text(x, y, '', fuenteInterfaz(13, '#E6E8EA', { fontStyle: 'bold' }));
-  const actualizar = (nuevoApertura = apertura, nuevaVariable = variable) => {
-    apertura = nuevoApertura; variable = nuevaVariable;
+  const actualizar = (nuevoApertura = apertura, nuevaVariable = variable, nuevoMando = mando) => {
+    apertura = nuevoApertura; variable = nuevaVariable; mando = nuevoMando;
     g.clear(); g.fillStyle(0x3a3d40).fillRoundedRect(x, y + 20, ancho, 12, 5);
     g.fillStyle(0xb85a24).fillRoundedRect(x, y + 20, ancho * Math.max(0, Math.min(1, apertura)), 12, 5);
     g.lineStyle(1, 0xb85a24, .85).strokeRoundedRect(x, y + 20, ancho, 12, 5);
+    const marcaX = x + ancho * Math.max(0, Math.min(1, mando));
+    g.fillStyle(0xffffff, 1).fillTriangle(marcaX, y + 14, marcaX - 5, y + 20, marcaX + 5, y + 20);
     texto.setText(`${etiqueta} ${(apertura * 100).toFixed(0)} % · ${nombreVariable} ${variable.toFixed(2)} ${unidad}`);
   };
   actualizar();

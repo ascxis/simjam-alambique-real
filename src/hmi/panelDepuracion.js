@@ -7,14 +7,16 @@ export function crearPanelDepuracion(scene, { intercambiar = false, onIntercambi
   const dom = scene.add.dom(18, 105, panel).setOrigin(0, 0).setDepth(50).setVisible(false);
   return {
     setVisible(visible) { panel.style.display = visible ? 'block' : 'none'; if (visible) dom.setPosition(18, 105).setOrigin(0, 0); dom.setVisible(visible); },
-    actualizar({ fps, fpsCamara, fpsJuego, alertaFPS = '', alfa, Ts, tau, controles, x }) {
+    actualizar({ fps, fpsCamara, fpsJuego, tiempoDeteccionMs, tiempoCuadroMs, delegado, resolucion, avisoResolucion = '', alertaFPS = '', alfa, Ts, tau, controles, x }) {
       const formatMano = (id) => {
         const mano = controles?.[id] ?? {}, crudos = mano.u_crudo ?? {};
         return `${id} ${mano.presente ? 'en zona' : 'fuera'} | ` + ['altura', 'x', 'pellizco', 'giro'].map((k) => `${k} ${numero(crudos[k])}→${numero(mano[k])}`).join(' | ');
       };
       const alertaJuego = Number.isFinite(fpsJuego) && fpsJuego < 30 ? ' · AVISO: juego bajo 30 FPS' : '';
       const estado = Array.isArray(x) ? x : [];
-      texto.textContent = `Juego ${formato(fpsJuego, 1)} FPS · detección ${formato(fps, 1)} FPS · cámara ${formato(fpsCamara, 1)} FPS${alertaFPS}${alertaJuego}\nα=${formato(alfa, 3)} · Ts=${formato(Ts, 4)} s · τf=${formato(tau, 4)} s\n${formatMano('der')}\n${formatMano('izq')}\nx(t)=[${estado.map((v) => formato(v, 3)).join(', ')}]`;
+      const dimensiones = resolucion ? `${resolucion.ancho}×${resolucion.alto}` : '—';
+      const aviso = avisoResolucion ? `\nAVISO: ${avisoResolucion}` : '';
+      texto.textContent = `Juego ${formato(fpsJuego, 1)} FPS (${formato(tiempoCuadroMs, 1)} ms/cuadro) · detección ${formato(fps, 1)} FPS (${formato(tiempoDeteccionMs, 1)} ms/detección) · cámara ${formato(fpsCamara, 1)} FPS\nMediaPipe ${delegado || '—'} · video ${dimensiones}${alertaFPS}${alertaJuego}${aviso}\nα=${formato(alfa, 3)} · Ts=${formato(Ts, 4)} s · τf=${formato(tau, 4)} s\n${formatMano('der')}\n${formatMano('izq')}\nx(t)=[${estado.map((v) => formato(v, 3)).join(', ')}]`;
     },
     destruir() { panel.remove(); dom.destroy(); }
   };

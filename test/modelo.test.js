@@ -72,6 +72,21 @@ test('rangos guardados inválidos de altura y pellizco se ignoran con aviso', ()
   } finally { console.warn = warnOriginal; }
   assert.equal(avisos.length, 2);
 });
+test('x y giro siguen la imagen espejada y la calibración admite extremos invertidos', () => {
+  const puntos = Array.from({ length: 21 }, () => ({ x: .3, y: .5 }));
+  puntos[0] = { x: .4, y: .6 };
+  puntos[9] = { x: .2, y: .4 };
+  const gestos = new EntradaGestos();
+  const controles = gestos.procesar({ manos: [{ puntos, etiqueta: 'der' }], tiempo: 1000 });
+  assert.ok(controles.der.x > 0, 'la mano visible a la derecha da x positivo');
+  assert.ok(controles.der.giro > 0, 'los dedos inclinados a la derecha visible dan giro positivo');
+
+  const calibrados = new EntradaGestos();
+  calibrados.calibracion = { der: { altura: { min: .8, max: .2 } } };
+  const resultado = calibrados.procesar({ manos: [{ puntos, etiqueta: 'der' }], tiempo: 1000 });
+  assert.ok(Number.isFinite(resultado.der.altura));
+  assert.ok(resultado.der.u_crudo.altura > 0 && resultado.der.u_crudo.altura < 1, 'rango invertido conserva la escala en lugar de saturar');
+});
 test('el registro exporta CSV con coma, punto decimal y encabezados exactos', () => {
   const registro = new Registro({ frecuencia: 30, encabezados: ['t', 'u_crudo', 'u', 'x1', 'y'] });
   registro.agregar(1 / 30, { t: 2.5, u_crudo: 1, u: 0.75, x: [0.25], y: 0.25 });

@@ -10,11 +10,41 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
-import { dibujarTanques, dibujarTuberia, dibujarLiquidosCascada, convertirVisoresCascada, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
+import { dibujarTanquesFijos, dibujarNivelesTanques, dibujarTuberia, dibujarLiquidosCascada, convertirVisoresCascada, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
 import { MAPA_CONTROL, leerSenal, leerSenalSiPresente } from './mapaControl.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
 import { dibujarProgreso } from '../hmi/actuadores.js';
+
+function dibujarCanalConFlujo(g, puntos, caudal, tiempo, config, anchoTubo) {
+  g.clear();
+  if (!(caudal > 0)) return;
+  const anchoCanal = anchoTubo * config.anchoRelativo;
+  const segmentos = [];
+  let longitudTotal = 0;
+  for (let i = 1; i < puntos.length; i++) {
+    const a = puntos[i - 1], b = puntos[i];
+    const longitud = Math.hypot(b.x - a.x, b.y - a.y);
+    segmentos.push({ a, b, longitud, inicio: longitudTotal });
+    longitudTotal += longitud;
+    g.lineStyle(anchoCanal, 0x2ecc71, .95).lineBetween(a.x, a.y, b.x, b.y);
+  }
+  if (!longitudTotal) return;
+  const separacion = config.separacionTrazos;
+  const fase = (tiempo * caudal * config.pixelesPorCaudal) % separacion;
+  for (const segmento of segmentos) {
+    for (let inicio = fase - segmento.inicio; inicio < segmento.longitud; inicio += separacion) {
+      const desde = Math.max(0, inicio), hasta = Math.min(segmento.longitud, inicio + config.largoTrazo);
+      if (hasta <= desde) continue;
+      const fraccionA = desde / segmento.longitud, fraccionB = hasta / segmento.longitud;
+      const x1 = segmento.a.x + (segmento.b.x - segmento.a.x) * fraccionA;
+      const y1 = segmento.a.y + (segmento.b.y - segmento.a.y) * fraccionA;
+      const x2 = segmento.a.x + (segmento.b.x - segmento.a.x) * fraccionB;
+      const y2 = segmento.a.y + (segmento.b.y - segmento.a.y) * fraccionB;
+      g.lineStyle(Math.max(1.5, anchoCanal * .65), 0x00e676, 1).lineBetween(x1, y1, x2, y2);
+    }
+  }
+}
 
 export class Simulacion extends EscenaBase {
   constructor() { super('Simulacion'); }
@@ -32,6 +62,11 @@ export class Simulacion extends EscenaBase {
     this.ultimoTiempoMuestra = 0;
     this.ultimoHmi = -Infinity;
     this.ultimoDebug = -Infinity;
+    this.tiemposCuadro = [];
+    this.tiempoMedioCuadroMs = 0;
+    this.debugVisibleAnterior = false;
+    contextoJuego.vistaDepuracionActiva = false;
+    mostrarVistaCamaraDepuracion(false);
     this.selectStart = null;
     this.selectWasLong = false;
     this.ultimaAlarma = {};
@@ -58,8 +93,14 @@ export class Simulacion extends EscenaBase {
     this.hmiAncho = L.hmiInterior.ancho;
     this.esCascada = this.nivel.tanques === 2 && this.textures.exists('alambique-cascada');
     this.render = this.add.graphics().setDepth(-1);
+    this.renderFijo = this.add.graphics().setDepth(-1.1);
+    this.renderMarcasFijas = this.add.graphics().setDepth(2);
     this.renderTuberias = this.add.graphics().setDepth(-.55);
+    this.renderSalidaOculta = this.add.graphics().setDepth(-.6);
+    this.renderBridaSalida = this.add.graphics().setDepth(.3);
+    this.renderCanalSalida = this.add.graphics().setDepth(.35);
     this.renderTuberiasExtra = this.add.graphics().setDepth(0);
+    this.renderTuberiaCascada = this.add.graphics().setDepth(.15);
     this.renderEntradaFixtures = this.add.graphics().setDepth(-.4);
     this.renderVisorLiquido = this.add.graphics().setDepth(1.5);
     this.renderVisorOverlay = this.add.graphics().setDepth(2);
@@ -275,12 +316,19 @@ export class Simulacion extends EscenaBase {
       limpiar(() => document.removeEventListener('keyup', this.documentKeyUp, true));
       limpiar(() => this.panelDepuracion.destruir());
       limpiar(() => mostrarVistaCamaraDepuracion(false));
+      limpiar(() => { contextoJuego.vistaDepuracionActiva = false; });
       limpiar(() => this.graf?.destruir());
       limpiar(() => this.grafValvulas?.destruir());
       this.barras.forEach((barra) => limpiar(() => barra.destruir()));
       this.paramPanel?.forEach((elemento) => limpiar(() => elemento.destroy()));
       limpiar(() => this.render.destroy());
+      limpiar(() => this.renderFijo.destroy());
+      limpiar(() => this.renderMarcasFijas.destroy());
       limpiar(() => this.renderTuberias.destroy());
+      limpiar(() => this.renderSalidaOculta.destroy());
+      limpiar(() => this.renderBridaSalida.destroy());
+      limpiar(() => this.renderCanalSalida.destroy());
+      limpiar(() => this.renderTuberiaCascada.destroy());
       limpiar(() => this.renderOverlay.destroy());
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
@@ -291,6 +339,11 @@ export class Simulacion extends EscenaBase {
     this.tiempoTexto = this.add.text(L.tiempo.x, L.tiempo.y, '', fuenteInterfaz(14, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
     this.relojIcono = this.textures.exists('interfaz') ? this.add.image(L.reloj.x, L.reloj.y, 'interfaz', 6).setDisplaySize(L.reloj.tamano, L.reloj.tamano).setDepth(5) : null;
     this.estadoCamara = this.add.text(L.estadoCamara.x, L.estadoCamara.y, '', fuenteInterfaz(14, '#E6E8EA', { fontStyle: 'bold' })).setOrigin(1, .5).setDepth(5);
+    this.mando1Visual = this.actuador1.salida();
+    this.mando2Visual = this.actuador2.salida();
+    this.barras[0] = dibujarBarraActuador(this, L.barraV1.x, L.barraV1.y, 'v1 entrada', this.actuador1.salida(), this.sistema.x[0], 'm', 'h1', L.barraV1.ancho, this.mando1Visual);
+    if (this.nivel.tanques === 2) this.barras[1] = dibujarBarraActuador(this, L.barraV2.x, L.barraV2.y, 'v2 salida', this.actuador2.salida(), this.sistema.x[1], 'm', 'h2', L.barraV2.ancho, this.mando2Visual);
+    this.add.text(L.ayudaValvulas.x, L.ayudaValvulas.y, '▲ mano · ■ válvula (tarda 4 s de 0 a 100 %)', fuenteInterfaz(10, '#E6E8EA')).setDepth(5);
     this.botonTerminar = this.boton(L.terminar, 'Terminar', () => {
       console.info('[DIAG] botón Terminar', { terminado: this.terminado, sysIsActive: this.sys.isActive(), tiempoJuego: this.tiempoJuego });
       this.terminar(false);
@@ -303,6 +356,9 @@ export class Simulacion extends EscenaBase {
     this.muestras.push(muestraInicial);
     this.muestrasVista.push(muestraInicial);
     this.registro.filas.push([0, muestraInicial.u_crudo, v10, x0[0], x0[1] ?? '', y0, v20, qd0, ref0]);
+    if (!this.esCascada) dibujarTanquesFijos(this.renderFijo, this.renderMarcasFijas, this.renderTuberias, this.nivel.tanques, { conSprites: this.conSprites, conSpritesValvula: this.conSpritesValvula });
+    if (!this.esCascada && this.calderoCaja) this.dibujarSalidaFija();
+    if (this.esCascada && this.calderoCaja) this.dibujarSalidaCascadaFija();
   }
 
   dibujarFijacionesEntrada() {
@@ -324,8 +380,61 @@ export class Simulacion extends EscenaBase {
     }
   }
 
+  dibujarSalidaFija() {
+    const L = LAYOUT.simulacion, caja = posicionSpriteTanque(0, 1), anclaje = L.entradaSolo.salidaAlambique;
+    const port = { x: caja.x - caja.ancho / 2 + anclaje.xRel * caja.ancho, y: caja.y - caja.alto / 2 + anclaje.yRel * caja.alto };
+    const boca = this.anclajeBocaCaldero, picoY = boca.y - L.caldero.alturaPicoSobreBorde;
+    const xBajada = this.anclajesMesa.bordeDerecho, yHorizontalBajo = picoY - L.salidaConsumo.codoAntesPico;
+    const finalBoquilla = { x: port.x + anclaje.brida.radio + anclaje.boquillaLongitud, y: port.y };
+    this.recorridoSalida = [finalBoquilla, { x: xBajada, y: port.y }, { x: xBajada, y: yHorizontalBajo }, { x: boca.x, y: yHorizontalBajo }, { x: boca.x, y: picoY }];
+    dibujarTuberia(this.renderSalidaOculta, [{ x: port.x - anclaje.inicioDentro, y: port.y }, finalBoquilla, ...this.recorridoSalida.slice(1)]);
+
+    const brida = anclaje.brida, g = this.renderBridaSalida;
+    dibujarTuberia(g, [{ x: port.x, y: port.y }, finalBoquilla], anclaje.boquillaAncho);
+    g.fillStyle(0x1a1b1d, 1).fillCircle(port.x, port.y, brida.radio + brida.anchoBorde);
+    g.lineStyle(brida.anchoBorde, 0x1a1b1d, 1).strokeCircle(port.x, port.y, brida.radio);
+    g.lineStyle(brida.anchoBorde + 1, 0xb85a24, 1).strokeCircle(port.x, port.y, brida.radio - 1);
+    for (const signo of [-1, 1]) for (const direccion of [-1, 1]) {
+      const xRemache = port.x + direccion * brida.remacheOffset;
+      const yRemache = port.y + signo * brida.remacheOffset;
+      g.fillStyle(0x1a1b1d, 1).fillCircle(xRemache, yRemache, brida.remacheRadio + .8);
+      g.fillStyle(0xd7a06f, 1).fillCircle(xRemache, yRemache, brida.remacheRadio);
+    }
+    dibujarTuberia(g, [{ x: port.x - 5, y: port.y }, { x: port.x + 7, y: port.y }], anclaje.boquillaAncho);
+    dibujarTuberia(g, [{ x: port.x + 7, y: port.y }, finalBoquilla], anclaje.boquillaAncho);
+    this.picoSalida = { x: boca.x, y: picoY };
+  }
+
+  actualizarFlujoSalida() {
+    if (!this.picoSalida || !this.superficiePocionCaldero) return;
+    const caudal = this.esCascada
+      ? PARAMETROS_TANQUES.coeficienteDescarga2 * this.actuador2.salida() * Math.sqrt(Math.max(0, this.sistema.x[1] ?? 0))
+      : PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, this.sistema.x[0] ?? 0));
+    if (!this.esCascada && this.recorridoSalida) dibujarCanalConFlujo(this.renderCanalSalida, this.recorridoSalida, caudal, this.tiempoJuego, LAYOUT.simulacion.entradaSolo.salidaAlambique.canal, LAYOUT.simulacion.tuberia.ancho);
+    this.renderChorro.clear();
+    if (caudal > 0) {
+      const L = LAYOUT.simulacion;
+      const coeficiente = this.esCascada ? PARAMETROS_TANQUES.coeficienteDescarga2 : PARAMETROS_TANQUES.coeficienteDescarga1;
+      const maxCaudal = coeficiente * Math.sqrt(PARAMETROS_TANQUES.alturaMaxima);
+      const grosor = Math.max(L.tuberia.chorroMinimo, Math.min(L.tuberia.chorroMaximo, caudal / maxCaudal * L.tuberia.chorroMaximo));
+      this.renderChorro.lineStyle(grosor + 2, 0x168e4d, .48).lineBetween(this.picoSalida.x, this.picoSalida.y + 1, this.superficiePocionCaldero.x, this.superficiePocionCaldero.y);
+      this.renderChorro.lineStyle(grosor, 0x2ecc71, .85).lineBetween(this.picoSalida.x, this.picoSalida.y + 1, this.superficiePocionCaldero.x, this.superficiePocionCaldero.y);
+    }
+  }
+
+  dibujarSalidaCascadaFija() {
+    const x = this.anclajeBocaCaldero.x, y = this.anclajeBocaCaldero.y - LAYOUT.simulacion.caldero.alturaPicoSobreBorde;
+    dibujarTuberia(this.renderTuberiaCascada, [this.picoSalida, { x, y }]);
+    this.picoSalida = { x, y };
+  }
+
   update(time, deltaMs) {
     try {
+      if (Number.isFinite(deltaMs) && deltaMs > 0) {
+        this.tiemposCuadro.push(deltaMs);
+        if (this.tiemposCuadro.length > 60) this.tiemposCuadro.shift();
+        this.tiempoMedioCuadroMs = this.tiemposCuadro.reduce((suma, valor) => suma + valor, 0) / this.tiemposCuadro.length;
+      }
       this.actualizarCuadro(time, deltaMs);
     } catch (error) {
       console.error('[ERROR JUEGO] update', error);
@@ -349,6 +458,8 @@ export class Simulacion extends EscenaBase {
       const mando2 = this.nivel.tanques === 2
         ? leerSenalSiPresente(c, MAPA_CONTROL.v2, null, this.actuador2.salida(), conservaAusente)
         : 1;
+      this.mando1Visual = mando1;
+      this.mando2Visual = mando2;
       let restante = dt, v1 = this.actuador1.salida(), v2 = this.actuador2.salida();
       while (restante > 1e-9) {
         const paso = Math.min(restante, .1);
@@ -378,7 +489,15 @@ export class Simulacion extends EscenaBase {
       if (this.tiempoJuego >= this.nivel.duracion) { this.terminar(false); return; }
       if (this.nivel.criterio.tipo === 'consecutivo' && this.tiempoEnBandaSeguido >= this.nivel.criterio.segundos) { this.terminar(false); return; }
     }
-    mostrarVistaCamaraDepuracion(this.debug); this.panelDepuracion.setVisible(this.debug);
+    this.actualizarBarrasEnVivo();
+    this.actualizarElementosVivos();
+    this.actualizarFlujoSalida();
+    if (this.debug !== this.debugVisibleAnterior) {
+      contextoJuego.vistaDepuracionActiva = this.debug;
+      mostrarVistaCamaraDepuracion(this.debug);
+      this.panelDepuracion.setVisible(this.debug);
+      this.debugVisibleAnterior = this.debug;
+    }
     const selectPressed = this.gestor.selectPulsado();
     if (selectPressed) { this.selectStart ??= performance.now(); if (!this.selectWasLong && performance.now() - this.selectStart >= 700) { this.debug = !this.debug; this.selectWasLong = true; } }
     else { this.selectStart = null; this.selectWasLong = false; }
@@ -388,94 +507,59 @@ export class Simulacion extends EscenaBase {
       const dep = this.gestor.camara.depuracion();
       const fpsJuego = this.game.loop.actualFps || (dt > 0 ? 1 / dt : 0);
       const alertaFPS = camara?.activo && camara.fps < 15 ? ' · detección lenta: más luz, cerrar pestañas o bajar resolución' : '';
-      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x });
+      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, tiempoDeteccionMs: camara?.promedioDeteccionMs, tiempoCuadroMs: this.tiempoMedioCuadroMs, delegado: camara?.delegado, resolucion: camara?.obtenerResolucion?.(), avisoResolucion: camara?.avisoResolucion, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x });
       this.ultimoDebug = ahoraHmi;
     }
   }
 
-  actualizarHmi(camara) {
-    const hs = this.sistema.x, yActual = this.nivel.tanques === 2 ? hs[1] : hs[0];
+  actualizarBarrasEnVivo() {
+    const hs = this.sistema.x;
+    this.barras[0]?.actualizar(this.actuador1.salida(), hs[0], this.mando1Visual);
+    this.barras[1]?.actualizar(this.actuador2.salida(), hs[1] ?? 0, this.mando2Visual);
+  }
+
+  actualizarElementosVivos() {
+    const hs = this.sistema.x;
     const L = LAYOUT.simulacion;
+    const variableControlada = this.nivel.tanques === 2 ? hs[1] : hs[0];
     const referencia = obtenerReferencia(this.nivel, this.tiempoJuego), banda = obtenerTolerancia(this.nivel, this.tiempoJuego);
+    const dentroBanda = Math.abs(variableControlada - referencia) <= banda;
+    if (this.esCascada) {
+      dibujarLiquidosCascada(this.renderVisorLiquido, this.visoresCascada, hs, referencia, banda, dentroBanda);
+      this.renderTuberiasExtra.clear();
+      const q12 = PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
+      if (q12 > 0) {
+        const v = L.cascada.unionVidrio, m = v.margenInterior;
+        const alpha = Math.min(.9, q12 / (PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(PARAMETROS_TANQUES.alturaMaxima)));
+        this.renderTuberiasExtra.fillStyle(0x00e676, alpha).fillRect(this.cajaCascada.x + v.x * this.cajaCascada.w + m, this.cajaCascada.y + v.y * this.cajaCascada.h + m, v.ancho * this.cajaCascada.w - m * 2, v.alto * this.cajaCascada.h - m * 2);
+      }
+    } else dibujarNivelesTanques(this.render, this.renderOverlay, hs, this.nivel.tanques, {
+      tanqueControlado: this.nivel.tanques === 2 ? 1 : 0, referencia, tolerancia: banda, dentroBanda, conSprites: this.conSprites,
+    });
+    const alturaEtiqueta = this.nivel.tanques === 2 ? 'h2' : 'h1';
+    this.refTexto.setText(this.nivel.tanques === 2
+      ? `${alturaEtiqueta} ${variableControlada.toFixed(2)} m · ref ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(2)}`
+      : `${alturaEtiqueta} ${variableControlada.toFixed(2)} m · referencia ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(3)} m³/s`);
+    this.alarmasActivas = hs.map((h, i) => h >= 2.8 ? `HH${i + 1}` : h >= 2.4 ? `H${i + 1}` : '').filter(Boolean);
+    this.alarmText.setText(this.alarmasActivas.length ? `ALARMA ${this.alarmasActivas.join(' · ')}` : '');
+    this.alarmText.setColor(this.alarmasActivas.some((a) => a.startsWith('HH')) ? '#FF1744' : '#FFD700');
+    hs.forEach((h, i) => this.children.getByName(`etiqueta-tanque-${i}`)?.setText(`Alambique ${i + 1} · h${i + 1} ${h.toFixed(2)} m`));
+    (this.runasAlarmas || []).forEach((runa, i) => {
+      const h = hs[i] ?? 0;
+      const color = h >= 2.8 ? 0xff1744 : h >= 2.4 ? 0xffd700 : 0x70777a;
+      runa.setTint(color).setAlpha(h >= 2.4 ? 1 : .8);
+    });
+    for (const valve of this.spritesValvulas || []) valve.volante.setRotation((valve.clave === 'v1' ? this.actuador1.salida() : this.actuador2.salida()) * Math.PI * 1.5);
+    this.etiquetasValvulas?.v1?.setText(`v1 ${Math.round(this.actuador1.salida() * 100)} %`);
+    this.etiquetasValvulas?.v2?.setText(`v2 ${Math.round(this.actuador2.salida() * 100)} %`);
+  }
+
+  actualizarHmi(camara) {
+    const L = LAYOUT.simulacion;
     this.pausaTexto.setText(this.pausado ? (this.pausaPorManos ? 'Muestra las manos' : 'PAUSA · Enter para reanudar') : '');
     this.pausaTexto.setVisible(this.pausado);
     this.pausaPanel.setVisible(this.pausado);
-    if (this.esCascada) dibujarLiquidosCascada(this.renderVisorLiquido, this.visoresCascada, hs, referencia, banda, Math.abs(yActual - referencia) <= banda);
-    else dibujarTanques(this.render, hs, this.nivel.tanques, {
-      tanqueControlado: this.nivel.tanques === 2 ? 1 : 0,
-      referencia,
-      tolerancia: banda,
-      dentroBanda: Math.abs(yActual - referencia) <= banda,
-      aperturaV2: this.actuador2.salida(),
-      aperturaV1: this.actuador1.salida(),
-      overlay: this.renderOverlay,
-      tuberias: this.renderTuberias,
-      conSprites: this.conSprites,
-      conSpritesValvula: this.conSpritesValvula,
-    });
-    this.renderTuberiasExtra.clear();
-    this.renderChorro.clear();
-    const salida = this.esCascada
-      ? PARAMETROS_TANQUES.coeficienteDescarga2 * this.actuador2.salida() * Math.sqrt(Math.max(0, hs[1] ?? 0))
-      : PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
-    if (this.calderoCaja) {
-      if (this.esCascada) {
-        const q12 = PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
-        if (q12 > 0) {
-          const vidrio = L.cascada.unionVidrio, margen = vidrio.margenInterior;
-          const brillo = Math.min(.9, q12 / (PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(PARAMETROS_TANQUES.alturaMaxima)));
-          const vx = this.cajaCascada.x + vidrio.x * this.cajaCascada.w;
-          const vy = this.cajaCascada.y + vidrio.y * this.cajaCascada.h;
-          const vw = vidrio.ancho * this.cajaCascada.w, vh = vidrio.alto * this.cajaCascada.h;
-          this.renderTuberiasExtra.fillStyle(0x00e676, brillo).fillRect(vx + margen, vy + margen, vw - margen * 2, vh - margen * 2);
-        }
-        // El pico integrado del sprite continúa hasta quedar 15 px sobre la boca del caldero.
-        const xBoca = this.anclajeBocaCaldero.x;
-        const picoY = this.anclajeBocaCaldero.y - L.caldero.alturaPicoSobreBorde;
-        dibujarTuberia(this.renderTuberiasExtra, [this.picoSalida, { x: xBoca, y: picoY }]);
-        this.picoSalida = { x: xBoca, y: picoY };
-      } else {
-        const caja = posicionSpriteTanque(0, 1), anclaje = L.entradaSolo.salidaBase;
-        const port = { x: caja.x - caja.ancho / 2 + anclaje.xRel * caja.ancho, y: caja.y - caja.alto / 2 + anclaje.yRel * caja.alto };
-        const boca = this.anclajeBocaCaldero, picoY = boca.y - L.caldero.alturaPicoSobreBorde;
-        const bordeMesa = this.anclajesMesa.bordeDerecho, xBajada = bordeMesa;
-        const yHorizontalBajo = picoY - L.salidaConsumo.codoAntesPico;
-        const xBoca = boca.x;
-        dibujarTuberia(this.renderTuberiasExtra, [
-          port, { x: xBajada, y: port.y }, { x: xBajada, y: yHorizontalBajo },
-          { x: xBoca, y: yHorizontalBajo }, { x: xBoca, y: picoY },
-        ]);
-        this.picoSalida = { x: xBoca, y: picoY };
-      }
-      if (salida > 0) {
-        const coeficienteSalida = this.esCascada ? PARAMETROS_TANQUES.coeficienteDescarga2 : PARAMETROS_TANQUES.coeficienteDescarga1;
-        const maxCaudal = coeficienteSalida * Math.sqrt(PARAMETROS_TANQUES.alturaMaxima);
-        const grosor = Math.max(L.tuberia.chorroMinimo, Math.min(L.tuberia.chorroMaximo, salida / maxCaudal * L.tuberia.chorroMaximo));
-        this.renderChorro.lineStyle(grosor + 2, 0x168e4d, .48).lineBetween(this.picoSalida.x, this.picoSalida.y + 1, this.superficiePocionCaldero.x, this.superficiePocionCaldero.y);
-        this.renderChorro.lineStyle(grosor, 0x2ecc71, .85).lineBetween(this.picoSalida.x, this.picoSalida.y + 1, this.superficiePocionCaldero.x, this.superficiePocionCaldero.y);
-      }
-    }
-    const alturaEtiqueta = this.nivel.tanques === 2 ? 'h2' : 'h1';
-    const textoRef = this.nivel.tanques === 2
-      ? `${alturaEtiqueta} ${yActual.toFixed(2)} m · ref ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(2)}`
-      : `${alturaEtiqueta} ${yActual.toFixed(2)} m · referencia ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(3)} m³/s`;
-    this.refTexto.setText(textoRef);
-    hs.forEach((h, i) => this.children.getByName(`etiqueta-tanque-${i}`)?.setText(`Alambique ${i + 1} · h${i + 1} ${h.toFixed(2)} m`));
-    const alarmasActivas = hs.map((h, i) => h >= 2.8 ? `HH${i + 1}` : h >= 2.4 ? `H${i + 1}` : '').filter(Boolean);
-    this.alarmText.setText(alarmasActivas.length ? `ALARMA ${alarmasActivas.join(' · ')}` : '');
-    this.alarmText.setColor(alarmasActivas.some((a) => a.startsWith('HH')) ? '#FF1744' : '#FFD700');
-    (this.runasAlarmas || []).forEach((runa, i) => {
-      const h = hs[i] ?? 0;
-      const colorRuna = h >= 2.8 ? 0xff1744 : h >= 2.4 ? 0xffd700 : 0x70777a;
-      runa.setTint(colorRuna).setAlpha(h >= 2.4 ? 1 : .8);
-    });
-    for (const valve of this.spritesValvulas || []) {
-      valve.volante.setRotation((valve.clave === 'v1' ? this.actuador1.salida() : this.actuador2.salida()) * Math.PI * 1.5);
-    }
-    if (this.etiquetasValvulas) {
-      this.etiquetasValvulas.v1?.setText(`v1 ${Math.round(this.actuador1.salida() * 100)} %`);
-      this.etiquetasValvulas.v2?.setText(`v2 ${Math.round(this.actuador2.salida() * 100)} %`);
-    }
+    const alarmasActivas = this.alarmasActivas || [];
     const criterio = this.nivel.criterio;
     let valorProgreso = 0;
     if (criterio.tipo === 'consecutivo') {
@@ -498,14 +582,6 @@ export class Simulacion extends EscenaBase {
     const opcionesValvulas = { ...L.tendenciaValvulas, muestras: this.muestrasVista, min: 0, max: 1, unidad: '', titulo: 'Válvulas v1 / v2', tituloEjeY: 'apertura', formatoTickY: (v) => Number(v.toFixed(2)).toString(), ejeTiempo: true, series: [{ clave: 'u', nombre: 'v1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x2ecc71 }] : [])] };
     if (!this.graf) this.graf = dibujarTendencia(this, opcionesNiveles); else this.graf.actualizar(opcionesNiveles);
     if (!this.grafValvulas) this.grafValvulas = dibujarTendencia(this, opcionesValvulas); else this.grafValvulas.actualizar(opcionesValvulas);
-    const xV1 = L.barraV1.x;
-    const xV2 = L.barraV2.x;
-    if (!this.barras[0]) this.barras[0] = dibujarBarraActuador(this, xV1, L.barraV1.y, 'v1 entrada', this.actuador1.salida(), hs[0], 'm', 'h1', L.barraV1.ancho);
-    else this.barras[0].actualizar(this.actuador1.salida(), hs[0]);
-    if (this.nivel.tanques === 2) {
-      if (!this.barras[1]) this.barras[1] = dibujarBarraActuador(this, xV2, L.barraV2.y, 'v2 salida', this.actuador2.salida(), hs[1], 'm', 'h2', L.barraV2.ancho);
-      else this.barras[1].actualizar(this.actuador2.salida(), hs[1]);
-    }
   }
 
   registrarAlarmas(hs) {

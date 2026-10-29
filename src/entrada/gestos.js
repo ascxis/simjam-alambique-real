@@ -14,7 +14,10 @@ export class EntradaGestos {
     for (const hand of manos) {
       const { puntos: p, etiqueta: id } = hand; if (!p?.[20]) continue;
       const c = centro(p); if (c.x < .1 || c.x > .9 || c.y < .1 || c.y > .9) continue;
-      const m = this.controles[id], raw = { altura: 1 - (c.y - .1) / .8, x: -(((c.x - .1) / .8) * 2 - 1), pellizco: Math.min(1, dist(p[4], p[8]) / Math.max(.001, dist(p[0], p[9]))), giro: Math.max(-1, Math.min(1, Math.atan2(p[9].x - p[0].x, p[0].y - p[9].y) / (Math.PI / 4))) };
+      // x y giro usan la imagen espejada que ve el jugador; MediaPipe entrega puntos sin espejo.
+      const giroEspejado = -Math.atan2(p[9].x - p[0].x, p[0].y - p[9].y);
+      const xEspejo = -(((c.x - .1) / .8) * 2 - 1);
+      const m = this.controles[id], raw = { altura: 1 - (c.y - .1) / .8, x: xEspejo, pellizco: Math.min(1, dist(p[4], p[8]) / Math.max(.001, dist(p[0], p[9]))), giro: Math.max(-1, Math.min(1, giroEspejado / (Math.PI / 4))) };
       this.ultimaMano[id] = tiempo; m.presente = true;
       for (const key of Object.keys(raw)) {
         const sinEscalar = raw[key]; m.medidaCruda ||= {}; m.medidaCruda[key] = sinEscalar;
@@ -22,7 +25,7 @@ export class EntradaGestos {
         if (cal) {
           const diferencia = cal.max - cal.min;
           const minimoDeCalibracion = key === 'altura' || key === 'pellizco' ? 0.05 : 0;
-          const rangoValido = Number.isFinite(cal.min) && Number.isFinite(cal.max) && cal.max > cal.min && (minimoDeCalibracion === 0.05 ? diferencia >= minimoDeCalibracion : diferencia > 0);
+          const rangoValido = Number.isFinite(cal.min) && Number.isFinite(cal.max) && (minimoDeCalibracion === 0.05 ? Math.abs(diferencia) >= minimoDeCalibracion : Math.abs(diferencia) > 0);
           if (rangoValido) raw[key] = Math.max(0, Math.min(1, (sinEscalar - cal.min) / diferencia));
           else {
             const claveAviso = `${id}.${key}`;

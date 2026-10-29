@@ -20,6 +20,7 @@ const config = {
   backgroundColor: 0xe7e8e8,
   dom: { createContainer: true },
   physics: { default: 'arcade', arcade: { debug: false } },
+  fps: { target: 30, limit: 30 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [Arranque, Menu, Calibracion, Simulacion, Fin]
 };

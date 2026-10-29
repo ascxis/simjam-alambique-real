@@ -4,9 +4,12 @@ const MESA_ANCHO = 390;
 const MESA_ALTO = 182;
 const SUPERFICIE_MESA_Y = MESA_PISO_Y - MESA_ALTO + MESA_ALTO * .28;
 const TANQUE_SOLO_ALTO = 300;
+const TANQUE_SOLO_ANCHO = 215;
 const TANQUE_SOLO_CIMA_Y = SUPERFICIE_MESA_Y - TANQUE_SOLO_ALTO;
 const EJE_ENTRADA_Y = TANQUE_SOLO_CIMA_Y - 33;
 const DESFASE_EJE_VALVULA_Y = 15;
+// Borde derecho medido en la última fila vertical del cilindro, justo sobre el aro inferior.
+const SALIDA_ALAMBIQUE = { xRel: 189 / TANQUE_SOLO_ANCHO, yRel: 206 / TANQUE_SOLO_ALTO };
 // Fracciones medidas sobre el recorte alfa del sprite procesado (1015 × 1311).
 const ANCLA_Q12 = {
   x: (0.089 * 2752 - 173 - 3) / 1015,
@@ -60,6 +63,7 @@ export const LAYOUT = Object.freeze({
     tendenciaValvulas: { x: 680, y: 354, ancho: 560, alto: 178 },
     barraV1: { x: 690, y: 538, ancho: 250, alto: 36 },
     barraV2: { x: 970, y: 538, ancho: 250, alto: 36 },
+    ayudaValvulas: { x: 690, y: 574, ancho: 530, alto: 14 },
     criterio: { x: 680, y: 586, ancho: 560, alto: 64, progresoOffsetY: 33 },
     footer: { x: 20, y: 660, ancho: 1240, alto: 52, radio: 10 },
     ayuda: { x: 38, y: 670, ancho: 500, alto: 34 },
@@ -103,7 +107,11 @@ export const LAYOUT = Object.freeze({
       ejeTuboY: EJE_ENTRADA_Y,
       soportesX: [180, 280],
       valvula: { x: 69, tuboSemiancho: 25, ejeDesfaseY: DESFASE_EJE_VALVULA_Y },
-      dome: { xRel: .5 }, salidaBase: { xRel: 1, yRel: .98 },
+      dome: { xRel: .5 }, salidaAlambique: {
+        ...SALIDA_ALAMBIQUE, inicioDentro: 8, boquillaLongitud: 12, boquillaAncho: 10,
+        brida: { radio: 13, anchoBorde: 3, remacheRadio: 1.5, remacheOffset: 6 },
+        canal: { anchoRelativo: .5, largoTrazo: 12, separacionTrazos: 68, pixelesPorCaudal: 320 },
+      },
     },
     valvula1Solo: { x: 69, y: EJE_ENTRADA_Y - DESFASE_EJE_VALVULA_Y, tuboY: EJE_ENTRADA_Y, tuboSemiancho: 25, domeXRel: .5, domeYRel: .01 },
     valvula1Cascada: { x: 70, y: 120, tuboY: 120, margenTanque: 0 },
