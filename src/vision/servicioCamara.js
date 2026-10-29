@@ -6,7 +6,10 @@ import { leerPreferencia } from '../juego/preferencias.js';
 export function obtenerSesionCamara() {
   if (!contextoJuego.camara) {
     const intercambiar = leerPreferencia('alambique.intercambiarEtiquetas', 'false') === 'true';
-    contextoJuego.camara = new CamaraManos({ intercambiar, onFrame: (frame) => { contextoJuego.gestor?.procesarManos(frame); dibujarPuntosDepuracion(frame); } });
+    contextoJuego.camara = new CamaraManos({ intercambiar, onFrame: (frame) => {
+      contextoJuego.gestor?.procesarManos(frame);
+      if (contextoJuego.vistaDepuracionActiva) dibujarPuntosDepuracion(frame);
+    } });
   }
   return contextoJuego.camara;
 }

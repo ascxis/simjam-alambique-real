@@ -7,13 +7,17 @@ export class CamaraManos {
   constructor({ intercambiar = false, onFrame = () => {} } = {}) {
     this.intercambiar = intercambiar; this.onFrame = onFrame; this.activo = false; this.fps = 0;
     this.video = null; this.stream = null; this.detector = null; this.deviceId = null;
+    this.numHands = 2; this.delegado = '—'; this.tiemposDeteccion = []; this.promedioDeteccionMs = 0;
+    this.resolucionReducida = false; this.avisoResolucion = '';
   }
 
-  async iniciar(video, deviceId) {
+  async iniciar(video, deviceId, { numHands = this.numHands || 2 } = {}) {
     this.pausarDeteccion();
+    this.numHands = numHands;
     const idElegido = deviceId || null;
     const mismaCamara = this.stream && this.deviceId === idElegido;
     if (!mismaCamara) {
+      this.resolucionReducida = false; this.avisoResolucion = ''; this.intentoBajarResolucion = false;
       try { this.stream?.getTracks().forEach((track) => track.stop()); } catch {}
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
@@ -29,16 +33,48 @@ export class CamaraManos {
     if (!this.detector) {
       const vision = await FilesetResolver.forVisionTasks(VERSION);
       try {
-        this.detector = await HandLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: MODELO, delegate: 'GPU' }, runningMode: 'VIDEO', numHands: 2 });
+        this.detector = await HandLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: MODELO, delegate: 'GPU' }, runningMode: 'VIDEO', numHands });
+        this.delegado = 'GPU';
       } catch {
-        this.detector = await HandLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: MODELO, delegate: 'CPU' }, runningMode: 'VIDEO', numHands: 2 });
+        this.detector = await HandLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: MODELO, delegate: 'CPU' }, runningMode: 'VIDEO', numHands });
+        this.delegado = 'CPU';
       }
-    }
+    } else await this.detector.setOptions({ numHands });
     this.activo = true;
     this.ultimoMediaTime = null;
     this.ultimoTiempoDeteccion = null;
+    this.inicioVentanaFps = performance.now(); this.cuadrosVentanaFps = 0;
     this.iniciarBucle();
+    const resolucion = this.obtenerResolucion();
+    console.info(`[CÁMARA] MediaPipe ${this.delegado} · video ${resolucion.ancho}×${resolucion.alto}`);
     return this.stream;
+  }
+
+  obtenerResolucion() {
+    const settings = this.stream?.getVideoTracks()[0]?.getSettings?.() || {};
+    return { ancho: this.video?.videoWidth || settings.width || 0, alto: this.video?.videoHeight || settings.height || 0 };
+  }
+
+  async ajustarResolucionSiLenta(now) {
+    if (this.resolucionReducida || this.intentoBajarResolucion || now - this.inicioVentanaFps < 5000) return;
+    const segundos = (now - this.inicioVentanaFps) / 1000;
+    const promedioFps = this.cuadrosVentanaFps / Math.max(segundos, .001);
+    if (promedioFps >= 18) return;
+    this.intentoBajarResolucion = true;
+    try {
+      const track = this.stream?.getVideoTracks()[0];
+      if (!track?.applyConstraints) throw new Error('applyConstraints no disponible en el track de video');
+      await track.applyConstraints({ width: { exact: 320 }, height: { exact: 240 } });
+      const settings = track.getSettings();
+      this.resolucionReducida = settings.width <= 320 && settings.height <= 240;
+      this.avisoResolucion = this.resolucionReducida
+        ? 'detección <18 FPS tras 5 s: video reducido a 320×240'
+        : `detección <18 FPS; resolución real ${settings.width}×${settings.height}`;
+      this.fpsCamara = settings.frameRate ?? this.fpsCamara;
+    } catch (error) {
+      this.avisoResolucion = 'detección <18 FPS; no se pudo reducir a 320×240';
+      console.warn('[CÁMARA] No se pudo bajar la resolución', error);
+    }
   }
 
   async dispositivos() { return (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput'); }
@@ -46,14 +82,22 @@ export class CamaraManos {
   procesarCuadro(now) {
     if (!this.activo || !this.detector) return;
     try {
+      const inicioDeteccion = performance.now();
       const resultado = this.detector.detectForVideo(this.video, now);
+      const tiempoDeteccion = performance.now() - inicioDeteccion;
+      this.tiemposDeteccion.push(tiempoDeteccion);
+      if (this.tiemposDeteccion.length > 60) this.tiemposDeteccion.shift();
+      this.promedioDeteccionMs = this.tiemposDeteccion.reduce((s, v) => s + v, 0) / this.tiemposDeteccion.length;
       this.fps = this.ultimoTiempoDeteccion === null ? 0 : 1000 / Math.max(1, now - this.ultimoTiempoDeteccion);
       this.ultimoTiempoDeteccion = now;
+      this.cuadrosVentanaFps += 1;
       const manos = (resultado.landmarks || []).map((puntos, i) => {
         const etiqueta = (resultado.handednesses?.[i]?.[0]?.categoryName || 'Right') === 'Right' ? 'der' : 'izq';
         return { puntos, etiqueta: this.intercambiar ? (etiqueta === 'der' ? 'izq' : 'der') : etiqueta };
       });
-      this.onFrame({ manos, fps: this.fps, fpsCamara: this.fpsCamara, tiempo: now });
+      const resolucion = this.obtenerResolucion();
+      this.onFrame({ manos, fps: this.fps, fpsCamara: this.fpsCamara, tiempo: now, promedioDeteccionMs: this.promedioDeteccionMs, delegado: this.delegado, resolucion, resolucionReducida: this.resolucionReducida, avisoResolucion: this.avisoResolucion });
+      this.ajustarResolucionSiLenta(now);
     } catch (error) {
       console.warn('Falló la detección de manos en el cuadro actual.', error);
     }

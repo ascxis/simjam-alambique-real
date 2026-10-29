@@ -75,7 +75,8 @@ export class Menu extends EscenaBase {
       try {
         const camara = obtenerSesionCamara();
         camara.intercambiar = invertir.querySelector('input').checked;
-        await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined);
+        const numHands = Number(nivelSelect.value) === 3 ? 2 : 1;
+        await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined, { numHands });
         obtenerVideoPreview().style.display = 'block';
         return await poblarCamaras();
       } catch (e) {
@@ -95,7 +96,7 @@ export class Menu extends EscenaBase {
       contextoJuego.fuenteElegida = 'camara'; contextoJuego.gestor = new GestorEntrada({ fuente: 'camara' });
       try {
         const camara = obtenerSesionCamara(); camara.intercambiar = invertir.querySelector('input').checked;
-        await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined);
+        await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined, { numHands: 2 });
         obtenerVideoPreview().style.display = 'block'; await poblarCamaras(); this.scene.start('Calibracion');
       } catch (e) { alert(`No se pudo iniciar la cámara: ${e.message}`); }
     });
