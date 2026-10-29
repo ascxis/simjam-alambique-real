@@ -10,7 +10,10 @@ const salidaFondos = path.join(raiz, 'public/assets/fondos');
 // Medidas y distribución tomadas de docs/recursos.md.
 const recursos = [
   { archivo: 'alambique_cuerpo_vacio.png', destino: 'sprites/alambique_cuerpo_vacio.png', ancho: 215, alto: 300 },
-  { archivo: 'alambique_columna_liquido.jpg', destino: 'sprites/alambique_columna_liquido.png', altoMaximo: 300 },
+  { archivo: 'alambique_columna_liquido.jpg', destino: 'sprites/alambique_cascada.png', recorteFraccion: [.063, .115, .433, .972], altoObjetivo: 510, visores: {
+    superior: [.213, .253, .227, .447], inferior: [.213, .661, .227, .853],
+  } },
+  { archivo: 'alambique_columna_liquido.jpg', destino: 'sprites/columna_liquido.png', recorteFraccion: [.693, .087, .773, .913], altoMaximo: 300 },
   { archivo: 'valvula_cuerpo_estatico.jpg', destino: 'sprites/valvula_cuerpo_estatico.png', ancho: 80, alto: 80 },
   { archivo: 'valvula_volante_aislado.png', destino: 'sprites/valvula_volante_aislado.png', ancho: 50, alto: 50 },
   { archivo: 'alarma_placa.png', destino: 'sprites/alarma_placa.png', ancho: 64, alto: 64 },
@@ -36,6 +39,16 @@ async function pixelesConTransparencia(archivo, quitarMagenta = true) {
     }
   }
   return { data, info };
+}
+
+function quitarMagentaRaw(data, info) {
+  for (let i = 0; i < data.length; i += info.channels) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const magenta = Math.min(r, b) - g;
+    if (r > 40 && b > 40 && g < 120 && magenta > 18) {
+      data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0;
+    }
+  }
 }
 
 function limitesAlfa(data, info, offsetX = 0, offsetY = 0) {
@@ -76,6 +89,50 @@ async function procesarUnico(recurso, archivo) {
   if (recurso.altoMaximo) imagen = imagen.resize({ height: recurso.altoMaximo, withoutEnlargement: true });
   else imagen = imagen.resize(recurso.ancho, recurso.alto, { fit: 'contain', background: recurso.fondo ? '#1c2026' : { r: 0, g: 0, b: 0, alpha: 0 } });
   return imagen.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
+}
+
+async function procesarPiezaFraccion(recurso, archivo) {
+  const origenMeta = await sharp(archivo).metadata();
+  const [x0, y0, x1, y1] = recurso.recorteFraccion;
+  const recortePx = {
+    left: Math.floor(x0 * origenMeta.width), top: Math.floor(y0 * origenMeta.height),
+    width: Math.ceil(x1 * origenMeta.width) - Math.floor(x0 * origenMeta.width),
+    height: Math.ceil(y1 * origenMeta.height) - Math.floor(y0 * origenMeta.height),
+  };
+  const { data, info } = await sharp(archivo).extract(recortePx).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  quitarMagentaRaw(data, info);
+  const contenido = limitesAlfa(data, info);
+  if (!contenido) throw new Error(`No se encontró contenido en el recorte de ${recurso.archivo}`);
+  const bufferRecortado = await sharp(data, { raw: info }).extract(contenido).png().toBuffer();
+  let imagen = sharp(bufferRecortado);
+  if (recurso.altoObjetivo) imagen = imagen.resize({ height: recurso.altoObjetivo, withoutEnlargement: false });
+  else if (recurso.altoMaximo) imagen = imagen.resize({ height: recurso.altoMaximo, withoutEnlargement: true });
+  const salida = await imagen.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
+
+  let json = null;
+  if (recurso.visores) {
+    const aRecorte = (fracciones) => {
+      const [vx0, vy0, vx1, vy1] = fracciones;
+      const xInicial = vx0 * origenMeta.width - recortePx.left - contenido.left;
+      const yInicial = vy0 * origenMeta.height - recortePx.top - contenido.top;
+      const xFinal = vx1 * origenMeta.width - recortePx.left - contenido.left;
+      const yFinal = vy1 * origenMeta.height - recortePx.top - contenido.top;
+      return {
+        x: xInicial / contenido.width, y: yInicial / contenido.height,
+        ancho: (xFinal - xInicial) / contenido.width, alto: (yFinal - yInicial) / contenido.height,
+      };
+    };
+    json = {
+      fuente: recurso.archivo,
+      recorteOriginal: { left: recortePx.left, top: recortePx.top, width: recortePx.width, height: recortePx.height },
+      recorteAlfa: contenido,
+      visores: {
+        superior: aRecorte(recurso.visores.superior),
+        inferior: aRecorte(recurso.visores.inferior),
+      },
+    };
+  }
+  return { buffer: salida, json };
 }
 
 async function procesarHoja(recurso, archivo) {
@@ -121,8 +178,16 @@ for (const recurso of recursos) {
   try { await fs.access(archivo); }
   catch { console.warn(`[assets] Falta ${recurso.archivo}; se conserva el respaldo geométrico.`); continue; }
   const salida = path.join(raiz, 'public/assets', recurso.destino);
-  let buffer = recurso.cuadros ? await procesarHoja(recurso, archivo) : await procesarUnico(recurso, archivo);
+  let json = null;
+  let buffer;
+  if (recurso.recorteFraccion) ({ buffer, json } = await procesarPiezaFraccion(recurso, archivo));
+  else buffer = recurso.cuadros ? await procesarHoja(recurso, archivo) : await procesarUnico(recurso, archivo);
   if (!recurso.fondo) buffer = await limpiarHalo(buffer);
   await fs.writeFile(salida, buffer);
   console.info(`[assets] ${recurso.archivo} → ${recurso.destino} (${(buffer.length / 1024).toFixed(1)} KB)`);
+  if (json) {
+    const destinoJson = salida.replace(/\.png$/i, '.json');
+    await fs.writeFile(destinoJson, `${JSON.stringify(json, null, 2)}\n`);
+    console.info(`[assets] metadatos de visores → ${path.relative(raiz, destinoJson)}`);
+  }
 }

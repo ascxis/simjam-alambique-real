@@ -14,7 +14,9 @@ export class Arranque extends EscenaBase {
     this.load.on('progress', (valor) => this.barraCarga.setSize((A.barra.ancho - 4) * valor, A.barra.alto - 4));
 
     this.load.image('alambique', 'assets/sprites/alambique_cuerpo_vacio.png');
-    this.load.image('liquido-referencia', 'assets/sprites/alambique_columna_liquido.png');
+    this.load.image('liquido-referencia', 'assets/sprites/columna_liquido.png');
+    this.load.image('alambique-cascada', 'assets/sprites/alambique_cascada.png');
+    this.load.json('alambique-cascada-visores', 'assets/sprites/alambique_cascada.json');
     this.load.image('valvula-cuerpo', 'assets/sprites/valvula_cuerpo_estatico.png');
     this.load.image('valvula-volante', 'assets/sprites/valvula_volante_aislado.png');
     this.load.image('alarma-placa', 'assets/sprites/alarma_placa.png');

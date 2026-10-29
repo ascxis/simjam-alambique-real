@@ -42,6 +42,16 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 35 | 5.7 | Codex | Reinicio del estado de la partida y diagnóstico de F | Funcionó |
 | 36 | 5.7 | Codex | Banda de tolerancia en el alambique y avance del criterio | Funcionó |
 | 37 | 5.7 | Codex | Prueba del modelo de tanques contra Vensim en los 20 s | Funcionó |
+| 38 | 5.8 | Codex | Integración de personajes y escenarios (prompt de la guía) | Revertido con git stash; se repite después de corregir el nivel 3 |
+| 39 | 5.7 | Codex | Correcciones del nivel 3: manos ausentes, calibración y dibujo en cascada | Funcionó |
+| 40 | 5.7 | Codex | Ajustes de textos y de la banda en la simulación | Funcionó en parte |
+| 41 | 5.7 | Codex | Textos de las barras de válvulas | Funcionó |
+| 42 | 5.8 | Codex | Integración de personajes y escenarios (prompt de la guía, segundo envío) | Funcionó con errores |
+| 43 | 5.8 | Codex | Correcciones de la integración del arte | Funciona, pero se ve mal |
+| 44 | 5.8 | Codex | Rediseño visual: distribución, paneles y tipografía | Mejoró mucho; quedan detalles |
+| 45 | 5.8 | Codex | Pulido visual: botones, pantalla final, planta y menú | Funcionó; quedan detalles menores |
+| 46 | 5.8 | Codex | Últimos detalles visuales | Funcionó |
+| 47 | 5.8 | Codex | Planta: cascada apilada (nivel 3) y alambique apoyado (niveles 1 y 2) | (pendiente) |
 
 ---
 
@@ -707,6 +717,279 @@ No cambies el modelo ni otros archivos. No modifiques docs/, vensim/ ni PROMPTS.
 - **Motivo:** la prueba que agregó Codex (bloque común de la 5.7) pasaba, pero solo comparaba h1 en t = 2 s, cuando el tanque se vacía con la válvula cerrada. La pareja comprobó aparte que el modelo del juego (RK4, h = 1/120 s) reproduce todo el escalón de Vensim con un error máximo de 0,000005 m y h1(20 s) = 2,7514 m en ambos.
 - **Nota:** el prompt dice que el CSV usa comas, pero el archivo del proyecto usa punto y coma (la prueba original pasaba). No afecta el resultado, porque el prompt pide aceptar los dos separadores.
 - **Resultado:** `npm test` aprueba las 6 pruebas. Tanque a 20 s: error máximo = 0,0000051 m (5,08·10⁻⁶ m); h1(20 s) = 2,751405 m en el modelo y 2,7514 m en Vensim. Pruebas del integrador: error de RK4 de 3,5·10⁻¹⁰ en primer orden (Euler: 4,5·10⁻³) y de 1,3·10⁻⁸ en segundo orden.
+
+---
+
+## 38. Integración de personajes y escenarios (5.8)
+
+- **Preparación:** se copiaron las 11 imágenes de `arte/` a `public/assets/originales/` y se instaló sharp (`npm install -D sharp`).
+- **Prompt (copiado literalmente de la guía):**
+
+```
+Copié las imágenes generadas con Gemini en public/assets/originales/ y la
+lista de recursos en docs/recursos.md (nombre, tamaño del cuadro y número de
+cuadros de cada imagen).
+1. Crea scripts/procesar-assets.mjs con la librería sharp que, para cada
+   imagen: quite el fondo magenta (#FF00FF, con tolerancia) y lo deje
+   transparente; recorte los bordes vacíos; divida las hojas de sprites en
+   cuadros iguales; alinee el personaje en todos los cuadros por su base;
+   reescale al tamaño indicado en docs/recursos.md y vuelva a armar cada hoja
+   en public/assets/sprites/. Los fondos lejanos van a public/assets/fondos/
+   sin quitar color.
+2. Agrega el comando "npm run assets" en package.json y ejecútalo.
+3. Carga los recursos en la escena de Arranque, con barra de progreso, y crea
+   las animaciones con this.anims.create.
+4. Reemplaza las figuras geométricas por los sprites sin cambiar la lógica ni
+   el modelo: la posición de cada sprite sigue saliendo de SistemaContinuo.
+   Ajusta las cajas de colisión al tamaño visible de cada personaje.
+5. Usa tileSprite para los fondos con parallax y la hoja de baldosas para las
+   plataformas o el piso. Los elementos del modelo que se deforman (resortes,
+   niveles de tanque, termómetros) se dibujan con Graphics a partir del
+   estado x(t), no con animaciones fijas.
+6. Si falta una imagen, conserva la figura geométrica como respaldo.
+7. Optimiza las imágenes finales (PNG comprimido o WebP) para que la
+   carpeta public/assets no supere 10 MB y el ZIP de entrega quede por debajo
+   de 25 MB. Carga los recursos con rutas relativas (assets/..., sin /
+   inicial).
+8. Ejecuta npm test y confirma que las pruebas del modelo siguen pasando.
+```
+
+- **Resultado:** Codex aplicó los cambios (src/hmi/tanques.js, Arranque.js, EscenaBase.js, Fin.js, Menu.js, Simulacion.js, package.json y scripts/). La pareja decidió volver al último commit para corregir antes el nivel 3. Los cambios se guardaron con `git stash push -u -m "intento 5.8 Codex"` y se borraron las imágenes procesadas; las originales y docs/recursos.md se conservaron. El prompt se enviará de nuevo.
+
+---
+
+## 39. Correcciones del nivel 3: manos ausentes, calibración y dibujo en cascada (5.7)
+
+```
+Correcciones del nivel 3 (El Elixir Doble en Cascada):
+1. Al empezar el nivel 3, si la mano izquierda todavía no se ha detectado dentro de la zona, el pellizco vale 0 por defecto y la válvula v2 se cierra sola: h2 sube hasta desbordar aunque el jugador no haga nada. Lo mismo pasa con la mano derecha y v1. Cambia la lectura de las manos en Simulacion.js (o en leerSenal de mapaControl.js) para que, mientras una mano no esté presente en la zona, su válvula conserve el valor actual del actuador (v2 arranca en 1 y v1 en el equilibrio), y solo siga al gesto cuando la mano esté presente. Aplícalo a la cámara en los tres niveles; el teclado, el gamepad y el escalón siguen igual.
+2. Si la calibración guardada del pellizco o de la altura tiene min >= max, o una diferencia menor que 0.05, ignórala para ese canal y usa el valor sin calibrar, y escribe un aviso en la consola.
+3. Dibuja los dos alambiques en cascada, como en el diseño: el alambique 1 más arriba y a la izquierda, el alambique 2 más abajo a la derecha, con un tubo que sale del fondo del alambique 1 y cae en la parte superior del alambique 2 (caudal q12 = c1*sqrt(h1)), y la válvula v2 a la salida del fondo del alambique 2. Mantén la escala 1 m = (alto útil)/3, la banda, la referencia, las marcas H y HH y las escalas de 0 a 3 m. Que no tapen las tendencias, los textos ni el panel de depuración.
+4. En el nivel 3 muestra debajo de los alambiques una ayuda corta: "Mano derecha: válvula de entrada v1 · Pellizco izquierdo abierto = v2 abierta (sale líquido del alambique 2)".
+Prueba el nivel 3 con la cámara: al empezar sin mostrar la mano izquierda, v2 debe quedarse en 100 % y h2 en 1,2 m; al abrir y cerrar el pellizco izquierdo, la barra de v2 y la línea "izq ... pellizco" del panel D deben cambiar entre 0 y 1.
+No cambies el modelo, los niveles ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Error detectado al jugar:** en el nivel 3, h2 sube hasta la alarma H y no baja hagas lo que hagas. El panel D muestra "izq fuera | pellizco 0.00→0.01": la mano izquierda estaba fuera de la zona, el pellizco quedó en 0 por defecto y v2 se cerró (barra en 1 %). Además, los dos alambiques se dibujaban lado a lado y no se veía la cascada.
+- **Resultado:** v2 arranca en 100 % y se mantiene mientras la mano izquierda no está en la zona, y el pellizco la mueve. Los alambiques se dibujan en cascada: el 1 arriba a la izquierda, un tubo q12 = c1·√h1 hacia el 2 y la válvula v2 abajo. El nivel 3 se puede jugar.
+- **Detalles pendientes:** la ayuda del nivel 3 queda cortada por la barra de v1, los textos de las dos barras se superponen y la banda casi no se ve sobre el líquido verde.
+
+---
+
+## 40. Ajustes de textos y de la banda en la simulación (5.7)
+
+```
+Ajustes de textos en la pantalla de la simulación (sin cambiar la lógica):
+1. La ayuda del nivel 3 ("Mano derecha: válvula de entrada v1 · Pellizco izquierdo abierto = v2 abierta (sale líquido del alambique 2)") queda cortada y tapada por la barra de v1. Muévela o divídela en dos líneas para que se lea completa y no se cruce con las barras ni con las tendencias.
+2. En el nivel 3, los textos de las barras "Válvula entrada v1: 55% | 1.20 m" y "Válvula salida v2: 100% | 1.19 m" se juntan y se superponen. Sepáralos para que cada texto quede encima de su barra sin tocar el otro, y nombra la altura de cada uno: "h1 1.20 m" y "h2 1.19 m".
+3. En el alambique 2 la banda de tolerancia casi no se ve sobre el líquido verde. Dibuja la franja de la banda con un borde visible (líneas finas arriba y abajo) por encima del líquido, en los tres niveles.
+Revisa el nivel 1, el nivel 2 y el nivel 3 para que ningún texto quede cortado ni superpuesto.
+No cambies el modelo, la entrada, los niveles ni el formato del CSV. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** la ayuda del nivel 3 se lee completa en dos líneas y la banda del alambique 2 tiene bordes visibles.
+- **Error que persiste:** los textos de las barras siguen pegados ("h1 1.20 mVálvula salida v2…") y el segundo se sale del borde derecho.
+
+---
+
+## 41. Textos de las barras de válvulas (5.7)
+
+```
+En el nivel 3 los textos de las barras de válvulas siguen pegados: se lee "Válvula entrada v1: 55% | h1 1.20 mVálvula salida v2: 100% | h2 1.19 m", y el segundo texto se sale del borde derecho de la pantalla. Acorta los textos a "v1 entrada 55 % · h1 1.20 m" y "v2 salida 100 % · h2 1.19 m", y alinea cada texto con el inicio de su barra, con al menos 20 px de separación entre ambos y dentro de los 1280 px de ancho. Usa el mismo formato en los niveles 1 y 2.
+No cambies nada más. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** los textos de las barras quedan separados y dentro de la pantalla ("v1 entrada 55 % · h1 1.20 m" y "v2 salida 100 % · h2 1.18 m"). El aviso "Muestra las manos" con pausa aparece correctamente cuando no hay manos en la zona.
+
+---
+
+## 42. Integración de personajes y escenarios, segundo envío (5.8)
+
+- **Prompt:** el mismo de la entrada 38, enviado sobre el código con el nivel 3 corregido.
+- **Respuesta de Codex:** creó scripts/procesar-assets.mjs con sharp (quita el magenta, recorta y escala, procesa las hojas de baldosas e íconos y guarda los fondos aparte) y el comando `npm run assets`. public/assets ocupa 6,9 MB, incluidos los originales. Arranque.js carga los recursos con barra de progreso. El líquido, la banda, las alarmas y la referencia se siguen dibujando con Graphics desde el estado del modelo, con respaldo geométrico. `npm run assets`, `npm test` (8 pruebas) y `npm run build` terminaron bien.
+- **Resultado:** el menú muestra el logotipo y el fondo del laboratorio, los alambiques de cobre reemplazan a los rectángulos y el piso usa las baldosas.
+- **Errores de la IA:**
+  - La escala de 0 a 3 m no coincide con el visor y el líquido se ve muy pequeño (no respeta 1 m = 100 px).
+  - El líquido es gris en lugar del verde de la guía de estilo.
+  - El alambique 1 y el ícono del reloj tapan el subtítulo.
+  - La válvula v1 flota al costado del alambique y el tubo q12 no conecta bien los dos alambiques.
+  - No se usan la placa y la runa de alarma.
+  - La pantalla final no usa pantalla_post_partida.png y no se ven los guiones bajos de los encabezados del CSV.
+  - El velo blanco sobre el fondo del menú es muy fuerte.
+
+---
+
+## 43. Correcciones de la integración del arte (5.8)
+
+```
+Correcciones de la integración del arte (5.8), sin cambiar el modelo, los niveles, la entrada ni el CSV:
+1. Escala del visor: la escala de 0 a 3 m está al lado del alambique, pero no coincide con el visor de vidrio donde se ve el líquido (por ejemplo, con h1 = 1,2 m el líquido casi no se ve y la marca "1" no está a esa altura). Haz que el fondo del visor sea 0 m y su parte superior 3 m, y dibuja la escala, el líquido, la banda de tolerancia, la referencia y las marcas H (2,4 m) y HH (2,8 m) con esa misma conversión. Comprueba que con h = 1,5 m el líquido llegue a la mitad del visor. Agranda el sprite del alambique (sin deformarlo) si hace falta para que el visor mida al menos 200 px de alto.
+2. Color del líquido: usa el verde de la poción (#2ECC71) en los dos alambiques y en los tres niveles, y un verde más brillante (#00E676) cuando el nivel controlado está dentro de la banda. No uses gris para el líquido.
+3. Superposiciones: el alambique 1 tapa el subtítulo "Tanques en cascada · A·dh/dt = caudales · válvulas con slew 0.25 s⁻¹" y el ícono del reloj tapa ese mismo texto. Baja los alambiques para que no toquen el subtítulo, y pon el ícono del reloj al lado del texto "Tiempo … / … s" de la parte inferior.
+4. Válvulas y tuberías: pon la válvula v1 (valvula_cuerpo_estatico + valvula_volante_aislado) sobre una tubería de entrada que llegue a la parte superior del alambique 1, y la válvula v2 a la salida del fondo del alambique 2. El volante de cada válvula gira según su apertura (0 % = 0°, 100 % = 270°). En el nivel 3, el tubo q12 = c1·√h1 debe salir del fondo del alambique 1 y llegar a la parte superior del alambique 2, conectado a los dos sprites.
+5. Alarmas: junto a cada alambique muestra alarma_placa con alarma_runa encima: runa gris cuando no hay alarma, #FFD700 con alarma H y #FF1744 con alarma HH.
+6. Pantalla final: no se usa pantalla_post_partida.png. Úsala como marco detrás de las dos gráficas y los textos, escalada sin deformarla (proporción 588 × 680), con un fondo gris neutro semitransparente debajo del texto para que todo se lea. Si no cabe sin tapar las gráficas, colócala como marco de la gráfica h(t).
+7. En el texto "CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp" de la pantalla final no se ven los guiones bajos. Dale suficiente altura de línea o padding para que se vean.
+8. El velo blanco sobre el fondo del laboratorio es muy fuerte en el menú; bájalo un poco sin perder la lectura de los textos. Las zonas de tendencias y la HMI siguen con fondo gris neutro (ISA-101).
+Revisa el menú, los niveles 1, 2 y 3 y la pantalla final para que nada se superponga ni se salga de los 1280 × 720 px.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** funcionan la escala del visor, el líquido verde, las runas de alarma y los volantes.
+- **Errores (estética, según la pareja):**
+  - Un velo gris apaga todo el arte.
+  - Los alambiques son enormes: el 2 se corta contra el piso y tapa la barra inferior.
+  - La válvula v1 queda cortada en el borde izquierdo.
+  - Las placas de alarma quedan pegadas sobre la cúpula.
+  - La ayuda del nivel 3 se mezcla con la HMI.
+  - En el menú sobra el encabezado y el panel gris se ve plano.
+  - Toda la letra es de máquina de escribir.
+
+---
+
+## 44. Rediseño visual: distribución, paneles y tipografía (5.8)
+
+```
+Rediseño visual del juego (5.8). La lógica funciona, pero la composición se ve mal: un velo gris apaga el arte, los alambiques son enormes y se salen por abajo, la válvula v1 queda cortada en el borde izquierdo, las placas de alarma quedan pegadas sobre la cúpula, los textos se cruzan con el arte y todo usa letra de máquina de escribir. No cambies el modelo, los niveles, la entrada, las pruebas ni el CSV; cambia solo la presentación.
+
+1. Crea src/hmi/layout.js con todas las posiciones y tamaños (en px, sobre el lienzo de 1280 × 720) y úsalo en Menu, Simulacion y Fin, para no tener números sueltos.
+2. Estilo general (docs/recursos.md):
+   - Fondo: fondo_laboratorio.png a pantalla completa y sin velo blanco ni gris; encima, solo una viñeta oscura suave en los bordes.
+   - Paneles: rectángulos redondeados (radio 10) color #1C2026 con 85 % de opacidad y borde de 1 px #B85A24. Todo texto va sobre un panel, nunca directo sobre el arte.
+   - Tipografía: títulos en "Georgia, serif", negrita, color #F2E6C9, con sombra oscura; textos de la HMI en "Segoe UI, Arial, sans-serif", color #E6E8EA. No uses fuentes monoespaciadas, salvo en el panel de depuración.
+   - Botones: fondo #B85A24, texto #F2E6C9, borde #1A1B1D, esquinas redondeadas y un tono más claro al pasar el mouse.
+   - Color intenso solo para las alarmas (#FFD700 y #FF1744).
+3. Simulación, distribución fija:
+   - Barra superior (y 0–80): panel a todo el ancho con el nombre del nivel como título a la izquierda y "CÁMARA ACTIVA" a la derecha. Quita la línea "ALAMBIQUE REAL / EL ARTE DE LA ALQUIMIA" y el subtítulo "Tanques en cascada…"; la ecuación ya está en el panel P.
+   - Zona de la planta (x 20–640, y 90–650): sin panel, sobre el fondo. Las baldosas del piso van en una franja de y 650 a 720 bajo esta zona.
+     · Niveles 1 y 2: un alambique de 300 px de alto (sin deformar), centrado en x = 330, con la base apoyada en el piso (y = 650).
+     · Nivel 3: alambique 1 de 260 px de alto, con centro en x = 190 y la base en y = 430, sobre un soporte de hierro (#4A5056) dibujado con Graphics que llega al piso; alambique 2 de 260 px de alto, con centro en x = 470 y la base en el piso. El tubo q12 sale del fondo del alambique 1, baja y entra por la cúpula del alambique 2.
+     · Válvula v1 (cuerpo + volante) sobre una tubería que llega desde arriba a la cúpula del alambique 1, completa y dentro de la zona; válvula v2 en la salida del fondo del alambique 2, completa y sobre el piso. Los volantes giran con la apertura.
+     · El líquido, la escala (0, 1, 2 y 3 m con marcas pequeñas pegadas al borde derecho del visor), la banda, la referencia y las marcas H y HH se dibujan dentro del visor y con su misma conversión.
+     · Debajo de cada alambique, una etiqueta pequeña sobre panel: "Alambique 1 · h1 1.20 m", con la placa y la runa de alarma (40 × 40) a su izquierda. Las placas nunca van sobre el sprite del alambique.
+   - Zona de la HMI (x 660–1260, y 90–650): un panel con, en orden, la línea de estado (h, referencia y qd), la tendencia de niveles, la tendencia de válvulas, las barras de v1 y v2 y el avance del criterio como barra de progreso con su texto. Tendencias con fondo #3A3D40, rejilla gris tenue y líneas claras: h1 #E6E8EA, h2 #2ECC71, referencia #C9A227 y banda gris translúcida.
+   - Barra inferior (y 660–712): panel con la ayuda de controles a la izquierda (en el nivel 3, las dos líneas de la ayuda de manos), el ícono del reloj con "Tiempo 3.0 / 120 s" en el centro y el botón Terminar a la derecha.
+4. Menú: el logotipo centrado arriba (400 px de ancho) y, debajo, un panel centrado de 760 px de ancho con dos columnas: a la izquierda, fuente de control y nivel; a la derecha, la cámara y "Intercambiar derecha / izquierda". Debajo, los botones Iniciar simulación, Calibrar cámara y Probar cámaras en una fila, y al final la línea de controles. Sin el encabezado "ALAMBIQUE REAL / …" ni "Menú de operación", porque ya está el logotipo. Los select de HTML con el mismo estilo de los paneles: fondo oscuro, texto claro y borde cobre.
+5. Pantalla final: a la izquierda (x 20–608, y 20–700), pantalla_post_partida.png sin deformar, con la gráfica h(t) en su área superior, v(t) en la inferior y el botón "Descargar CSV" en el espacio de abajo. A la derecha (x 630–1260), un panel con el título "Lo que pasó en el modelo", el resultado (NIVEL SUPERADO en #2ECC71 o NO SUPERADO en #FF1744), las métricas, el modelo y los parámetros, la explicación de 3 a 5 líneas y el botón "Volver al menú".
+6. Calibración y Arranque con el mismo estilo de paneles y botones.
+Revisa con ?control=teclado el menú, los niveles 1, 2 y 3 (con alarma H y HH) y la pantalla final: nada se superpone, nada se corta en los bordes y todo queda dentro de los 1280 × 720 px.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** el fondo del laboratorio se ve sin velo, hay paneles oscuros con borde cobre, títulos con serifa, menú con logotipo centrado, HMI en panel propio y la pantalla final usa el panel de Gemini. A la pareja le empieza a gustar.
+- **Errores que quedan:**
+  - Los botones solo responden si el puntero está sobre el texto.
+  - En la pantalla final, las gráficas no quedan dentro de las rejillas del panel de Gemini.
+  - En el nivel 3, el soporte del alambique 1 es un rectángulo gris liso, el tubo q12 entra por el visor del alambique 2 y las etiquetas, las placas y la válvula v2 se cruzan con el piso y la barra inferior.
+  - La ayuda de manos ocupa tres líneas y se corta.
+  - El menú tiene un hueco vacío y la línea de controles casi no se lee.
+
+---
+
+## 45. Pulido visual: botones, pantalla final, planta y menú (5.8)
+
+```
+Pulido visual (5.8). El rediseño quedó bien encaminado; corrige estos detalles sin cambiar el modelo, los niveles, la entrada, las pruebas ni el CSV, y ajusta los valores en src/hmi/layout.js.
+
+1. Botones: solo responden si el puntero está sobre el texto. Haz que toda el área del botón (el rectángulo redondeado completo) sea clicable, con cursor de mano y el cambio de tono al pasar por encima, en todas las escenas (Menu, Calibracion, Simulacion y Fin). Usa un hit area del tamaño exacto del botón: un Container con setSize(ancho, alto) y setInteractive, o una Zone del mismo tamaño encima. Comprueba que un clic en cualquier esquina interior del botón funciona.
+
+2. Pantalla final: usa pantalla_post_partida.png como fue diseñada. En la imagen original de 483 × 559 px (si el script recortó bordes, aplica el mismo recorte) tiene:
+   - un listón de título en x 100–385, y 72–108;
+   - un área lisa para texto en x 30–453, y 118–310;
+   - dos rejillas para gráficas: la izquierda en x 38–233 y la derecha en x 250–445, ambas en y 322–482;
+   - una ranura para un botón en x 200–282, y 498–524.
+   Escala el panel sin deformarlo a 700 px de alto y colócalo a la izquierda (x = 20, y = 10). Calcula las áreas con el mismo factor de escala y pon:
+   - "Lo que pasó en el modelo" centrado en el listón;
+   - en el área lisa, el resultado (NIVEL SUPERADO / NO SUPERADO / DESBORDE) y las métricas (nivel final, máximo, tiempo en banda, IAE e ISE);
+   - h(t) con la banda y la referencia dentro de la rejilla izquierda, y v(t) dentro de la rejilla derecha, con fondo transparente para que se vea la rejilla del panel y sin salirse de ella;
+   - el botón "Descargar CSV" sobre la ranura.
+   A la derecha (x 650–1260), un panel con el modelo, los parámetros, las alarmas, τ medido frente al teórico, la explicación de 3 a 5 líneas y, abajo, el botón "Volver al menú" y la línea "CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp". Reparte el espacio para que no queden huecos grandes.
+
+3. Simulación: deja un piso común en y = 600, con las baldosas de y 600 a 650 en la zona de la planta, y la barra inferior en y 660–712. Ningún sprite ni etiqueta debe entrar en la barra inferior.
+   - Niveles 1 y 2: alambique de 300 px de alto, centrado en x = 320, con la base en y = 600.
+   - Nivel 3: los dos alambiques de 240 px de alto. El alambique 1, con centro en x = 175 y la base en y = 360, sobre un pedestal de piedra que va de y 360 a y 600: usa la textura de baldosas_laboratorio con borde oscuro #1A1B1D (no un rectángulo gris liso). El alambique 2, con centro en x = 450 y la base en y = 600.
+   - Tubo q12: sale del lado derecho de la base del alambique 1, baja, va en horizontal y entra por el centro de la cúpula del alambique 2, por arriba. Que no cruce el visor ni la etiqueta de ningún alambique. Pon el texto "q12 = c1·√h1" junto al tramo horizontal.
+   - Válvula v1: en una tubería que entra desde el borde izquierdo de la zona de la planta y baja con un codo hasta el centro de la cúpula del alambique 1. La válvula, de 70 px, va en el tramo horizontal, completa y visible.
+   - Válvula v2: en la salida del fondo del alambique 2, con un tramo corto de tubería hacia la derecha. Válvula de 70 px, completa y por encima del piso.
+   - Etiquetas: cada alambique tiene una sola etiqueta "Alambique N · hN 1.20 m" con su placa y runa de 36 × 36 a la izquierda, dentro del mismo panel y alineadas en una fila. La del alambique 1 del nivel 3 va sobre la cara del pedestal, y las demás, sobre el piso (y 608–644), centradas bajo su alambique.
+   - Barra inferior: la ayuda de manos en una sola línea de 13 px, por ejemplo "Mano derecha → v1 entrada · Pellizco izquierdo abierto → v2 abierta". Si no cabe, usa dos líneas que entren completas en la barra. El reloj con el tiempo en el centro y Terminar a la derecha.
+   - Tendencias: en el eje vertical de válvulas, muestra solo números (0, 0.25, 0.5, 0.75 y 1), y la palabra "apertura" una sola vez como título del eje. Leyenda de cada tendencia con una muestra de color y su nombre (h1, h2, referencia, v1, v2). Aprovecha el espacio libre al final del panel de la HMI agrandando un poco las tendencias.
+
+4. Menú:
+   - Ajusta la altura del panel a su contenido, sin el hueco vacío de abajo, y pon los tres botones dentro del panel, en la última fila.
+   - La línea de controles va en #E6E8EA, 14 px, centrada y completa en una o dos líneas dentro del panel. Ahora casi no se lee.
+   - Que el logotipo no toque el panel.
+
+Revisa con ?control=teclado el menú, la calibración, los niveles 1, 2 y 3 (con alarma H y HH) y la pantalla final después de jugar unos 20 s: nada se superpone, nada se corta, todo cabe en 1280 × 720 px y todos los botones responden en toda su área.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Nota:** las áreas del panel de la pantalla final (listón, área de texto, dos rejillas y ranura del botón) se midieron sobre la imagen original de 483 × 559 px.
+- **Resultado:**
+  - La pantalla final usa el panel de Gemini como fue diseñado: título en el listón, métricas en el área lisa, h(t) y v(t) dentro de las dos rejillas y el botón CSV en la ranura.
+  - El nivel 3 tiene pedestal de piedra, tubo q12, válvulas completas y etiquetas con runa.
+  - Los niveles 1 y 2 tienen el alambique apoyado en el piso.
+  - El menú tiene los botones dentro del panel.
+- **Detalles que quedan:**
+  - El valor actual se monta sobre la leyenda de las tendencias.
+  - La ayuda de la barra inferior toca el reloj en los niveles 1 y 2.
+  - La línea de controles del menú casi no se lee.
+  - El tubo q12 parece salir de la etiqueta de texto.
+  - Quedan huecos en el panel de la HMI y en el panel derecho de la pantalla final.
+
+---
+
+## 46. Últimos detalles visuales (5.8)
+
+```
+Últimos detalles visuales (5.8), sin cambiar el modelo, los niveles, la entrada, las pruebas ni el CSV:
+1. Leyendas de las tendencias: el valor actual se monta sobre la leyenda ("referenc1.49 m", "v0.88"). Pon el valor actual en su propia posición, a la izquierda del título o en una segunda línea, con al menos 12 px de separación de la leyenda. Aplícalo a las tendencias de la simulación y de la pantalla final.
+2. Barra inferior de los niveles 1 y 2: el texto "camara · P linealización · D depuración · F terminar" toca el ícono del reloj. Alinea la ayuda a la izquierda (x = 290 en pantalla de 1280, o el inicio de la barra) y deja al menos 40 px libres antes del reloj, igual que en el nivel 3.
+3. Menú: la línea de controles sigue casi invisible (gris oscuro sobre fondo oscuro). Usa color #E6E8EA, 14 px y opacidad completa, y reduce el recuadro que la contiene a su contenido.
+4. Nivel 3, tubo q12: que se vea claramente que sale de la base del alambique 1 (lado derecho de su base, sobre el pedestal), y no del recuadro del texto "q12 = c1·√h1". Pon ese texto junto al tubo sin tapar el recorrido.
+5. Panel de la HMI: hay un hueco vacío al final. Reparte el espacio agrandando un poco las dos tendencias o subiendo el panel inferior, sin dejar más de 20 px libres abajo.
+6. Pantalla final: en el panel derecho, reduce el hueco entre "τ medido / teórico" y la explicación, para que el texto quede agrupado arriba y el botón "Volver al menú" abajo.
+Revisa con ?control=teclado el menú, los niveles 1, 2 y 3 y la pantalla final, y confirma que todos los botones responden al hacer clic en cualquier punto de su área.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** las leyendas, la barra inferior, el menú y los paneles quedaron ordenados.
+- **Observación de la pareja:** el alambique parece flotar, y en el nivel 3 las piezas están mal alineadas (pedestal, tubo q12 y válvulas). La pareja propuso usar el dibujo de Gemini con los dos alambiques apilados, que venía dentro de alambique_columna_liquido.jpg y no se había usado.
+
+---
+
+## 47. Planta: cascada apilada (nivel 3) y alambique apoyado (niveles 1 y 2) (5.8)
+
+- **Cambio previo en docs/recursos.md:** se registró que alambique_columna_liquido.jpg contiene la cascada apilada y la columna de líquido. Se anotaron las fracciones de recorte y de los visores, medidas sobre la imagen, y que la llave del tubo de unión se considera siempre abierta. También se anotó que las baldosas no se usan en la simulación, porque no combinan con el fondo.
+
+```
+Ajustes de la planta (5.8), sin cambiar el modelo, los niveles, la entrada, las pruebas ni el CSV. Lee de nuevo docs/recursos.md: lo actualicé con la imagen de la cascada.
+
+1. Nueva imagen para el nivel 3: public/assets/originales/alambique_columna_liquido.jpg contiene dos piezas sobre magenta. Recórtalas por separado en scripts/procesar-assets.mjs usando las fracciones de docs/recursos.md (relativas al ancho y al alto de la imagen):
+   - cascada: x 0,063–0,433, y 0,115–0,972 → public/assets/sprites/alambique_cascada.png;
+   - columna de líquido: x 0,693–0,773, y 0,087–0,913 → columna_liquido.png.
+   Quita el magenta con tolerancia, porque es JPG. Guarda también, en un JSON junto al sprite, la posición de los dos visores dentro del recorte: superior x 0,213–0,227, y 0,253–0,447; inferior x 0,213–0,227, y 0,661–0,853 (fracciones de la imagen original, conviértelas al recorte). Ejecuta npm run assets.
+
+2. Nivel 3 con los alambiques apilados: reemplaza los dos alambiques separados, el pedestal y el tubo q12 por alambique_cascada.png, de 510 px de alto y sin deformar, centrado en x = 330 y con la base en el piso (y = 600).
+   - Dibuja con Graphics el líquido de h1 en el visor superior y el de h2 en el inferior: el fondo de cada visor es 0 m y su parte superior 3 m. Dibuja también la banda, la referencia y las marcas H y HH en el visor inferior, y solo H y HH en el superior.
+   - Pon las escalas 0–3 m pegadas al lado derecho de cada visor.
+   - Las válvulas ya vienen en el dibujo: v1 es la de arriba a la derecha y v2 la de abajo a la derecha. Junto a cada una pon una etiqueta pequeña sobre panel, "v1 55 %" y "v2 100 %", que se actualiza con la apertura. No dibujes válvulas extra en este nivel.
+   - Junto a la llave del tubo de la izquierda, una etiqueta pequeña: "q12 = c1·√h1 (llave abierta)".
+   - Las etiquetas "Alambique 1 · h1" y "Alambique 2 · h2", con su placa y runa, van a la izquierda de cada alambique, a la altura de su visor, sin tapar el dibujo.
+   - Apoya la cascada en el piso del fondo con la misma sombra y la misma base de hierro del punto 3.
+
+3. Piso y bases: los bloques de baldosas debajo de los alambiques (el pedestal y la franja del piso) no combinan con el fondo. Quita las baldosas de la simulación en los tres niveles. El fondo del laboratorio ya tiene piso: apoya los alambiques en él con una sombra elíptica oscura y suave bajo la base, y, si hace falta, una base baja de hierro forjado (#4A5056, con remaches, 20 px de alto) dibujada con Graphics.
+   Niveles 1 y 2, para que el alambique no parezca flotar:
+   - La tubería de entrada con la válvula v1 debe llegar de verdad a la tapa de la cúpula, sin huecos entre el tubo y el sprite. El volante sigue girando con la apertura.
+   - Agrega un tramo corto de tubería de salida en la parte baja del alambique (el orificio por donde sale c1·√h1). En el nivel 2, ponle la etiqueta "consumo qd → caldero".
+
+4. Revisa las posiciones en src/hmi/layout.js para que todas las piezas queden alineadas: tubos conectados a los sprites, etiquetas sin tapar el dibujo, nada flotando ni cortado, sin bloques de baldosas y nada dentro de la barra inferior.
+
+Revisa con ?control=teclado los niveles 1, 2 y 3 (con alarma H y HH en el nivel 3) y confirma que el líquido de cada visor sigue a h1 y h2.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** (pendiente)
 
 ---
 
