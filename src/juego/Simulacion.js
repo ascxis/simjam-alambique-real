@@ -10,7 +10,7 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
-import { dibujarTanques, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
+import { dibujarTanques, dibujarLiquidosCascada, convertirVisoresCascada, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
 import { MAPA_CONTROL, leerSenal, leerSenalSiPresente } from './mapaControl.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
@@ -56,21 +56,40 @@ export class Simulacion extends EscenaBase {
     this.panel(L.footer, { profundidad: -5 });
     this.hmiX = L.hmiInterior.x;
     this.hmiAncho = L.hmiInterior.ancho;
-    if (this.textures.exists('baldosas')) this.piso = this.add.tileSprite(L.piso.x + L.piso.ancho / 2, L.piso.y + L.piso.alto / 2, L.piso.ancho, L.piso.alto, 'baldosas', 0).setDepth(-10);
-    else this.add.rectangle(L.piso.x + L.piso.ancho / 2, L.piso.y + L.piso.alto / 2, L.piso.ancho, L.piso.alto, 0x34383b).setDepth(-10);
+    this.esCascada = this.nivel.tanques === 2 && this.textures.exists('alambique-cascada');
     this.render = this.add.graphics().setDepth(-1);
     this.renderTuberias = this.add.graphics().setDepth(-.55);
+    this.renderVisorOverlay = this.add.graphics().setDepth(2);
     this.conSprites = this.textures.exists('alambique');
     this.spritesTanques = [];
     this.spritesValvulas = [];
-    for (let i = 0; i < this.nivel.tanques; i++) {
-      if (this.conSprites) {
+    if (this.esCascada) {
+      const cfg = L.cascada, fuente = this.textures.get('alambique-cascada').getSourceImage();
+      const ancho = cfg.alto * fuente.width / fuente.height;
+      this.cajaCascada = { x: cfg.centroX - ancho / 2, y: cfg.baseY - cfg.alto, w: ancho, h: cfg.alto };
+      const sombra = this.add.graphics().setDepth(-.8);
+      for (const [anchoSombra, alpha] of [[ancho + 54, .08], [ancho + 32, .12], [ancho + 12, .16]]) sombra.fillStyle(0x111315, alpha).fillEllipse(cfg.centroX, cfg.baseY + 5, anchoSombra, 18);
+      const base = this.add.graphics().setDepth(-.7), bx = this.cajaCascada.x - cfg.base.margen;
+      base.fillStyle(0x4a5056, 1).fillRoundedRect(bx, cfg.baseY, ancho + cfg.base.margen * 2, cfg.base.alto, 4);
+      base.lineStyle(2, 0x1a1b1d, 1).strokeRoundedRect(bx, cfg.baseY, ancho + cfg.base.margen * 2, cfg.base.alto, 4);
+      for (const rx of [bx + 9, bx + ancho + cfg.base.margen * 2 - 9]) base.fillStyle(0x9ba0a3).fillCircle(rx, cfg.baseY + cfg.base.alto / 2, 2.5);
+      this.spriteCascada = this.add.image(cfg.centroX, cfg.baseY - cfg.alto / 2, 'alambique-cascada').setDisplaySize(ancho, cfg.alto).setDepth(-.5);
+      this.visoresCascada = convertirVisoresCascada(this.cajaCascada, this.cache.json.get('alambique-cascada-visores'));
+    } else {
+      for (let i = 0; i < this.nivel.tanques; i++) {
+        if (!this.conSprites) continue;
         const p = posicionSpriteTanque(i, this.nivel.tanques);
         this.spritesTanques.push(this.add.image(p.x, p.y, 'alambique').setDisplaySize(p.ancho, p.alto).setDepth(-.5));
+        const sombra = this.add.graphics().setDepth(-.8);
+        for (const [anchoSombra, alpha] of [[p.ancho + 48, .08], [p.ancho + 28, .12], [p.ancho + 10, .16]]) sombra.fillStyle(0x111315, alpha).fillEllipse(p.x, p.y + p.alto / 2 + 5, anchoSombra, 18);
+        const base = this.add.graphics().setDepth(-.7), yBase = L.tanqueSolo.baseY;
+        base.fillStyle(0x4a5056, 1).fillRoundedRect(p.x - p.ancho / 2 - 8, yBase, p.ancho + 16, 20, 4);
+        base.lineStyle(2, 0x1a1b1d, 1).strokeRoundedRect(p.x - p.ancho / 2 - 8, yBase, p.ancho + 16, 20, 4);
+        for (const rx of [p.x - p.ancho / 2, p.x + p.ancho / 2]) base.fillStyle(0x9ba0a3).fillCircle(rx, yBase + 10, 2.5);
       }
     }
     this.conSpritesValvula = this.textures.exists('valvula-cuerpo') && this.textures.exists('valvula-volante');
-    if (this.conSpritesValvula) {
+    if (this.conSpritesValvula && !this.esCascada) {
       const puntos = posicionSpritesValvulas(this.nivel.tanques);
       for (const [clave, punto] of [['v1', puntos.v1], ['v2', puntos.v2]]) {
         if (!punto || (clave === 'v2' && this.nivel.tanques !== 2)) continue;
@@ -78,25 +97,38 @@ export class Simulacion extends EscenaBase {
         const volante = this.add.sprite(punto.x, punto.y, 'valvula-volante').setDisplaySize(L.valvulaSprite.volante, L.valvulaSprite.volante).play('valvula-en-servicio');
         this.spritesValvulas.push({ clave, cuerpo, volante });
       }
+    } else if (this.esCascada && this.textures.exists('valvula-volante')) {
+      const cfg = L.cascada;
+      for (const clave of ['v1', 'v2']) {
+        const r = cfg.ruedas[clave], x = this.cajaCascada.x + r.x * this.cajaCascada.w, y = this.cajaCascada.y + r.y * this.cajaCascada.h;
+        const volante = this.add.sprite(x, y, 'valvula-volante').setDisplaySize(cfg.ruedas.tamano, cfg.ruedas.tamano).play('valvula-en-servicio');
+        this.spritesValvulas.push({ clave, volante });
+      }
     }
     this.renderOverlay = this.add.graphics().setDepth(2);
-    if (this.nivel.tanques === 2) {
-      const s = L.soporte;
-      if (this.textures.exists('baldosas')) this.add.tileSprite(s.x + s.ancho / 2, s.y + (s.baseY - s.y) / 2, s.ancho, s.baseY - s.y, 'baldosas', 0).setDepth(-.65);
-      const bordePedestal = this.add.graphics().setDepth(-.6);
-      bordePedestal.lineStyle(L.bordePedestal.ancho, LAYOUT.colores.oscuro, 1).strokeRect(s.x, s.y, s.ancho, s.baseY - s.y);
-      bordePedestal.lineStyle(L.bordePedestal.ancho, LAYOUT.colores.oscuro, 1).lineBetween(s.x - L.bordePedestal.voladizo, s.baseY, s.x + s.ancho + L.bordePedestal.voladizo, s.baseY);
-    }
     this.placasAlarmas = [];
     this.runasAlarmas = [];
     if (this.textures.exists('alarma-placa') && this.textures.exists('alarma-runa')) {
-      for (const p of posicionSpritesValvulas(this.nivel.tanques).alarmas) {
-        this.placasAlarmas.push(this.add.image(p.x, p.y, 'alarma-placa').setDisplaySize(L.alarmaSolo.tamano, L.alarmaSolo.tamano).setDepth(3));
-        this.runasAlarmas.push(this.add.sprite(p.x, p.y, 'alarma-runa').setDisplaySize(L.alarmaSolo.tamano, L.alarmaSolo.tamano).setDepth(4).play('runa-alerta'));
+      const puntos = this.esCascada
+        ? ['superior', 'inferior'].map((key, i) => ({ x: L.cascada.etiquetasTanque[i].x + L.cascada.etiquetasTanque[i].placa / 2, y: this.visoresCascada[key].y + this.visoresCascada[key].h / 2, tamano: L.cascada.etiquetasTanque[i].placa }))
+        : posicionSpritesValvulas(this.nivel.tanques).alarmas.map((p) => ({ ...p, tamano: L.alarmaSolo.tamano }));
+      for (const p of puntos) {
+        this.placasAlarmas.push(this.add.image(p.x, p.y, 'alarma-placa').setDisplaySize(p.tamano, p.tamano).setDepth(3));
+        this.runasAlarmas.push(this.add.sprite(p.x, p.y, 'alarma-runa').setDisplaySize(p.tamano, p.tamano).setDepth(4).play('runa-alerta'));
       }
     }
     this.etiquetasEscala = [];
-    for (let tanque = 0; tanque < this.nivel.tanques; tanque++) {
+    if (this.esCascada) {
+      for (const key of ['superior', 'inferior']) {
+        const v = this.visoresCascada[key], x = v.x + v.w + 9;
+        for (let metro = 0; metro <= 3; metro++) {
+          const y = v.y + v.h * (1 - metro / 3);
+          this.renderVisorOverlay.lineStyle(1, 0xe6e8ea, .9).lineBetween(v.x + v.w, y, x - 2, y);
+          this.etiquetasEscala.push(this.add.text(x, y - 7, String(metro), fuenteInterfaz(10)).setDepth(5));
+        }
+        this.etiquetasEscala.push(this.add.text(x, v.y - 15, 'm', fuenteInterfaz(9)).setDepth(5));
+      }
+    } else for (let tanque = 0; tanque < this.nivel.tanques; tanque++) {
       const extremoSuperior = posicionEscalaTanque(tanque, 3, this.nivel.tanques, this.conSprites);
       const extremoInferior = posicionEscalaTanque(tanque, 0, this.nivel.tanques, this.conSprites);
       const escalaPanel = L.escalaTanque;
@@ -114,6 +146,15 @@ export class Simulacion extends EscenaBase {
       this.etiquetasEscala.push(this.add.text(p.x, p.y - 18, 'm', fuenteInterfaz(10)).setOrigin(0, 0).setDepth(5));
     }
     for (let i = 0; i < this.nivel.tanques; i++) {
+      if (this.esCascada) {
+        const key = i === 0 ? 'superior' : 'inferior', visor = this.visoresCascada[key], cfg = L.cascada.etiquetasTanque[i];
+        const y = visor.y + visor.h / 2 - cfg.alto / 2;
+        this.panel({ x: cfg.x, y, ancho: cfg.ancho, alto: cfg.alto }, { profundidad: 1, radio: 7 });
+        this.placasAlarmas[i]?.setPosition(cfg.x + cfg.placa / 2, y + cfg.alto / 2);
+        this.runasAlarmas[i]?.setPosition(cfg.x + cfg.placa / 2, y + cfg.alto / 2);
+        this.add.text(cfg.x + cfg.placa + 3, y + 10, `Alambique ${i + 1} · h${i + 1}`, fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
+        continue;
+      }
       const r = this.nivel.tanques === 2 ? (i === 0 ? L.etiqueta1Cascada : L.etiqueta2Cascada) : L.etiquetaSolo;
       const a = this.nivel.tanques === 2 ? (i === 0 ? L.alarma1Cascada : L.alarma2Cascada) : L.alarmaSolo;
       this.panel(r, { profundidad: 1, radio: 8 });
@@ -123,7 +164,23 @@ export class Simulacion extends EscenaBase {
       this.add.text(r.x + (a.x - r.x) + a.tamano + 9, r.y + 9, '', fuenteInterfaz(this.nivel.tanques === 2 ? 13 : 12, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5).setName(`etiqueta-tanque-${i}`);
     }
     this.refTexto = this.add.text(L.estado.x, L.estado.y, '', fuenteInterfaz(15, '#E6E8EA', { fontStyle: 'bold' }));
-    if (this.nivel.tanques === 2) {
+    if (this.esCascada) {
+      this.etiquetasValvulas = {};
+      for (const [i, clave] of ['v1', 'v2'].entries()) {
+        const pos = L.cascada.etiquetasValvula, rueda = L.cascada.ruedas[clave];
+        const y = this.cajaCascada.y + rueda.y * this.cajaCascada.h - pos.alto / 2;
+        this.panel({ x: pos.x, y, ancho: pos.ancho, alto: pos.alto }, { profundidad: 1, radio: 5 });
+        this.etiquetasValvulas[clave] = this.add.text(pos.x + 5, y + 5, '', fuenteInterfaz(11, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
+      }
+      const q = L.cascada.etiquetaQ12;
+      this.panel(q, { profundidad: 1, radio: 5 });
+      this.add.text(q.x + 5, q.y + 4, 'q12 = c1·√h1\n(llave abierta)', fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold', lineSpacing: 1 })).setDepth(5);
+    } else if (this.nivel.id === 2) {
+      const q = L.salidaConsumo.etiqueta;
+      this.panel(q, { profundidad: 1, radio: 5 });
+      this.add.text(q.x + 5, q.y + 6, 'consumo qd → caldero', fuenteInterfaz(11, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
+    }
+    if (this.nivel.tanques === 2 && !this.esCascada) {
       this.ayudaCascada = null;
       const q = L.tuberiaQ12.etiqueta;
       this.panel(q, { profundidad: 1, radio: 5 });
@@ -270,7 +327,8 @@ export class Simulacion extends EscenaBase {
     this.pausaTexto.setText(this.pausado ? (this.pausaPorManos ? 'Muestra las manos' : 'PAUSA · Enter para reanudar') : '');
     this.pausaTexto.setVisible(this.pausado);
     this.pausaPanel.setVisible(this.pausado);
-    dibujarTanques(this.render, hs, this.nivel.tanques, {
+    if (this.esCascada) dibujarLiquidosCascada(this.render, this.renderVisorOverlay, this.visoresCascada, hs, referencia, banda, Math.abs(yActual - referencia) <= banda);
+    else dibujarTanques(this.render, hs, this.nivel.tanques, {
       tanqueControlado: this.nivel.tanques === 2 ? 1 : 0,
       referencia,
       tolerancia: banda,
@@ -281,6 +339,7 @@ export class Simulacion extends EscenaBase {
       tuberias: this.renderTuberias,
       conSprites: this.conSprites,
       conSpritesValvula: this.conSpritesValvula,
+      salidaConsumo: this.nivel.id === 2,
     });
     const alturaEtiqueta = this.nivel.tanques === 2 ? 'h2' : 'h1';
     const textoRef = this.nivel.tanques === 2
@@ -298,6 +357,10 @@ export class Simulacion extends EscenaBase {
     });
     for (const valve of this.spritesValvulas || []) {
       valve.volante.setRotation((valve.clave === 'v1' ? this.actuador1.salida() : this.actuador2.salida()) * Math.PI * 1.5);
+    }
+    if (this.etiquetasValvulas) {
+      this.etiquetasValvulas.v1?.setText(`v1 ${Math.round(this.actuador1.salida() * 100)} %`);
+      this.etiquetasValvulas.v2?.setText(`v2 ${Math.round(this.actuador2.salida() * 100)} %`);
     }
     const criterio = this.nivel.criterio;
     let valorProgreso = 0;

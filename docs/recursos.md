@@ -43,7 +43,8 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
 | Recurso | Archivo | Cuadro en el juego (px) | N.º de cuadros | Uso |
 |---|---|---|---|---|
 | Equipo principal | `alambique_cuerpo_vacio.png` | 215 × 300 (alto = 3 m) | 1 | Cuerpo del alambique; el visor viene recortado en magenta para ver el líquido detrás |
-| Equipo principal | `alambique_columna_liquido.jpg` | se ajusta al visor (alto máx. 300) | 1 | Líquido verde; se recorta o escala con h(t). Opcional: también se puede dibujar con Graphics |
+| Equipo principal (nivel 3) | `alambique_columna_liquido.jpg`, parte izquierda → `alambique_cascada.png` | 510 px de alto (sin deformar) | 1 | Dos alambiques apilados en cascada, cada uno con su visor, con la válvula de entrada v1 arriba a la derecha, la de salida v2 abajo a la derecha y el tubo de unión a la izquierda. El líquido de cada visor se dibuja con Graphics según h1 y h2 |
+| Equipo principal | `alambique_columna_liquido.jpg`, parte derecha → `columna_liquido.png` | se ajusta al visor | 1 | Columna de líquido verde graduada. Opcional: el líquido se dibuja con Graphics |
 | Actuadores | `valvula_cuerpo_estatico.jpg` | 80 × 80 | 1 | Cuerpo de la válvula y tramo de tubería, sin volante |
 | Actuadores | `valvula_volante_aislado.png` | 50 × 50 | 1 | Volante de frente; el juego lo rota según la apertura v₁ o v₂ |
 | Perturbaciones | — | — | — | No aplica en el nivel 1 (sin perturbaciones). El caldero del nivel 2 es un extra opcional |
@@ -59,4 +60,12 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
 - **Tamaños originales:** la columna "tamaño original" de Gemini no coincide con los archivos reales (por ejemplo, los tres recortes de la HMI miden 493 × 251, 416 × 266 y 483 × 559 px). No importa, porque el script reescala al tamaño en el juego.
 - **Alambique:** se fijó en 300 px de alto para respetar la escala 1 m = 100 px (altura máxima de 3 m).
 - **Formato JPG:** `alambique_columna_liquido.jpg` y `valvula_cuerpo_estatico.jpg` se descargaron de Gemini en JPG; el resto son PNG. Como el JPG comprime el color, el magenta del fondo queda con bordes irregulares, por eso el script debe quitarlo con tolerancia y guardar el resultado en PNG con transparencia.
+- **Imagen de la cascada:** `alambique_columna_liquido.jpg` contiene dos piezas sobre magenta, y se recortan por separado. Medidas en fracciones del ancho y del alto de la imagen:
+  - **Cascada:** x 0,063–0,433; y 0,115–0,972.
+  - **Visor superior:** x 0,213–0,227; y 0,253–0,447.
+  - **Visor inferior:** x 0,213–0,227; y 0,661–0,853.
+  - **Columna de líquido:** x 0,693–0,773; y 0,087–0,913.
+
+  La pareja eligió los alambiques apilados para el nivel 3 porque muestran la cascada por gravedad: el alambique 1 descarga en el 2. El dibujo trae una llave manual en el tubo de unión; en el modelo, esa llave siempre está abierta (q12 = c1·√h1).
+- **Baldosas:** no se usan en la simulación. Las pruebas mostraron que los bloques no combinan con el fondo, que ya trae piso; los alambiques se apoyan en ese piso con sombra y una base baja de hierro dibujada con Graphics.
 - **Panel final:** Gemini proponía 1280 × 720, pero el panel es vertical (proporción ≈ 0,86); estirarlo a 16:9 lo deformaría. Se usa 588 × 680, centrado sobre el fondo.

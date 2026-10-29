@@ -25,11 +25,17 @@ function linea(g, x1, y1, x2, y2, width = 7, color = 0x4a5056) {
   g.lineStyle(width, color, 1).lineBetween(x1, y1, x2, y2);
 }
 
-export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, overlay = null, tuberias = null, conSprites = false, conSpritesValvula = false } = {}) {
+export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, overlay = null, tuberias = null, conSprites = false, conSpritesValvula = false, salidaConsumo = false } = {}) {
   g.clear(); overlay?.clear();
   const cajas = obtenerCajasTanques(cantidad), capaMarcas = overlay || g, tubos = tuberias || g;
   if (tuberias) tuberias.clear();
-  if (cantidad === 1) dibujarEntrada(tubos, cajas[0], L.valvula1Solo, conSpritesValvula);
+  if (cantidad === 1) {
+    dibujarEntrada(tubos, cajas[0], L.valvula1Solo, conSpritesValvula);
+    if (salidaConsumo) {
+      const caja = cajas[0], y = caja.y + caja.h * L.salidaConsumo.altoRelativo;
+      linea(tubos, caja.x + caja.w - 3, y, caja.x + caja.w + L.salidaConsumo.largo, y, 6);
+    }
+  }
   else {
     dibujarEntrada(tubos, cajas[0], L.valvula1Cascada, conSpritesValvula);
     // q12 sale del costado inferior, rodea el pedestal y entra desde arriba en el segundo tanque.
@@ -77,6 +83,46 @@ export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, ref
     }
   });
   return cajas;
+}
+
+export function convertirVisoresCascada(caja, metadatos) {
+  const visores = metadatos?.visores || {
+    superior: { x: .404, y: .160, ancho: .038, alto: .227 },
+    inferior: { x: .404, y: .638, ancho: .038, alto: .225 },
+  };
+  return Object.fromEntries(Object.entries(visores).map(([nombre, v]) => [nombre, {
+    x: caja.x + v.x * caja.w,
+    y: caja.y + v.y * caja.h,
+    w: v.ancho * caja.w,
+    h: v.alto * caja.h,
+  }]));
+}
+
+export function dibujarLiquidosCascada(liquido, marcas, visores, alturas, referencia, tolerancia, dentroBanda) {
+  liquido.clear(); marcas.clear();
+  if (!visores?.superior || !visores?.inferior) return;
+  const nivel = (visor, h) => visor.y + visor.h * (1 - limitar(h) / 3);
+  for (const [clave, indice] of [['superior', 0], ['inferior', 1]]) {
+    const v = visores[clave], y = nivel(v, alturas[indice] ?? 0);
+    liquido.fillStyle(indice === 1 && dentroBanda ? 0x00e676 : 0x2ecc71, .98)
+      .fillRect(v.x + 1, y, Math.max(1, v.w - 2), Math.max(0, v.y + v.h - y));
+    for (const [h, color] of [[2.4, 0xffd700], [2.8, 0xff1744]]) {
+      const yy = nivel(v, h);
+      marcas.lineStyle(2, color, 1).lineBetween(v.x + v.w, yy, v.x + v.w + 8, yy);
+    }
+    for (let metro = 0; metro <= 3; metro++) {
+      const yy = nivel(v, metro);
+      marcas.lineStyle(1, 0xe6e8ea, .9).lineBetween(v.x + v.w, yy, v.x + v.w + 6, yy);
+    }
+    if (clave === 'inferior' && Number.isFinite(referencia)) {
+      const superior = nivel(v, referencia + tolerancia), inferior = nivel(v, referencia - tolerancia);
+      marcas.fillStyle(0xb7bdc2, .32).fillRect(v.x, superior, v.w, inferior - superior);
+      marcas.lineStyle(2, 0xe6e8ea, .95).lineBetween(v.x - 1, superior, v.x + v.w + 1, superior);
+      marcas.lineStyle(2, 0xe6e8ea, .95).lineBetween(v.x - 1, inferior, v.x + v.w + 1, inferior);
+      const yr = nivel(v, referencia);
+      marcas.lineStyle(2, 0xc9a227, 1).lineBetween(v.x - 1, yr, v.x + v.w + 1, yr);
+    }
+  }
 }
 
 function dibujarEntrada(g, caja, cfg, conSpritesValvula) {
