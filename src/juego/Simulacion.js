@@ -60,11 +60,11 @@ export class Simulacion extends EscenaBase {
     this.refTexto = this.add.text(660, 132, '', { fontSize: '15px', color: '#252b2d' });
     if (this.nivel.tanques === 2) {
       const ayuda = posicionAyudaCascada();
-      this.ayudaCascada = this.add.text(ayuda.x, ayuda.y, 'Mano derecha: válvula de entrada v1 · Pellizco izquierdo abierto = v2 abierta (sale líquido del alambique 2)', { fontSize: '12px', color: '#414b4e' });
+      this.ayudaCascada = this.add.text(ayuda.x, ayuda.y, 'Mano derecha: válvula de entrada v1\nPellizco izquierdo abierto = v2 abierta (sale líquido del alambique 2)', { fontSize: '12px', color: '#414b4e', lineSpacing: 2 });
       this.add.text(247, 376, 'q₁₂ = c₁√h₁', { fontSize: '11px', color: '#414b4e' });
       this.add.text(430, 567, 'v2', { fontSize: '11px', color: '#414b4e' });
     }
-    this.alarmText = this.add.text(36, 615, '', { fontSize: '18px', color: '#252b2d', fontStyle: 'bold' });
+    this.alarmText = this.add.text(36, this.nivel.tanques === 2 ? 635 : 615, '', { fontSize: '18px', color: '#252b2d', fontStyle: 'bold' });
     this.criterioTexto = this.add.text(660, 615, '', { fontSize: '15px', color: '#252b2d', fontStyle: 'bold' });
     this.pausaTexto = this.add.text(640, 350, '', { fontSize: '28px', color: '#7c332c', backgroundColor: '#ffffffcc', padding: { x: 20, y: 12 } }).setOrigin(.5).setDepth(10);
     this.panelDepuracion = crearPanelDepuracion(this, { intercambiar: contextoJuego.camara?.intercambiar ?? (leerPreferencia('alambique.intercambiarEtiquetas', 'false') === 'true'), onIntercambiar: (value) => { guardarPreferencia('alambique.intercambiarEtiquetas', String(value)); if (contextoJuego.camara) contextoJuego.camara.intercambiar = value; } });
@@ -217,13 +217,13 @@ export class Simulacion extends EscenaBase {
     this.ayuda.setText(`${sinManos ? 'Muestra las manos · ' : ''}${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`} · ${this.gestor.fuente} · P linealización · D depuración · F terminar`);
     const seriesAltura = [{ clave: 'x', indice: 0, nombre: 'h1', color: 0x325f68 }, ...(this.nivel.tanques === 2 ? [{ clave: 'x', indice: 1, nombre: 'h2', color: 0x4b7a56 }] : [])];
     const opcionesNiveles = { x: 660, y: 164, ancho: 570, alto: 225, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda de tolerancia', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0x75643d }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true };
-    const opcionesValvulas = { x: 660, y: 405, ancho: 570, alto: 165, muestras: this.muestrasVista, min: 0, max: 1, unidad: 'apertura', titulo: 'Válvulas v1 / v2', ejeTiempo: true, series: [{ clave: 'u', nombre: 'v1', color: 0x425e67 }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x875a3e }] : [])] };
+    const opcionesValvulas = { x: 660, y: 405, ancho: 570, alto: 150, muestras: this.muestrasVista, min: 0, max: 1, unidad: 'apertura', titulo: 'Válvulas v1 / v2', ejeTiempo: true, series: [{ clave: 'u', nombre: 'v1', color: 0x425e67 }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x875a3e }] : [])] };
     if (!this.graf) this.graf = dibujarTendencia(this, opcionesNiveles); else this.graf.actualizar(opcionesNiveles);
     if (!this.grafValvulas) this.grafValvulas = dibujarTendencia(this, opcionesValvulas); else this.grafValvulas.actualizar(opcionesValvulas);
-    if (!this.barras[0]) this.barras[0] = dibujarBarraActuador(this, 680, 584, 'Válvula entrada v1', this.actuador1.salida(), hs[0], 'm');
+    if (!this.barras[0]) this.barras[0] = dibujarBarraActuador(this, 680, 584, 'v1 entrada', this.actuador1.salida(), hs[0], 'm', 'h1');
     else this.barras[0].actualizar(this.actuador1.salida(), hs[0]);
     if (this.nivel.tanques === 2) {
-      if (!this.barras[1]) this.barras[1] = dibujarBarraActuador(this, 950, 584, 'Válvula salida v2', this.actuador2.salida(), hs[1], 'm');
+      if (!this.barras[1]) this.barras[1] = dibujarBarraActuador(this, 970, 584, 'v2 salida', this.actuador2.salida(), hs[1], 'm', 'h2');
       else this.barras[1].actualizar(this.actuador2.salida(), hs[1]);
     }
   }

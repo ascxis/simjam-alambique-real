@@ -38,7 +38,12 @@ export function dibujarTanques(g, alturas, cantidad, {
     if (controlado && Number.isFinite(referencia)) {
       const inferior = Math.max(0, referencia - tolerancia), superior = Math.min(3, referencia + tolerancia);
       const bandaY = yNivel(superior, caja);
-      g.fillStyle(0x00e676, .28).fillRect(interiorX + 3, bandaY, interiorW - 6, yNivel(inferior, caja) - bandaY);
+      const bandaInferiorY = yNivel(inferior, caja);
+      g.fillStyle(0x00e676, .28).fillRect(interiorX + 3, bandaY, interiorW - 6, bandaInferiorY - bandaY);
+      for (const yy of [bandaY, bandaInferiorY]) {
+        g.lineStyle(3, 0x1a1b1d, .9).lineBetween(interiorX + 3, yy, interiorX + interiorW - 3, yy);
+        g.lineStyle(1, 0xffffff, 1).lineBetween(interiorX + 3, yy, interiorX + interiorW - 3, yy);
+      }
     }
 
     // Aros superior e inferior del alambique.
