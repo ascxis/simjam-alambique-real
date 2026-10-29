@@ -6,7 +6,7 @@ export class EscenaBase extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(PAL.fondo);
     if (this.textures.exists('fondo-laboratorio')) {
       this.fondoParallax = this.add.tileSprite(640, 360, 1280, 720, 'fondo-laboratorio')
-        .setAlpha(.18).setScrollFactor(.12).setDepth(-1000);
+        .setAlpha(.10).setScrollFactor(.12).setDepth(-1000);
     }
     if (this.textures.exists('baldosas')) {
       this.pisoBaldosas = this.add.tileSprite(640, 705, 1280, 30, 'baldosas', 0)
