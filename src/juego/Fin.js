@@ -78,7 +78,9 @@ export class Fin extends EscenaBase {
 
   renderFin(data) {
     this.crearFondo('Lo que pasó en el modelo');
-    if (this.textures.exists('panel-final')) this.add.image(640, 405, 'panel-final').setDisplaySize(294, 340).setAlpha(.12).setDepth(-998);
+    if (this.textures.exists('panel-final')) this.add.image(340, 360, 'panel-final').setDisplaySize(588, 680).setAlpha(.42).setDepth(-998);
+    this.add.rectangle(640, 132, 1220, 92, 0xe2e3e3, .76).setDepth(-997);
+    this.add.rectangle(640, 548, 1220, 220, 0xe2e3e3, .80).setDepth(-997);
     const nivel = data.nivel || { nombre: 'Nivel', tanques: 1, referencia: 1 };
     const muestras = data.muestras || [], resultado = data.resultado || evaluarNivel(nivel, muestras, data.alarmas || []);
     const metricas = metricasTanque(muestras, nivel);
@@ -95,7 +97,7 @@ export class Fin extends EscenaBase {
     this.add.text(45, 545, 'El caudal de salida depende de √h, por eso el tanque es no lineal.\nAlrededor de una altura de operación, la ecuación se aproxima por un modelo lineal con τ y K locales.\nLa válvula limita la rapidez del caudal y la perturbación qd cambia el equilibrio.\nLas tendencias y alarmas permiten comparar la respuesta con la referencia y su banda.', { fontSize: '14px', color: '#414b4e', lineSpacing: 5 });
     this.boton(45, 637, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`));
     this.boton(260, 637, 'Volver al menú', () => this.scene.start('Menu'));
-    this.add.text(510, 645, `CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp · τ local ${tau?.teorico.toFixed(2) ?? 'n/d'} s`, { fontSize: '12px', color: '#424c4f' });
+    this.add.text(510, 647, `CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp · τ local ${tau?.teorico.toFixed(2) ?? 'n/d'} s`, { fontSize: '13px', color: '#424c4f', padding: { left: 2, right: 2, top: 1, bottom: 9 }, lineSpacing: 4 });
   }
 
   mostrarFinFallback(data) {
