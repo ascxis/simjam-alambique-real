@@ -66,6 +66,11 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
   - **Visor superior:** x 0,213–0,227; y 0,253–0,447.
   - **Visor inferior:** x 0,213–0,227; y 0,661–0,853.
   - **Columna de líquido:** x 0,693–0,773; y 0,087–0,913.
+  - **Cuerpo de los alambiques:** x 0,139–0,308; base del alambique 2 en y 0,911.
+  - **Extremo del tubo de salida:** x 0,413–0,433; y 0,972.
+  - **Tubo de vidrio de la unión q12:** x 0,089–0,109; y 0,510–0,650.
+
+  Todas las fracciones están medidas sobre la imagen original de 2576 × 1438 px.
 
   La pareja eligió los alambiques apilados para el nivel 3 porque muestran la cascada por gravedad: el alambique 1 descarga en el 2. El dibujo trae una llave manual en el tubo de unión; en el modelo, esa llave siempre está abierta (q12 = c1·√h1).
 - **Baldosas:** no se usan en la simulación. Las pruebas mostraron que los bloques no combinan con el fondo, que ya trae piso; los alambiques se apoyan en ese piso con sombra y una base baja de hierro dibujada con Graphics.
