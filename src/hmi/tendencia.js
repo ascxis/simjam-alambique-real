@@ -19,7 +19,7 @@ export function dibujarTendencia(scene, opcionesIniciales) {
   const ejesX = Array.from({ length: 5 }, () => scene.add.text(0, 0, '', fuenteInterfaz(10)).setOrigin(.5, 0));
   const unidadTiempo = scene.add.text(0, 0, 't (s)', fuenteInterfaz(10)).setOrigin(1, 0);
   const titulo = scene.add.text(0, 0, '', fuenteInterfaz(12, '#F2E6C9', { fontStyle: 'bold' }));
-  const actual = scene.add.text(0, 0, '', fuenteInterfaz(11)).setOrigin(1, 0);
+  const actual = scene.add.text(0, 0, '', fuenteInterfaz(11)).setOrigin(0, 0);
   const etiquetas = (opciones.series || [{ nombre: '' }]).map(() => scene.add.text(0, 0, '', fuenteInterfaz(10)));
   const muestrasLeyenda = (opciones.series || [{ nombre: '' }]).map(() => scene.add.graphics());
   const etiquetaEjeY = scene.add.text(0, 0, '', fuenteInterfaz(10)).setOrigin(.5).setRotation(-Math.PI / 2);
@@ -87,8 +87,8 @@ export function dibujarTendencia(scene, opcionesIniciales) {
       }
       unidadTiempo.setPosition(plotX + plotW, y + alto - 14).setVisible(true);
     } else { ejesX.forEach((t) => t.setVisible(false)); unidadTiempo.setVisible(false); }
-    titulo.setPosition(plotX + 4, y + 3).setText(tituloTexto);
-    actual.setPosition(x + ancho - 8, y + 3).setText(puntos.length ? `${puntos.at(-1).valor.toFixed(2)} ${unidad}` : '');
+    actual.setText(puntos.length ? `${puntos.at(-1).valor.toFixed(2)} ${unidad}` : '').setPosition(x + 8, y + 3);
+    titulo.setPosition(x + 8 + actual.width + 12, y + 3).setText(tituloTexto);
     etiquetaEjeY.setText(tituloEjeY).setPosition(x + 8, y + alto / 2).setVisible(Boolean(tituloEjeY));
   }
 
