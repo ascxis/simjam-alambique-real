@@ -1,23 +1,30 @@
-const PAL = { fondo: 0xe7e8e8, tinta: '#252b2d' };
+import { LAYOUT } from '../hmi/layout.js';
+import { crearBoton, dibujarPanel } from '../hmi/estilo.js';
 
 export class EscenaBase extends Phaser.Scene {
   constructor(key) { super(key); }
-  crearFondo(titulo) {
-    this.cameras.main.setBackgroundColor(PAL.fondo);
+
+  crearFondo() {
+    const { ancho, alto } = LAYOUT.canvas;
+    this.cameras.main.setBackgroundColor('#1C2026');
     if (this.textures.exists('fondo-laboratorio')) {
-      this.fondoParallax = this.add.tileSprite(640, 360, 1280, 720, 'fondo-laboratorio')
-        .setAlpha(.10).setScrollFactor(.12).setDepth(-1000);
+      this.fondoArte = this.add.image(ancho / 2, alto / 2, 'fondo-laboratorio')
+        .setDisplaySize(ancho, alto).setDepth(-1000);
     }
-    if (this.textures.exists('baldosas')) {
-      this.pisoBaldosas = this.add.tileSprite(640, 705, 1280, 30, 'baldosas', 0)
-        .setTileScale(.5).setAlpha(.45).setScrollFactor(.3).setDepth(-999);
+    this.vineta = this.add.graphics().setDepth(-990);
+    const { viñeta } = LAYOUT.fondo;
+    for (const banda of viñeta.slice(0, 4)) {
+      const x = banda.ancho;
+      this.vineta.fillStyle(0x050608, banda.alpha).fillRect(0, 0, x, alto);
+      this.vineta.fillRect(ancho - x, 0, x, alto);
     }
-    this.add.text(36, 26, 'ALAMBIQUE REAL  /  EL ARTE DE LA ALQUIMIA', { fontSize: '17px', color: '#515b5e' });
-    this.add.text(36, 62, titulo, { fontSize: '30px', color: PAL.tinta, fontStyle: 'bold' });
+    for (const banda of viñeta.slice(4)) {
+      const y = banda.alto;
+      this.vineta.fillStyle(0x050608, banda.alpha).fillRect(0, 0, ancho, y);
+      this.vineta.fillRect(0, alto - y, ancho, y);
+    }
   }
-  boton(x, y, texto, callback) {
-    const b = this.add.text(x, y, texto, { fontSize: '18px', color: '#f7f8f8', backgroundColor: '#52666d', padding: { x: 14, y: 9 } }).setInteractive({ useHandCursor: true });
-    b.on('pointerdown', callback);
-    return b;
-  }
+
+  panel(rect, opciones) { return dibujarPanel(this, rect, opciones); }
+  boton(rect, texto, callback, opciones) { return crearBoton(this, rect, texto, callback, opciones); }
 }

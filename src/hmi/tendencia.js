@@ -13,12 +13,12 @@ export function dibujarTendencia(scene, opcionesIniciales) {
   let opciones = { ...opcionesIniciales };
   const { x, y, ancho, alto } = opciones;
   const g = scene.add.graphics();
-  const ejesY = Array.from({ length: 5 }, () => scene.add.text(0, 0, '', { fontSize: '11px', color: '#343638' }));
-  const ejesX = Array.from({ length: 5 }, () => scene.add.text(0, 0, '', { fontSize: '11px', color: '#343638' }).setOrigin(.5, 0));
-  const unidadTiempo = scene.add.text(0, 0, 't (s)', { fontSize: '11px', color: '#343638' }).setOrigin(1, 0);
-  const titulo = scene.add.text(0, 0, '', { fontSize: '13px', color: '#242829', fontStyle: 'bold' });
-  const actual = scene.add.text(0, 0, '', { fontSize: '12px', color: '#242829' }).setOrigin(1, 0);
-  const etiquetas = (opciones.series || [{ nombre: '' }]).map(() => scene.add.text(0, 0, '', { fontSize: '11px', color: '#343638' }));
+  const ejesY = Array.from({ length: 5 }, () => scene.add.text(0, 0, '', fuenteInterfaz(10)));
+  const ejesX = Array.from({ length: 5 }, () => scene.add.text(0, 0, '', fuenteInterfaz(10)).setOrigin(.5, 0));
+  const unidadTiempo = scene.add.text(0, 0, 't (s)', fuenteInterfaz(10)).setOrigin(1, 0);
+  const titulo = scene.add.text(0, 0, '', fuenteInterfaz(12, '#F2E6C9', { fontStyle: 'bold' }));
+  const actual = scene.add.text(0, 0, '', fuenteInterfaz(11)).setOrigin(1, 0);
+  const etiquetas = (opciones.series || [{ nombre: '' }]).map(() => scene.add.text(0, 0, '', fuenteInterfaz(10)));
 
   function actualizar(nuevas = {}) {
     opciones = { ...opciones, ...nuevas };
@@ -36,7 +36,7 @@ export function dibujarTendencia(scene, opcionesIniciales) {
     const yMap = (valor) => plotY + plotH * (max - valor) / (max - min);
     const pasoY = autoEscala ? escalaBonita(lineas.flatMap((l) => l.puntos.map((p) => p.valor))).paso : (max - min) / 4;
     const decimales = pasoY < 1 ? Math.min(3, Math.ceil(-Math.log10(pasoY))) : 0;
-    g.clear(); g.fillStyle(0xe2e3e3).fillRect(x, y, ancho, alto); g.lineStyle(1, 0x777777).strokeRect(x, y, ancho, alto); g.lineStyle(1, 0x999999);
+    g.clear(); g.fillStyle(0x3a3d40, 1).fillRoundedRect(x, y, ancho, alto, 7); g.lineStyle(1, 0x687076, 1).strokeRoundedRect(x, y, ancho, alto, 7); g.lineStyle(1, 0x62676b, .65);
     for (let i = 0; i <= 4; i++) {
       const valor = max - (max - min) * i / 4, yy = plotY + plotH * i / 4;
       g.lineBetween(plotX, yy, plotX + plotW, yy);
@@ -45,7 +45,7 @@ export function dibujarTendencia(scene, opcionesIniciales) {
     if (referencia !== null) {
       const top = yMap(Math.min(max, referencia + banda)), bot = yMap(Math.max(min, referencia - banda));
       g.fillStyle(0x87959a, .22).fillRect(plotX, top, plotW, bot - top);
-      g.lineStyle(1, 0x4c5c62, .8).lineBetween(plotX, yMap(referencia), plotX + plotW, yMap(referencia));
+      g.lineStyle(1, 0xc9a227, .9).lineBetween(plotX, yMap(referencia), plotX + plotW, yMap(referencia));
     }
     const finalMuestra = puntos.at(-1)?.t ?? 0, inicioT = tiempoCompleto ? 0 : Math.max(0, finalMuestra - 30), duracion = Math.max(finalMuestra - inicioT, 1e-9);
     const mapX = (t) => plotX + Math.max(0, Math.min(1, (t - inicioT) / duracion)) * plotW;
@@ -53,7 +53,7 @@ export function dibujarTendencia(scene, opcionesIniciales) {
       for (let i = 1; i < serie.length; i++) {
         const a = serie[i - 1], b = serie[i];
         const puntosBanda = [{ x: mapX(a.t), y: yMap(Number(a[bandaInferiorClave])) }, { x: mapX(b.t), y: yMap(Number(b[bandaInferiorClave])) }, { x: mapX(b.t), y: yMap(Number(b[bandaSuperiorClave])) }, { x: mapX(a.t), y: yMap(Number(a[bandaSuperiorClave])) }];
-        if (puntosBanda.every((p) => Number.isFinite(p.y))) g.fillStyle(0x71858b, .18).fillPoints(puntosBanda, true);
+        if (puntosBanda.every((p) => Number.isFinite(p.y))) g.fillStyle(0xb7bdc2, .18).fillPoints(puntosBanda, true);
       }
     }
     lineas.forEach((linea, index) => {
@@ -79,3 +79,4 @@ export function dibujarTendencia(scene, opcionesIniciales) {
   actualizar();
   return { actualizar, destruir: () => { g.destroy(); ejesY.forEach((t) => t.destroy()); ejesX.forEach((t) => t.destroy()); unidadTiempo.destroy(); titulo.destroy(); actual.destroy(); etiquetas.forEach((t) => t.destroy()); } };
 }
+import { fuenteInterfaz } from './estilo.js';
