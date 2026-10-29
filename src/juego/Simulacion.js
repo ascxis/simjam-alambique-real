@@ -10,8 +10,8 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
-import { dibujarTanques, posicionEscalaTanque } from '../hmi/tanques.js';
-import { MAPA_CONTROL, leerSenal } from './mapaControl.js';
+import { dibujarTanques, posicionEscalaTanque, posicionAyudaCascada } from '../hmi/tanques.js';
+import { MAPA_CONTROL, leerSenal, leerSenalSiPresente } from './mapaControl.js';
 
 export class Simulacion extends EscenaBase {
   constructor() { super('Simulacion'); }
@@ -51,13 +51,19 @@ export class Simulacion extends EscenaBase {
     this.etiquetasEscala = [];
     for (let tanque = 0; tanque < this.nivel.tanques; tanque++) {
       for (let metro = 0; metro <= 3; metro++) {
-        const p = posicionEscalaTanque(tanque, metro);
+        const p = posicionEscalaTanque(tanque, metro, this.nivel.tanques);
         this.etiquetasEscala.push(this.add.text(p.x, p.y, String(metro), { fontSize: '12px', color: '#4c5a5e' }).setOrigin(1, 0));
       }
-      const p = posicionEscalaTanque(tanque, 3);
+      const p = posicionEscalaTanque(tanque, 3, this.nivel.tanques);
       this.etiquetasEscala.push(this.add.text(p.x - 2, p.y - 18, 'm', { fontSize: '10px', color: '#4c5a5e' }).setOrigin(1, 0));
     }
     this.refTexto = this.add.text(660, 132, '', { fontSize: '15px', color: '#252b2d' });
+    if (this.nivel.tanques === 2) {
+      const ayuda = posicionAyudaCascada();
+      this.ayudaCascada = this.add.text(ayuda.x, ayuda.y, 'Mano derecha: válvula de entrada v1 · Pellizco izquierdo abierto = v2 abierta (sale líquido del alambique 2)', { fontSize: '12px', color: '#414b4e' });
+      this.add.text(247, 376, 'q₁₂ = c₁√h₁', { fontSize: '11px', color: '#414b4e' });
+      this.add.text(430, 567, 'v2', { fontSize: '11px', color: '#414b4e' });
+    }
     this.alarmText = this.add.text(36, 615, '', { fontSize: '18px', color: '#252b2d', fontStyle: 'bold' });
     this.criterioTexto = this.add.text(660, 615, '', { fontSize: '15px', color: '#252b2d', fontStyle: 'bold' });
     this.pausaTexto = this.add.text(640, 350, '', { fontSize: '28px', color: '#7c332c', backgroundColor: '#ffffffcc', padding: { x: 20, y: 12 } }).setOrigin(.5).setDepth(10);
@@ -132,9 +138,12 @@ export class Simulacion extends EscenaBase {
       else { this.noManosDesde ??= performance.now(); if (performance.now() - this.noManosDesde > 3000) { this.pausado = true; this.pausaPorManos = true; } }
     }
     if (!this.pausado) {
-      const mando1 = leerSenal(c, MAPA_CONTROL.v1, null, this.actuador1.salida());
-      const crudo = leerSenal(c, MAPA_CONTROL.v1, 'u_crudo', mando1);
-      const mando2 = this.nivel.tanques === 2 ? leerSenal(c, MAPA_CONTROL.v2, null, this.actuador2.salida()) : 1;
+      const conservaAusente = this.gestor.fuente === 'camara';
+      const mando1 = leerSenalSiPresente(c, MAPA_CONTROL.v1, null, this.actuador1.salida(), conservaAusente);
+      const crudo = leerSenalSiPresente(c, MAPA_CONTROL.v1, 'u_crudo', mando1, conservaAusente);
+      const mando2 = this.nivel.tanques === 2
+        ? leerSenalSiPresente(c, MAPA_CONTROL.v2, null, this.actuador2.salida(), conservaAusente)
+        : 1;
       let restante = dt, v1 = this.actuador1.salida(), v2 = this.actuador2.salida();
       while (restante > 1e-9) {
         const paso = Math.min(restante, .1);
@@ -189,7 +198,7 @@ export class Simulacion extends EscenaBase {
       referencia,
       tolerancia: banda,
       dentroBanda: Math.abs(yActual - referencia) <= banda,
-      alarmas: this.ultimaAlarma,
+      aperturaV2: this.actuador2.salida(),
     });
     this.refTexto.setText(`h${this.nivel.tanques === 2 ? '2' : '1'} ${yActual.toFixed(2)} m · referencia ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(3)} m³/s`);
     const alarmasActivas = hs.map((h, i) => h >= 2.8 ? `HH${i + 1}` : h >= 2.4 ? `H${i + 1}` : '').filter(Boolean);

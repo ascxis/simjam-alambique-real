@@ -5,6 +5,8 @@ import { Actuador } from '../src/modelo/actuador.js';
 import { GestorEntrada } from '../src/entrada/gestorEntrada.js';
 import { Registro } from '../src/modelo/registro.js';
 import { crearSistemaTanques } from '../src/modelo/tanques.js';
+import { EntradaGestos } from '../src/entrada/gestos.js';
+import { MAPA_CONTROL, leerSenalSiPresente } from '../src/juego/mapaControl.js';
 import { readFileSync } from 'node:fs';
 
 const simular = (integrador, f, x0, h, total) => { let x = x0, t = 0; while (t < total - h / 2) { x = integrador(f, x, 1, t, h); t += h; } return x[0]; };
@@ -40,6 +42,35 @@ test('la fuente escalón entrega controles completos y cambia der.altura a los 2
   const despues = entrada.actualizar(1);
   assert.equal(despues.der.altura, 1);
   assert.equal(despues.der.u_crudo.altura, 1);
+});
+test('la cámara conserva cada consigna mientras su mano está fuera de zona', () => {
+  const controles = {
+    der: { presente: false, altura: 0 },
+    izq: { presente: false, pellizco: 0 },
+  };
+  assert.equal(leerSenalSiPresente(controles, MAPA_CONTROL.v1, null, 0.548, true), 0.548);
+  assert.equal(leerSenalSiPresente(controles, MAPA_CONTROL.v2, null, 1, true), 1);
+  assert.equal(leerSenalSiPresente(controles, MAPA_CONTROL.v2, null, 1, false), 0);
+  controles.izq.presente = true;
+  controles.izq.pellizco = 0.73;
+  assert.equal(leerSenalSiPresente(controles, MAPA_CONTROL.v2, null, 1, true), 0.73);
+});
+test('rangos guardados inválidos de altura y pellizco se ignoran con aviso', () => {
+  const gestos = new EntradaGestos();
+  gestos.calibracion = { der: { altura: { min: 0.4, max: 0.4 }, pellizco: { min: 0.1, max: 0.14 } } };
+  const puntos = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
+  puntos[0] = { x: 0.4, y: 0.6 };
+  const avisos = [];
+  const warnOriginal = console.warn;
+  console.warn = (mensaje) => avisos.push(mensaje);
+  try {
+    const controles = gestos.procesar({ manos: [{ puntos, etiqueta: 'der' }], tiempo: 1000 });
+    assert.equal(controles.der.presente, true);
+    assert.ok(Math.abs(controles.der.u_crudo.altura - 0.475) < 1e-12);
+    assert.equal(controles.der.u_crudo.altura, controles.der.medidaCruda.altura);
+    assert.equal(controles.der.u_crudo.pellizco, controles.der.medidaCruda.pellizco);
+  } finally { console.warn = warnOriginal; }
+  assert.equal(avisos.length, 2);
 });
 test('el registro exporta CSV con coma, punto decimal y encabezados exactos', () => {
   const registro = new Registro({ frecuencia: 30, encabezados: ['t', 'u_crudo', 'u', 'x1', 'y'] });
