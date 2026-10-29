@@ -16,3 +16,9 @@ export function leerSenal(controles, mapeo, campo = null, defecto = 0) {
   const valor = origen?.[mapeo.senal];
   return Number.isFinite(valor) ? valor : defecto;
 }
+
+export function leerSenalSiPresente(controles, mapeo, campo, defecto, conservarAusente = false) {
+  const mano = controles?.[mapeo.mano];
+  if (conservarAusente && !mano?.presente) return defecto;
+  return leerSenal(controles, mapeo, campo, defecto);
+}

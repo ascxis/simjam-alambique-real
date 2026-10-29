@@ -41,6 +41,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 34 | 5.7 | Codex | Error "hs is not defined" al pulsar D | D funciona; F falla después de los 30 s |
 | 35 | 5.7 | Codex | Reinicio del estado de la partida y diagnóstico de F | Funcionó |
 | 36 | 5.7 | Codex | Banda de tolerancia en el alambique y avance del criterio | Funcionó |
+| 37 | 5.7 | Codex | Prueba del modelo de tanques contra Vensim en los 20 s | Funcionó |
 
 ---
 
@@ -689,6 +690,23 @@ No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, ven
 ```
 
 - **Resultado:** el alambique muestra la banda de tolerancia, la referencia y las marcas H y HH, junto con el contador "En banda". El nivel 1 se supera con el teclado y con la cámara. Si h1 sale de la banda, el contador vuelve a 0, como pide el criterio de docs/niveles.md (30 s seguidos en ±10 %).
+
+---
+
+## 37. Prueba del modelo de tanques contra Vensim en los 20 s (5.7)
+
+```
+En test/modelo.test.js, la prueba "el modelo de tanque coincide con el escalón Vensim en t=2 s" busca la fila con punto y coma ('2;'), pero docs/vensim_escalon.csv usa comas (encabezado t,h1). Además solo compara t = 2 s, cuando la válvula está cerrada.
+Reemplázala por una prueba que:
+1. Lea docs/vensim_escalon.csv aceptando coma o punto y coma como separador.
+2. Simule con crearSistemaTanques({ tanques: 1, estadoInicial: [0.5] }) y avanzar(u, 1/120) durante 20 s, con u = [0, 1, 0] para t < 2 s y u = [1, 1, 0] desde t = 2 s (igual que v1 = STEP(1, 2) en Vensim, sin pasar por el Actuador).
+3. Compare h1 con Vensim en todos los instantes comunes (múltiplos de 0.05 s) y exija un error máximo menor que 1e-3 m. Muestre en la consola el error máximo y h1(20 s) del modelo y de Vensim.
+No cambies el modelo ni otros archivos. No modifiques docs/, vensim/ ni PROMPTS.md. No controles el computador ni el navegador. Ejecuta npm test y confirma que todas las pruebas pasan.
+```
+
+- **Motivo:** la prueba que agregó Codex (bloque común de la 5.7) pasaba, pero solo comparaba h1 en t = 2 s, cuando el tanque se vacía con la válvula cerrada. La pareja comprobó aparte que el modelo del juego (RK4, h = 1/120 s) reproduce todo el escalón de Vensim con un error máximo de 0,000005 m y h1(20 s) = 2,7514 m en ambos.
+- **Nota:** el prompt dice que el CSV usa comas, pero el archivo del proyecto usa punto y coma (la prueba original pasaba). No afecta el resultado, porque el prompt pide aceptar los dos separadores.
+- **Resultado:** `npm test` aprueba las 6 pruebas. Tanque a 20 s: error máximo = 0,0000051 m (5,08·10⁻⁶ m); h1(20 s) = 2,751405 m en el modelo y 2,7514 m en Vensim. Pruebas del integrador: error de RK4 de 3,5·10⁻¹⁰ en primer orden (Euler: 4,5·10⁻³) y de 1,3·10⁻⁸ en segundo orden.
 
 ---
 

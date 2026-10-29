@@ -43,8 +43,8 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
 | Recurso | Archivo | Cuadro en el juego (px) | N.º de cuadros | Uso |
 |---|---|---|---|---|
 | Equipo principal | `alambique_cuerpo_vacio.png` | 215 × 300 (alto = 3 m) | 1 | Cuerpo del alambique; el visor viene recortado en magenta para ver el líquido detrás |
-| Equipo principal | `alambique_columna_liquido.png` | se ajusta al visor (alto máx. 300) | 1 | Líquido verde; se recorta o escala con h(t). Opcional: también se puede dibujar con Graphics |
-| Actuadores | `valvula_cuerpo_estatico.png` | 80 × 80 | 1 | Cuerpo de la válvula y tramo de tubería, sin volante |
+| Equipo principal | `alambique_columna_liquido.jpg` | se ajusta al visor (alto máx. 300) | 1 | Líquido verde; se recorta o escala con h(t). Opcional: también se puede dibujar con Graphics |
+| Actuadores | `valvula_cuerpo_estatico.jpg` | 80 × 80 | 1 | Cuerpo de la válvula y tramo de tubería, sin volante |
 | Actuadores | `valvula_volante_aislado.png` | 50 × 50 | 1 | Volante de frente; el juego lo rota según la apertura v₁ o v₂ |
 | Perturbaciones | — | — | — | No aplica en el nivel 1 (sin perturbaciones). El caldero del nivel 2 es un extra opcional |
 | Indicadores y alarmas | `alarma_placa.png` | 64 × 64 | 1 | Placa de piedra con el hueco de la runa |
@@ -58,4 +58,5 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
 ### Ajustes de la pareja sobre la lista de Gemini
 - **Tamaños originales:** la columna "tamaño original" de Gemini no coincide con los archivos reales (por ejemplo, los tres recortes de la HMI miden 493 × 251, 416 × 266 y 483 × 559 px). No importa, porque el script reescala al tamaño en el juego.
 - **Alambique:** se fijó en 300 px de alto para respetar la escala 1 m = 100 px (altura máxima de 3 m).
+- **Formato JPG:** `alambique_columna_liquido.jpg` y `valvula_cuerpo_estatico.jpg` se descargaron de Gemini en JPG; el resto son PNG. Como el JPG comprime el color, el magenta del fondo queda con bordes irregulares, por eso el script debe quitarlo con tolerancia y guardar el resultado en PNG con transparencia.
 - **Panel final:** Gemini proponía 1280 × 720, pero el panel es vertical (proporción ≈ 0,86); estirarlo a 16:9 lo deformaría. Se usa 588 × 680, centrado sobre el fondo.

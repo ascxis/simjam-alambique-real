@@ -4,7 +4,7 @@ const nuevaMano = () => crearManoControl();
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const centro = (p) => [0, 5, 9, 13, 17].reduce((s, i) => ({ x: s.x + p[i].x / 5, y: s.y + p[i].y / 5 }), { x: 0, y: 0 });
 export class EntradaGestos {
-  constructor({ alfa = 0.35, opciones = {}, emitir = () => {} } = {}) { this.alfa = alfa; this.opciones = opciones; this.emitir = emitir; this.controles = { der: nuevaMano(), izq: nuevaMano(), pausa: false }; this.cache = {}; this.tiempo = {}; this.punos = {}; this.dedosPendientes = {}; this.dedosTiempo = {}; this.ultimaMano = {}; this.zona = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }; this.cargarCalibracion(); }
+  constructor({ alfa = 0.35, opciones = {}, emitir = () => {} } = {}) { this.alfa = alfa; this.opciones = opciones; this.emitir = emitir; this.controles = { der: nuevaMano(), izq: nuevaMano(), pausa: false }; this.cache = {}; this.tiempo = {}; this.punos = {}; this.dedosPendientes = {}; this.dedosTiempo = {}; this.ultimaMano = {}; this.calibracionAvisada = new Set(); this.zona = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }; this.cargarCalibracion(); }
   cargarCalibracion() { try { this.calibracion = JSON.parse(localStorage.getItem('alambique.calibracion') || '{}'); } catch { this.calibracion = {}; } }
   guardarCalibracion() { try { localStorage.setItem('alambique.calibracion', JSON.stringify(this.calibracion)); } catch {} }
   procesar({ manos = [], tiempo = performance.now() }) {
@@ -18,7 +18,20 @@ export class EntradaGestos {
       this.ultimaMano[id] = tiempo; m.presente = true;
       for (const key of Object.keys(raw)) {
         const sinEscalar = raw[key]; m.medidaCruda ||= {}; m.medidaCruda[key] = sinEscalar;
-        const cal = this.calibracion[id]?.[key]; if (cal && Number.isFinite(cal.min) && Number.isFinite(cal.max) && cal.max !== cal.min) raw[key] = Math.max(0, Math.min(1, (sinEscalar - cal.min) / (cal.max - cal.min)));
+        const cal = this.calibracion[id]?.[key];
+        if (cal) {
+          const diferencia = cal.max - cal.min;
+          const minimoDeCalibracion = key === 'altura' || key === 'pellizco' ? 0.05 : 0;
+          const rangoValido = Number.isFinite(cal.min) && Number.isFinite(cal.max) && cal.max > cal.min && (minimoDeCalibracion === 0.05 ? diferencia >= minimoDeCalibracion : diferencia > 0);
+          if (rangoValido) raw[key] = Math.max(0, Math.min(1, (sinEscalar - cal.min) / diferencia));
+          else {
+            const claveAviso = `${id}.${key}`;
+            if (!this.calibracionAvisada.has(claveAviso)) {
+              console.warn(`[CALIBRACIÓN] Rango ${claveAviso} inválido (min=${cal.min}, max=${cal.max}); se usará el gesto sin calibrar para este canal.`);
+              this.calibracionAvisada.add(claveAviso);
+            }
+          }
+        }
         m.u_crudo[key] = raw[key];
         const previo = this.cache[`${id}.${key}`] ?? raw[key]; const suavizado = previo + this.alfa * (raw[key] - previo); this.cache[`${id}.${key}`] = suavizado;
         const umbral = this.opciones.zonaMuerta ?? 0.015; m[key] = Math.abs(suavizado - (m[key] ?? suavizado)) < umbral ? m[key] : suavizado;
