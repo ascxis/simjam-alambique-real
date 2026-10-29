@@ -20,22 +20,27 @@ function vidrio(caja, conSprites) {
     ? { x: caja.x + caja.w * .45, w: caja.w * .08, ...v }
     : { x: caja.x + caja.w * .35, w: caja.w * .30, ...v };
 }
-function linea(g, x1, y1, x2, y2, width = 7, color = 0x4a5056) {
+function linea(g, x1, y1, x2, y2, width = 7) {
   g.lineStyle(width + 4, 0x1a1b1d, 1).lineBetween(x1, y1, x2, y2);
-  g.lineStyle(width, color, 1).lineBetween(x1, y1, x2, y2);
+  g.lineStyle(width, 0xb85a24, 1).lineBetween(x1, y1, x2, y2);
+  g.lineStyle(2, 0xe6a06d, .9).lineBetween(x1, y1, x2, y2);
+}
+
+export function dibujarTuberia(g, puntos, ancho = 7) {
+  for (let i = 1; i < puntos.length; i++) linea(g, puntos[i - 1].x, puntos[i - 1].y, puntos[i].x, puntos[i].y, ancho);
+  for (let i = 1; i < puntos.length - 1; i++) {
+    const { x, y } = puntos[i];
+    g.fillStyle(0x1a1b1d).fillCircle(x, y, (ancho + 4) / 2);
+    g.fillStyle(0xb85a24).fillCircle(x, y, ancho / 2);
+    g.fillStyle(0xe6a06d, .9).fillCircle(x, y, 1.1);
+  }
 }
 
 export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, overlay = null, tuberias = null, conSprites = false, conSpritesValvula = false, salidaConsumo = false } = {}) {
   g.clear(); overlay?.clear();
   const cajas = obtenerCajasTanques(cantidad), capaMarcas = overlay || g, tubos = tuberias || g;
   if (tuberias) tuberias.clear();
-  if (cantidad === 1) {
-    dibujarEntrada(tubos, cajas[0], L.valvula1Solo, conSpritesValvula);
-    if (salidaConsumo) {
-      const caja = cajas[0], y = caja.y + caja.h * L.salidaConsumo.altoRelativo;
-      linea(tubos, caja.x + caja.w - 3, y, caja.x + caja.w + L.salidaConsumo.largo, y, 6);
-    }
-  }
+  if (cantidad === 1) dibujarEntrada(tubos, cajas[0], L.valvula1Solo, conSpritesValvula);
   else {
     dibujarEntrada(tubos, cajas[0], L.valvula1Cascada, conSpritesValvula);
     // q12 sale del costado inferior, rodea el pedestal y entra desde arriba en el segundo tanque.
@@ -98,40 +103,37 @@ export function convertirVisoresCascada(caja, metadatos) {
   }]));
 }
 
-export function dibujarLiquidosCascada(liquido, marcas, visores, alturas, referencia, tolerancia, dentroBanda) {
-  liquido.clear(); marcas.clear();
+export function dibujarLiquidosCascada(liquido, visores, alturas, referencia, tolerancia, dentroBanda) {
+  liquido.clear();
   if (!visores?.superior || !visores?.inferior) return;
   const nivel = (visor, h) => visor.y + visor.h * (1 - limitar(h) / 3);
   for (const [clave, indice] of [['superior', 0], ['inferior', 1]]) {
     const v = visores[clave], y = nivel(v, alturas[indice] ?? 0);
     liquido.fillStyle(indice === 1 && dentroBanda ? 0x00e676 : 0x2ecc71, .98)
       .fillRect(v.x + 1, y, Math.max(1, v.w - 2), Math.max(0, v.y + v.h - y));
-    for (const [h, color] of [[2.4, 0xffd700], [2.8, 0xff1744]]) {
-      const yy = nivel(v, h);
-      marcas.lineStyle(2, color, 1).lineBetween(v.x + v.w, yy, v.x + v.w + 8, yy);
-    }
-    for (let metro = 0; metro <= 3; metro++) {
-      const yy = nivel(v, metro);
-      marcas.lineStyle(1, 0xe6e8ea, .9).lineBetween(v.x + v.w, yy, v.x + v.w + 6, yy);
-    }
     if (clave === 'inferior' && Number.isFinite(referencia)) {
       const superior = nivel(v, referencia + tolerancia), inferior = nivel(v, referencia - tolerancia);
-      marcas.fillStyle(0xb7bdc2, .32).fillRect(v.x, superior, v.w, inferior - superior);
-      marcas.lineStyle(2, 0xe6e8ea, .95).lineBetween(v.x - 1, superior, v.x + v.w + 1, superior);
-      marcas.lineStyle(2, 0xe6e8ea, .95).lineBetween(v.x - 1, inferior, v.x + v.w + 1, inferior);
-      const yr = nivel(v, referencia);
-      marcas.lineStyle(2, 0xc9a227, 1).lineBetween(v.x - 1, yr, v.x + v.w + 1, yr);
+      liquido.fillStyle(0xb7bdc2, .32).fillRect(v.x + 1, superior, Math.max(1, v.w - 2), inferior - superior);
+      liquido.lineStyle(1, 0xe6e8ea, .95).lineBetween(v.x, superior, v.x + v.w, superior);
+      liquido.lineStyle(1, 0xe6e8ea, .95).lineBetween(v.x, inferior, v.x + v.w, inferior);
+      liquido.lineStyle(1, 0xc9a227, 1).lineBetween(v.x, nivel(v, referencia), v.x + v.w, nivel(v, referencia));
+    }
+    for (const [h, color] of [[2.4, 0xffd700], [2.8, 0xff1744]]) {
+      const yy = nivel(v, h);
+      liquido.lineStyle(2, color, 1).lineBetween(v.x + v.w - 5, yy, v.x + v.w, yy);
     }
   }
 }
 
 function dibujarEntrada(g, caja, cfg, conSpritesValvula) {
   const valveX = cfg.x, tubeY = cfg.tuboY, centroTanque = caja.x + caja.w / 2;
-  const radio = L.valvulaSprite.cuerpo / 2;
-  linea(g, L.planta.x, tubeY, valveX - radio, tubeY);
-  linea(g, valveX + radio, tubeY, centroTanque, tubeY);
-  linea(g, centroTanque, tubeY, centroTanque, caja.y + 3);
-  if (!conSpritesValvula) dibujarValvulaFallback(g, valveX, tubeY, 0);
+  const radio = cfg.tuboSemiancho ?? 25;
+  dibujarTuberia(g, [{ x: L.planta.x, y: tubeY }, { x: valveX - radio, y: tubeY }], 7);
+  dibujarTuberia(g, [
+    { x: valveX + radio, y: tubeY }, { x: centroTanque - 12, y: tubeY },
+    { x: centroTanque, y: tubeY + 12 }, { x: centroTanque, y: caja.y + 3 },
+  ], 7);
+  if (!conSpritesValvula) dibujarValvulaFallback(g, valveX, cfg.y, 0);
 }
 
 function dibujarValvulaFallback(g, x, y, apertura) {

@@ -10,7 +10,7 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
-import { dibujarTanques, dibujarLiquidosCascada, convertirVisoresCascada, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
+import { dibujarTanques, dibujarTuberia, dibujarLiquidosCascada, convertirVisoresCascada, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
 import { MAPA_CONTROL, leerSenal, leerSenalSiPresente } from './mapaControl.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
@@ -59,22 +59,35 @@ export class Simulacion extends EscenaBase {
     this.esCascada = this.nivel.tanques === 2 && this.textures.exists('alambique-cascada');
     this.render = this.add.graphics().setDepth(-1);
     this.renderTuberias = this.add.graphics().setDepth(-.55);
+    this.renderTuberiasExtra = this.add.graphics().setDepth(0);
+    this.renderVisorLiquido = this.add.graphics().setDepth(1.5);
     this.renderVisorOverlay = this.add.graphics().setDepth(2);
+    this.renderChorro = this.add.graphics().setDepth(4);
     this.conSprites = this.textures.exists('alambique');
     this.spritesTanques = [];
     this.spritesValvulas = [];
+    if (!this.esCascada && this.textures.exists('mesa-laboratorio')) {
+      const mesa = L.mesa, fuente = this.textures.get('mesa-laboratorio').getSourceImage();
+      const alto = mesa.ancho * fuente.height / fuente.width;
+      this.mesaSprite = this.add.image(mesa.centroX, mesa.patasY - alto / 2, 'mesa-laboratorio').setDisplaySize(mesa.ancho, alto).setDepth(-.8);
+      const sombraMesa = this.add.graphics().setDepth(-.75);
+      for (const x of [mesa.centroX - mesa.ancho * .42, mesa.centroX + mesa.ancho * .42]) {
+        sombraMesa.fillStyle(0x111315, .12).fillEllipse(x, mesa.patasY + 3, 54, 13);
+      }
+    }
     if (this.esCascada) {
       const cfg = L.cascada, fuente = this.textures.get('alambique-cascada').getSourceImage();
       const ancho = cfg.alto * fuente.width / fuente.height;
       this.cajaCascada = { x: cfg.centroX - ancho / 2, y: cfg.baseY - cfg.alto, w: ancho, h: cfg.alto };
       const sombra = this.add.graphics().setDepth(-.8);
       for (const [anchoSombra, alpha] of [[ancho + 54, .08], [ancho + 32, .12], [ancho + 12, .16]]) sombra.fillStyle(0x111315, alpha).fillEllipse(cfg.centroX, cfg.baseY + 5, anchoSombra, 18);
-      const base = this.add.graphics().setDepth(-.7), bx = this.cajaCascada.x - cfg.base.margen;
-      base.fillStyle(0x4a5056, 1).fillRoundedRect(bx, cfg.baseY, ancho + cfg.base.margen * 2, cfg.base.alto, 4);
-      base.lineStyle(2, 0x1a1b1d, 1).strokeRoundedRect(bx, cfg.baseY, ancho + cfg.base.margen * 2, cfg.base.alto, 4);
-      for (const rx of [bx + 9, bx + ancho + cfg.base.margen * 2 - 9]) base.fillStyle(0x9ba0a3).fillCircle(rx, cfg.baseY + cfg.base.alto / 2, 2.5);
       this.spriteCascada = this.add.image(cfg.centroX, cfg.baseY - cfg.alto / 2, 'alambique-cascada').setDisplaySize(ancho, cfg.alto).setDepth(-.5);
       this.visoresCascada = convertirVisoresCascada(this.cajaCascada, this.cache.json.get('alambique-cascada-visores'));
+      this.mascaraGeometricaVisores = this.make.graphics({ x: 0, y: 0, add: false });
+      this.mascaraGeometricaVisores.fillStyle(0xffffff, 1);
+      for (const v of Object.values(this.visoresCascada)) this.mascaraGeometricaVisores.fillRect(v.x, v.y, v.w, v.h);
+      this.mascaraVisores = this.mascaraGeometricaVisores.createGeometryMask();
+      this.renderVisorLiquido.setMask(this.mascaraVisores);
     } else {
       for (let i = 0; i < this.nivel.tanques; i++) {
         if (!this.conSprites) continue;
@@ -82,10 +95,6 @@ export class Simulacion extends EscenaBase {
         this.spritesTanques.push(this.add.image(p.x, p.y, 'alambique').setDisplaySize(p.ancho, p.alto).setDepth(-.5));
         const sombra = this.add.graphics().setDepth(-.8);
         for (const [anchoSombra, alpha] of [[p.ancho + 48, .08], [p.ancho + 28, .12], [p.ancho + 10, .16]]) sombra.fillStyle(0x111315, alpha).fillEllipse(p.x, p.y + p.alto / 2 + 5, anchoSombra, 18);
-        const base = this.add.graphics().setDepth(-.7), yBase = L.tanqueSolo.baseY;
-        base.fillStyle(0x4a5056, 1).fillRoundedRect(p.x - p.ancho / 2 - 8, yBase, p.ancho + 16, 20, 4);
-        base.lineStyle(2, 0x1a1b1d, 1).strokeRoundedRect(p.x - p.ancho / 2 - 8, yBase, p.ancho + 16, 20, 4);
-        for (const rx of [p.x - p.ancho / 2, p.x + p.ancho / 2]) base.fillStyle(0x9ba0a3).fillCircle(rx, yBase + 10, 2.5);
       }
     }
     this.conSpritesValvula = this.textures.exists('valvula-cuerpo') && this.textures.exists('valvula-volante');
@@ -106,6 +115,17 @@ export class Simulacion extends EscenaBase {
       }
     }
     this.renderOverlay = this.add.graphics().setDepth(2);
+    if (this.textures.exists('caldero-real')) {
+      const cfg = L.caldero, fuente = this.textures.get('caldero-real').getSourceImage();
+      const ancho = cfg.ancho, alto = ancho * fuente.height / fuente.width;
+      const x = this.esCascada ? cfg.salidaCascadaX : cfg.centroX;
+      this.calderoCaja = { x: x - ancho / 2, y: cfg.baseY - alto, w: ancho, h: alto };
+      const sombraCaldero = this.add.graphics().setDepth(-.7);
+      for (const [anchoSombra, alpha] of [[ancho + 38, .08], [ancho + 20, .13], [ancho + 5, .18]]) sombraCaldero.fillStyle(0x111315, alpha).fillEllipse(x, cfg.baseY + 3, anchoSombra, 13);
+      this.add.image(x, cfg.baseY - alto / 2, 'caldero-real').setDisplaySize(ancho, alto).setDepth(1);
+      this.bocaCalderoY = this.calderoCaja.y + alto * .06;
+      this.superficiePocionCalderoY = this.calderoCaja.y + alto * .19;
+    }
     this.placasAlarmas = [];
     this.runasAlarmas = [];
     if (this.textures.exists('alarma-placa') && this.textures.exists('alarma-runa')) {
@@ -153,6 +173,7 @@ export class Simulacion extends EscenaBase {
         this.placasAlarmas[i]?.setPosition(cfg.x + cfg.placa / 2, y + cfg.alto / 2);
         this.runasAlarmas[i]?.setPosition(cfg.x + cfg.placa / 2, y + cfg.alto / 2);
         this.add.text(cfg.x + cfg.placa + 3, y + 10, `Alambique ${i + 1} · h${i + 1}`, fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
+        this.renderVisorOverlay.lineStyle(1, 0xb85a24, .72).lineBetween(cfg.x + cfg.ancho, y + cfg.alto / 2, visor.x - 3, y + cfg.alto / 2);
         continue;
       }
       const r = this.nivel.tanques === 2 ? (i === 0 ? L.etiqueta1Cascada : L.etiqueta2Cascada) : L.etiquetaSolo;
@@ -168,17 +189,21 @@ export class Simulacion extends EscenaBase {
       this.etiquetasValvulas = {};
       for (const [i, clave] of ['v1', 'v2'].entries()) {
         const pos = L.cascada.etiquetasValvula, rueda = L.cascada.ruedas[clave];
-        const y = this.cajaCascada.y + rueda.y * this.cajaCascada.h - pos.alto / 2;
+        const cx = this.cajaCascada.x + rueda.x * this.cajaCascada.w;
+        const cy = this.cajaCascada.y + rueda.y * this.cajaCascada.h;
+        const y = cy - pos.alto / 2;
         this.panel({ x: pos.x, y, ancho: pos.ancho, alto: pos.alto }, { profundidad: 1, radio: 5 });
+        this.renderVisorOverlay.lineStyle(1, 0xb85a24, .8).lineBetween(cx + rueda.tamano / 2, cy, pos.x, cy);
         this.etiquetasValvulas[clave] = this.add.text(pos.x + 5, y + 5, '', fuenteInterfaz(11, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
       }
       const q = L.cascada.etiquetaQ12;
       this.panel(q, { profundidad: 1, radio: 5 });
+      this.renderVisorOverlay.lineStyle(1, 0xb85a24, .8).lineBetween(q.x + q.ancho, q.y + q.alto / 2, this.cajaCascada.x + this.cajaCascada.w * .07, q.y + q.alto / 2);
       this.add.text(q.x + 5, q.y + 4, 'q12 = c1·√h1\n(llave abierta)', fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold', lineSpacing: 1 })).setDepth(5);
     } else if (this.nivel.id === 2) {
       const q = L.salidaConsumo.etiqueta;
       this.panel(q, { profundidad: 1, radio: 5 });
-      this.add.text(q.x + 5, q.y + 6, 'consumo qd → caldero', fuenteInterfaz(11, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
+      this.add.text(q.x + 5, q.y + 4, 'consumo qd →\ncaldero', fuenteInterfaz(9, '#E6E8EA', { fontStyle: 'bold', lineSpacing: 1 })).setDepth(5);
     }
     if (this.nivel.tanques === 2 && !this.esCascada) {
       this.ayudaCascada = null;
@@ -327,7 +352,7 @@ export class Simulacion extends EscenaBase {
     this.pausaTexto.setText(this.pausado ? (this.pausaPorManos ? 'Muestra las manos' : 'PAUSA · Enter para reanudar') : '');
     this.pausaTexto.setVisible(this.pausado);
     this.pausaPanel.setVisible(this.pausado);
-    if (this.esCascada) dibujarLiquidosCascada(this.render, this.renderVisorOverlay, this.visoresCascada, hs, referencia, banda, Math.abs(yActual - referencia) <= banda);
+    if (this.esCascada) dibujarLiquidosCascada(this.renderVisorLiquido, this.visoresCascada, hs, referencia, banda, Math.abs(yActual - referencia) <= banda);
     else dibujarTanques(this.render, hs, this.nivel.tanques, {
       tanqueControlado: this.nivel.tanques === 2 ? 1 : 0,
       referencia,
@@ -341,6 +366,42 @@ export class Simulacion extends EscenaBase {
       conSpritesValvula: this.conSpritesValvula,
       salidaConsumo: this.nivel.id === 2,
     });
+    this.renderTuberiasExtra.clear();
+    this.renderChorro.clear();
+    const salida = this.esCascada
+      ? PARAMETROS_TANQUES.coeficienteDescarga2 * this.actuador2.salida() * Math.sqrt(Math.max(0, hs[1] ?? 0))
+      : PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
+    if (this.calderoCaja) {
+      if (this.esCascada) {
+        const inicio = { x: this.cajaCascada.x + this.cajaCascada.w * .98, y: this.cajaCascada.y + this.cajaCascada.h * .82 };
+        const centroCaldero = this.calderoCaja.x + this.calderoCaja.w / 2;
+        const boca = { x: centroCaldero, y: this.bocaCalderoY };
+        dibujarTuberia(this.renderTuberiasExtra, [inicio, { x: boca.x, y: inicio.y }, boca], 7);
+        const q12 = PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
+        if (q12 > 0.001) {
+          const brillo = Math.min(.88, .12 + .76 * q12 / .4);
+          const bx = this.cajaCascada.x + this.cajaCascada.w * .055, by = this.cajaCascada.y + this.cajaCascada.h * .28;
+          this.renderTuberiasExtra.fillStyle(0x00e676, brillo * .32).fillRoundedRect(bx - 2, by - 2, this.cajaCascada.w * .045 + 4, this.cajaCascada.h * .205 + 4, 5);
+          this.renderTuberiasExtra.fillStyle(0x00e676, brillo).fillRoundedRect(bx, by, this.cajaCascada.w * .045, this.cajaCascada.h * .205, 4);
+        }
+      } else {
+        const caja = posicionSpriteTanque(0, 1), salidaY = caja.y - caja.alto / 2 + caja.alto * L.salidaConsumo.altoRelativo;
+        const centroCaldero = this.calderoCaja.x + this.calderoCaja.w / 2;
+        const boca = { x: centroCaldero, y: this.bocaCalderoY };
+        const bordeMesa = L.mesa.centroX + L.mesa.ancho / 2;
+        dibujarTuberia(this.renderTuberiasExtra, [
+          { x: caja.x + caja.ancho / 2 - 3, y: salidaY }, { x: bordeMesa - 16, y: salidaY },
+          { x: bordeMesa, y: salidaY + 12 }, { x: bordeMesa, y: boca.y - 12 },
+          { x: boca.x - 12, y: boca.y }, boca,
+        ], 7);
+      }
+      if (salida > .001) {
+        const grosor = Math.max(2, Math.min(8, salida / .4 * 8));
+        const centroCaldero = this.calderoCaja.x + this.calderoCaja.w / 2;
+        this.renderChorro.lineStyle(grosor + 2, 0x168e4d, .48).lineBetween(centroCaldero, this.bocaCalderoY + 1, centroCaldero, this.superficiePocionCalderoY);
+        this.renderChorro.lineStyle(grosor, 0x2ecc71, .85).lineBetween(centroCaldero, this.bocaCalderoY + 1, centroCaldero, this.superficiePocionCalderoY);
+      }
+    }
     const alturaEtiqueta = this.nivel.tanques === 2 ? 'h2' : 'h1';
     const textoRef = this.nivel.tanques === 2
       ? `${alturaEtiqueta} ${yActual.toFixed(2)} m · ref ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(2)}`

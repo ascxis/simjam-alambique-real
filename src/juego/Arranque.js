@@ -17,6 +17,8 @@ export class Arranque extends EscenaBase {
     this.load.image('liquido-referencia', 'assets/sprites/columna_liquido.png');
     this.load.image('alambique-cascada', 'assets/sprites/alambique_cascada.png');
     this.load.json('alambique-cascada-visores', 'assets/sprites/alambique_cascada.json');
+    this.load.image('mesa-laboratorio', 'assets/sprites/mesa_laboratorio.png');
+    this.load.image('caldero-real', 'assets/sprites/caldero_real.png');
     this.load.image('valvula-cuerpo', 'assets/sprites/valvula_cuerpo_estatico.png');
     this.load.image('valvula-volante', 'assets/sprites/valvula_volante_aislado.png');
     this.load.image('alarma-placa', 'assets/sprites/alarma_placa.png');

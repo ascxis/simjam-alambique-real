@@ -51,7 +51,9 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 44 | 5.8 | Codex | Rediseño visual: distribución, paneles y tipografía | Mejoró mucho; quedan detalles |
 | 45 | 5.8 | Codex | Pulido visual: botones, pantalla final, planta y menú | Funcionó; quedan detalles menores |
 | 46 | 5.8 | Codex | Últimos detalles visuales | Funcionó |
-| 47 | 5.8 | Codex | Planta: cascada apilada (nivel 3) y alambique apoyado (niveles 1 y 2) | (pendiente) |
+| 47 | 5.8 | Codex | Planta: cascada apilada (nivel 3) y alambique apoyado (niveles 1 y 2) | Funcionó con errores |
+| 48 | 5.4 | Gemini | Nuevos elementos: mesa de laboratorio y Caldero Real | Funcionó |
+| 49 | 5.8 | Codex | Planta: líquido del nivel 3, mesa, caldero y tuberías | (pendiente) |
 
 ---
 
@@ -986,6 +988,69 @@ Ajustes de la planta (5.8), sin cambiar el modelo, los niveles, la entrada, las 
 4. Revisa las posiciones en src/hmi/layout.js para que todas las piezas queden alineadas: tubos conectados a los sprites, etiquetas sin tapar el dibujo, nada flotando ni cortado, sin bloques de baldosas y nada dentro de la barra inferior.
 
 Revisa con ?control=teclado los niveles 1, 2 y 3 (con alarma H y HH en el nivel 3) y confirma que el líquido de cada visor sigue a h1 y h2.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** el nivel 3 usa los alambiques apilados, quitó las baldosas y agregó las etiquetas de v1, v2 y q12.
+- **Errores:**
+  - En el nivel 3 no se ve el líquido: el visor del dibujo es vidrio opaco y el líquido quedó detrás.
+  - La "base de hierro" es una barra que flota debajo de los alambiques.
+  - Los alambiques siguen sin apoyarse en nada.
+  - Las tuberías dibujadas son delgadas, grises y no encajan con las válvulas ni llegan a la cúpula.
+  - Las etiquetas de v1 y v2 quedan lejos de sus válvulas.
+  - En el nivel 3, los tubos de salida terminan en el aire.
+- **Decisión de la pareja:** volver a la 5.4 para pedir a Gemini una mesa de trabajo y el Caldero Real (que recibe la salida del alambique y representa el consumo qd del nivel 2).
+
+---
+
+## 48. Nuevos elementos: mesa de laboratorio y Caldero Real (5.4, regreso desde la 5.8)
+
+- **Motivo:** la guía permite regenerar el arte en Gemini cuando no se entiende (sección 5.9, paso 13, y sección 5.4). Los alambiques flotaban y los tubos de salida no terminaban en nada.
+
+```
+/director-arte-videojuegos
+Crea dos elementos nuevos para la planta, cada uno en su propia imagen sobre fondo magenta sólido #FF00FF, respetando la guía de estilo y con el mismo trazo, iluminación y colores que alambique_cuerpo_vacio.png:
+1. mesa_laboratorio.png: mesa de trabajo de alquimista, de madera oscura y robusta, con refuerzos y esquinas de hierro forjado. Vista totalmente de frente (sin perspectiva), con el tablero recto y horizontal, vacía por encima (el juego pondrá el alambique sobre ella) y las cuatro patas apoyadas sobre una misma línea recta. Proporción aproximada 3:1 (ancho:alto).
+2. caldero_real.png: el Caldero Real, un caldero de hierro negro con detalles de cobre, sobre tres patas cortas, visto de frente, lleno de poción verde #2ECC71 con una superficie simple, y con la boca abierta arriba para recibir el chorro de una tubería. Proporción aproximada 1:1.
+No dibujes tuberías, válvulas ni alambiques. Sin texto, sin sombra en el piso, bordes nítidos, sin transparencias ni resplandor que se mezcle con el fondo magenta.
+```
+
+- **Resultado:** funcionó al primer intento. Se **aceptaron** las dos imágenes, sobre magenta sólido y sin texto:
+  - **Mesa:** madera oscura con esquinas y refuerzos de hierro remachado.
+  - **Caldero:** hierro negro con aros de cobre, tres patas, asas de anillo y poción verde.
+- **Diferencias con lo pedido:**
+  - La mesa no está totalmente de frente: se ve un poco desde arriba (el tablero y las patas traseras se ven) y su proporción es de unos 2,2:1. Se acepta; el alambique se apoya sobre la superficie del tablero, no en el borde del sprite.
+  - El caldero también se ve un poco desde arriba, lo que ayuda a ver la boca.
+
+---
+
+## 49. Planta: líquido del nivel 3, mesa, caldero y tuberías (5.8)
+
+- **Cambio previo en docs/recursos.md:** se agregaron caldero_real.png y mesa_laboratorio.png a la lista de recursos.
+
+```
+Ajustes de la planta (5.8), sin cambiar el modelo, los niveles, la entrada, las pruebas ni el CSV. Lee docs/recursos.md: agregué mesa_laboratorio y caldero_real (PNG o JPG; si son JPG, quita el magenta con tolerancia) en public/assets/originales/. Procésalos con npm run assets.
+
+1. Nivel 3, líquido invisible: el visor de alambique_cascada.png es vidrio gris opaco, así que el líquido dibujado detrás del sprite no se ve. Dibuja el líquido, la banda, la referencia, las marcas H/HH y la escala por encima del sprite (setDepth mayor), recortados al rectángulo de cada visor. Si las fracciones del JSON no coinciden con la imagen real, detecta el rectángulo del vidrio buscando los píxeles grises claros del visor dentro de esa zona aproximada. Comprueba que con h1 = 1,5 m el líquido llega a la mitad del visor superior, y con h2 = 1,2 m al 40 % del inferior.
+
+2. Quita la barra de hierro que quedó flotando debajo de los alambiques, en los tres niveles.
+
+3. Niveles 1 y 2, alambique sobre la mesa: mesa_laboratorio de 390 px de ancho (sin deformar), centrada en x = 330, con la parte de abajo de las patas delanteras en y = 600. La mesa se ve un poco desde arriba: el tablero va del borde trasero (cerca del 17 % de la altura de la imagen) al borde delantero (cerca del 35 %). Apoya la base del alambique de 300 px de alto sobre la superficie del tablero, a la altura del 28 % de la imagen de la mesa, no en el borde superior del sprite, para que se vea parado encima. Sombra elíptica suave bajo las patas y bajo el alambique.
+
+4. Caldero Real: caldero_real.png de 110 px de ancho, apoyado en el piso (y = 600).
+   - En los niveles 1 y 2, a la derecha de la mesa. Un tubo de salida sale de la parte baja del alambique, pasa por el borde de la mesa y baja hasta quedar justo encima de la boca del caldero.
+   - En el nivel 3, bajo el extremo del tubo de salida de la derecha de alambique_cascada.png, de modo que el tubo termine dentro de la boca del caldero.
+   - Dibuja un chorro verde (#2ECC71, semitransparente) desde el extremo del tubo hasta la poción del caldero, con un grosor proporcional al caudal de salida: c1·√h1 en los niveles 1 y 2, y c2·v2·√h2 en el nivel 3. Sin caudal, no hay chorro.
+   - En el nivel 2, la etiqueta "consumo qd → caldero" va sobre el caldero.
+
+5. Tuberías: todas las tuberías dibujadas con Graphics deben verse como las del arte: cobre #B85A24 con un borde #1A1B1D de 2 px, un brillo claro en el centro y el mismo grosor y la misma altura que los extremos de tubo de valvula_cuerpo_estatico.png, para que encajen sin escalones ni huecos. En los niveles 1 y 2, la tubería de entrada viene desde el borde izquierdo, pasa por la válvula v1 (alineada con el centro de su tubo) y baja con un codo redondeado hasta tocar la tapa de la cúpula del alambique.
+
+6. Nivel 3, sin piezas sueltas:
+   - Apoya alambique_cascada.png en el piso (y = 600) con una sombra suave.
+   - Las etiquetas "v1 …%" y "v2 …%" van junto a su válvula del dibujo, a menos de 20 px y con una línea fina que las una, igual que las etiquetas "Alambique 1 · h1" y "Alambique 2 · h2" con su visor.
+   - El tubo de vidrio de la izquierda (unión q12) se ilumina en verde, más intenso cuanto mayor es q12 = c1·√h1.
+
+Revisa con ?control=teclado los niveles 1, 2 y 3 (con alarma H y HH) y confirma que todo está conectado, que nada flota y que el líquido y el chorro siguen al modelo.
 No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
 ```
 
