@@ -20,13 +20,13 @@ function vidrio(caja, conSprites) {
     ? { x: caja.x + caja.w * .45, w: caja.w * .08, ...v }
     : { x: caja.x + caja.w * .35, w: caja.w * .30, ...v };
 }
-function linea(g, x1, y1, x2, y2, width = 7) {
-  g.lineStyle(width + 4, 0x1a1b1d, 1).lineBetween(x1, y1, x2, y2);
+function linea(g, x1, y1, x2, y2, width = L.tuberia.ancho) {
+  g.lineStyle(width + L.tuberia.borde * 2, 0x1a1b1d, 1).lineBetween(x1, y1, x2, y2);
   g.lineStyle(width, 0xb85a24, 1).lineBetween(x1, y1, x2, y2);
-  g.lineStyle(2, 0xe6a06d, .9).lineBetween(x1, y1, x2, y2);
+  g.lineStyle(L.tuberia.brillo, 0xe6a06d, .9).lineBetween(x1, y1, x2, y2);
 }
 
-export function dibujarTuberia(g, puntos, ancho = 7) {
+export function dibujarTuberia(g, puntos, ancho = L.tuberia.ancho) {
   for (let i = 1; i < puntos.length; i++) linea(g, puntos[i - 1].x, puntos[i - 1].y, puntos[i].x, puntos[i].y, ancho);
   for (let i = 1; i < puntos.length - 1; i++) {
     const { x, y } = puntos[i];
@@ -36,7 +36,7 @@ export function dibujarTuberia(g, puntos, ancho = 7) {
   }
 }
 
-export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, overlay = null, tuberias = null, conSprites = false, conSpritesValvula = false, salidaConsumo = false } = {}) {
+export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, overlay = null, tuberias = null, conSprites = false, conSpritesValvula = false } = {}) {
   g.clear(); overlay?.clear();
   const cajas = obtenerCajasTanques(cantidad), capaMarcas = overlay || g, tubos = tuberias || g;
   if (tuberias) tuberias.clear();
@@ -128,11 +128,11 @@ export function dibujarLiquidosCascada(liquido, visores, alturas, referencia, to
 function dibujarEntrada(g, caja, cfg, conSpritesValvula) {
   const valveX = cfg.x, tubeY = cfg.tuboY, centroTanque = caja.x + caja.w / 2;
   const radio = cfg.tuboSemiancho ?? 25;
-  dibujarTuberia(g, [{ x: L.planta.x, y: tubeY }, { x: valveX - radio, y: tubeY }], 7);
+  dibujarTuberia(g, [{ x: L.planta.x, y: tubeY }, { x: valveX - radio, y: tubeY }], L.tuberia.ancho);
   dibujarTuberia(g, [
-    { x: valveX + radio, y: tubeY }, { x: centroTanque - 12, y: tubeY },
-    { x: centroTanque, y: tubeY + 12 }, { x: centroTanque, y: caja.y + 3 },
-  ], 7);
+    { x: valveX + radio, y: tubeY }, { x: centroTanque, y: tubeY },
+    { x: caja.x + cfg.domeXRel * caja.w, y: caja.y + caja.h * cfg.domeYRel },
+  ], L.tuberia.ancho);
   if (!conSpritesValvula) dibujarValvulaFallback(g, valveX, cfg.y, 0);
 }
 

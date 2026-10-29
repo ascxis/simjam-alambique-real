@@ -1,3 +1,23 @@
+// Anchors derived from the processed sprite sizes: table 390×182, tank 215×300.
+const MESA_PISO_Y = 650;
+const MESA_ANCHO = 390;
+const MESA_ALTO = 182;
+const SUPERFICIE_MESA_Y = MESA_PISO_Y - MESA_ALTO + MESA_ALTO * .28;
+const TANQUE_SOLO_ALTO = 300;
+const TANQUE_SOLO_CIMA_Y = SUPERFICIE_MESA_Y - TANQUE_SOLO_ALTO;
+const EJE_ENTRADA_Y = TANQUE_SOLO_CIMA_Y - 33;
+const DESFASE_EJE_VALVULA_Y = 15;
+// Fracciones medidas sobre el recorte alfa del sprite procesado (1015 × 1311).
+const ANCLA_Q12 = {
+  x: (0.089 * 2752 - 173 - 3) / 1015,
+  y: (0.510 * 1536 - 176 - 3) / 1311,
+  ancho: ((0.109 - 0.089) * 2752) / 1015,
+  alto: ((0.650 - 0.510) * 1536) / 1311,
+};
+const ANCLA_SALIDA_CASCADA_X = (0.423 * 2752 - 173 - 3) / 1015;
+const ANCLA_BASE_CASCADA_Y = (0.911 * 1536 - 176 - 3) / 1311;
+const ANCLA_SALIDA_CASCADA_Y = (0.972 * 1536 - 176 - 3) / 1311;
+
 export const LAYOUT = Object.freeze({
   canvas: { ancho: 1280, alto: 720 },
   fondo: { viñeta: [
@@ -32,7 +52,7 @@ export const LAYOUT = Object.freeze({
     barraSuperior: { x: 0, y: 0, ancho: 1280, alto: 80 },
     titulo: { x: 28, y: 19 }, estadoCamara: { x: 1000, y: 29, ancho: 250 },
     planta: { x: 20, y: 90, ancho: 620, alto: 560 },
-    piso: { x: 20, y: 600, ancho: 620, alto: 50 },
+    piso: { x: 20, y: 650, ancho: 620, alto: 0 },
     hmi: { x: 660, y: 90, ancho: 600, alto: 560, radio: 10 },
     hmiInterior: { x: 680, ancho: 560 },
     estado: { x: 680, y: 105, ancho: 560, alto: 27 },
@@ -48,32 +68,51 @@ export const LAYOUT = Object.freeze({
     reloj: { x: 550, y: 686, tamano: 24 },
     tiempo: { x: 572, y: 674, ancho: 260, alto: 26 },
     terminar: { x: 1090, y: 667, ancho: 145, alto: 38 },
-    tanqueSolo: { centroX: 330, baseY: 469, alto: 300 },
+    tanqueSolo: { centroX: 330, baseY: SUPERFICIE_MESA_Y, alto: TANQUE_SOLO_ALTO },
     tanque1Cascada: { centroX: 175, baseY: 360, alto: 240 },
     tanque2Cascada: { centroX: 450, baseY: 600, alto: 240 },
     cascada: {
-      centroX: 330, baseY: 600, alto: 510,
+      alto: SUPERFICIE_MESA_Y - 95, topMinimo: 95,
+      baseTanque2Y: ANCLA_BASE_CASCADA_Y, salida: { x: ANCLA_SALIDA_CASCADA_X, y: Math.min(1, ANCLA_SALIDA_CASCADA_Y) }, salidaFueraMesa: 15,
+      unionVidrio: { ...ANCLA_Q12, margenInterior: 2 },
+      cuerpoTanques: { x0: (0.139 * 2752 - 173 - 3) / 1015, x1: (0.308 * 2752 - 173 - 3) / 1015, baseTanque2Y: ANCLA_BASE_CASCADA_Y },
       visorSuperior: 'superior', visorInferior: 'inferior',
       ruedas: { v1: { x: .758, y: .183 }, v2: { x: .758, y: .747 }, tamano: 38 },
-      etiquetasValvula: { x: 460, ancho: 78, alto: 26 },
-      etiquetaQ12: { x: 20, y: 411, ancho: 112, alto: 38 },
+      etiquetasValvula: { separacion: 5, ancho: 74, alto: 26 },
+      etiquetaQ12: { x: 108, y: 337, ancho: 116, alto: 38 },
       etiquetasTanque: [
-        { x: 16, ancho: 116, alto: 36, placa: 32 },
-        { x: 16, ancho: 116, alto: 36, placa: 32 },
+        { x: 95, ancho: 116, alto: 36, placa: 32 },
+        { x: 95, ancho: 116, alto: 36, placa: 32 },
       ],
       escala: { ancho: 26, alto: 22 },
     },
-    mesa: { centroX: 330, ancho: 390, patasY: 600, apoyoTanqueY: 469 },
-    caldero: { centroX: 580, baseY: 600, ancho: 110, salidaCascadaX: 535 },
+    mesa: {
+      centroX: 330, ancho: MESA_ANCHO, alto: MESA_ALTO, patasY: MESA_PISO_Y,
+      bordeTrasero: { xRel: .5, yRel: .17 }, bordeDelantero: { xRel: .5, yRel: .35 },
+      puntoApoyoTanque: { xRel: .5, yRel: .28 }, patasDelanteras: [.08, .92],
+    },
+    caldero: {
+      ancho: 110, alto: 97, baseY: MESA_PISO_Y, centroX: 590,
+      boca: { xRel: .5, yRel: .06 }, pocion: { xRel: .5, yRel: .19 },
+      alturaPicoSobreBorde: 15,
+    },
+    tuberia: { ancho: 7, borde: 2, brillo: 2, chorroMinimo: 2, chorroMaximo: 8 },
     soporte: { x: 65, y: 360, ancho: 220, baseY: 600 },
-    valvula1Solo: { x: 70, y: 120, tuboY: 135, tuboSemiancho: 25 },
+    entradaSolo: {
+      brida: { x: 20, ancho: 24, alto: 40 }, barraY: 80,
+      ejeTuboY: EJE_ENTRADA_Y,
+      soportesX: [180, 280],
+      valvula: { x: 69, tuboSemiancho: 25, ejeDesfaseY: DESFASE_EJE_VALVULA_Y },
+      dome: { xRel: .5 }, salidaBase: { xRel: 1, yRel: .98 },
+    },
+    valvula1Solo: { x: 69, y: EJE_ENTRADA_Y - DESFASE_EJE_VALVULA_Y, tuboY: EJE_ENTRADA_Y, tuboSemiancho: 25, domeXRel: .5, domeYRel: .01 },
     valvula1Cascada: { x: 70, y: 120, tuboY: 120, margenTanque: 0 },
     valvula2Cascada: { x: 584, y: 565, salidaXOffset: 50 },
-    salidaConsumo: { largo: 44, altoRelativo: .67, etiqueta: { x: 535, y: 464, ancho: 110, alto: 36 } },
-    etiquetaSolo: { x: 170, y: 622, ancho: 300, alto: 36 },
+    salidaConsumo: { codoAntesPico: 12, etiqueta: { x: 535, y: 488, ancho: 110, alto: 34 } },
+    etiquetaSolo: { x: 430, y: 96, ancho: 200, alto: 36 },
     etiqueta1Cascada: { x: 65, y: 480, ancho: 220, alto: 36 },
     etiqueta2Cascada: { x: 300, y: 608, ancho: 300, alto: 36 },
-    alarmaSolo: { x: 225, y: 622, tamano: 36 },
+    alarmaSolo: { x: 430, y: 96, tamano: 32 },
     alarma1Cascada: { x: 65, y: 480, tamano: 36 },
     alarma2Cascada: { x: 345, y: 608, tamano: 36 },
     escalaTanque: { ancho: 34, margenX: 4, margenSuperior: 20, margenInferior: 16 },

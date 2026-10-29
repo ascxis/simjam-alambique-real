@@ -53,7 +53,8 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 46 | 5.8 | Codex | Últimos detalles visuales | Funcionó |
 | 47 | 5.8 | Codex | Planta: cascada apilada (nivel 3) y alambique apoyado (niveles 1 y 2) | Funcionó con errores |
 | 48 | 5.4 | Gemini | Nuevos elementos: mesa de laboratorio y Caldero Real | Funcionó |
-| 49 | 5.8 | Codex | Planta: líquido del nivel 3, mesa, caldero y tuberías | (pendiente) |
+| 49 | 5.8 | Codex | Planta: líquido del nivel 3, mesa, caldero y tuberías | Funcionó con errores |
+| 50 | 5.8 | Codex | Uniones de tuberías, mesa en el piso y nivel 3 sobre la mesa | (pendiente) |
 
 ---
 
@@ -1051,6 +1052,43 @@ Ajustes de la planta (5.8), sin cambiar el modelo, los niveles, la entrada, las 
    - El tubo de vidrio de la izquierda (unión q12) se ilumina en verde, más intenso cuanto mayor es q12 = c1·√h1.
 
 Revisa con ?control=teclado los niveles 1, 2 y 3 (con alarma H y HH) y confirma que todo está conectado, que nada flota y que el líquido y el chorro siguen al modelo.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** en el nivel 3 ya se ve el líquido en los dos visores. En los niveles 1 y 2, el alambique está sobre la mesa, las tuberías son de cobre, la tubería de entrada llega bien a la cúpula y aparece el Caldero Real.
+- **Errores (según la pareja):**
+  - La mesa flota: no toca el piso del fondo.
+  - La tubería de entrada nace en el aire.
+  - La salida hacia el caldero tiene un tramo diagonal y no se entiende que el líquido va al caldero.
+  - En el nivel 3 no hay mesa: la cascada flota y su tubo de salida no llega bien al caldero.
+  - El brillo verde del tubo q12 quedó fuera del vidrio.
+
+---
+
+## 50. Uniones de tuberías, mesa en el piso y nivel 3 sobre la mesa (5.8)
+
+- **Cambio previo en docs/recursos.md:** se agregaron las fracciones, medidas sobre la imagen, del cuerpo de la cascada, del extremo del tubo de salida y del tubo de vidrio q12.
+
+```
+Uniones de tuberías y mesa (5.8), sin cambiar el modelo, los niveles, la entrada, las pruebas ni el CSV. Primero calcula los puntos de anclaje (dónde empieza y termina cada tubo, el tablero de la mesa y la boca del caldero) a partir de los sprites ya escalados, guárdalos en src/hmi/layout.js y dibuja todo a partir de esos puntos, no con números a ojo.
+
+1. Mesa apoyada en el piso, en los tres niveles: la parte de abajo de las patas delanteras va en y = 650 (el piso del fondo), con una sombra elíptica oscura de contacto bajo cada pata y bajo el caldero. Mueve la etiqueta "Alambique · h" para que no quede debajo de la mesa (por ejemplo, sobre la pared, arriba a la izquierda de la planta).
+
+2. Niveles 1 y 2, tubería de entrada: no debe nacer en el aire. Debe salir de una brida de hierro con remaches (placa de 24 × 40 px, #4A5056) fija en el borde izquierdo de la zona de la planta, con dos soportes colgantes (varillas finas de hierro desde la barra superior) a lo largo del tramo horizontal. La válvula v1 va centrada sobre el tubo, con el tubo entrando por los dos extremos de su cuerpo, y el codo baja hasta la tapa de la cúpula, como ya está.
+
+3. Niveles 1 y 2, tubería de salida hacia el caldero: debe salir del costado de la base del alambique, justo por encima del tablero, ir en horizontal hasta pasar el borde derecho de la mesa, bajar en vertical con codos redondeados de 90° (sin tramos diagonales) y terminar en un pico vertical hacia abajo, centrado sobre la boca del caldero y 15 px por encima de su borde. El chorro verde cae en vertical desde el pico hasta la poción, con un grosor proporcional a c1·√h1 y un mínimo visible de 2 px mientras haya caudal. El caldero va en el piso (y = 650), a la derecha de la mesa.
+
+4. Nivel 3 sobre la mesa: pon mesa_laboratorio también en el nivel 3, con las patas en y = 650. Escala alambique_cascada.png (sin deformar) para que quepa entre y = 95 y el tablero, apoyado sobre la superficie del tablero (a la altura del 28 % de la imagen de la mesa), y mueve el conjunto a la izquierda para que el tubo de salida de la derecha quede fuera del borde derecho de la mesa. En la imagen original alambique_columna_liquido.jpg (2576 × 1438 px, fracciones del ancho y del alto completos):
+   - cuerpo de los alambiques: x 0,139–0,308; base del alambique 2 en y 0,911;
+   - extremo del tubo de salida de la derecha (pico hacia abajo): x 0,413–0,433, y 0,972;
+   - tubo de vidrio de la unión q12: x 0,089–0,109, y 0,510–0,650.
+   Coloca el caldero en el piso, con la boca centrada bajo el extremo del tubo de salida, y dibuja el chorro con un grosor proporcional a c2·v2·√h2. Convierte estas fracciones al recorte y a la escala reales; si no coinciden, detecta los píxeles del sprite.
+
+5. Nivel 3, tubo de vidrio q12: el brillo verde quedó por fuera, más arriba y a la izquierda del vidrio. Dibújalo exactamente dentro del rectángulo del vidrio del punto 4 (con 2 px de margen), por encima del sprite, con una opacidad proporcional a q12 = c1·√h1.
+
+6. Nivel 3, etiquetas: mantenlas fuera del dibujo y unidas a su pieza con una línea fina, como ahora, recalculadas para la nueva escala.
+
+Revisa con ?control=teclado los niveles 1, 2 y 3 y confirma: la mesa y el caldero tocan el piso, los tubos salen de una pieza fija y llegan a otra sin huecos ni diagonales, el chorro cae dentro de la boca del caldero y el brillo q12 queda dentro del vidrio.
 No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
 ```
 
