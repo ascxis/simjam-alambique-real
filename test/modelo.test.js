@@ -18,9 +18,15 @@ test('RK4 reproduce sistema de primer orden K=2, tau=0.5 con escalón', () => {
 test('RK4 reproduce sistema de segundo orden zeta=0.3, wn=4 con escalón', () => {
   const f = ([y, v]) => [v, 16 * (1 - y) - 2 * .3 * 4 * v];
   const exacta = (t) => { const wd = 4 * Math.sqrt(1 - .3 ** 2); return 1 - Math.exp(-1.2 * t) * (Math.cos(wd * t) + 1.2 / wd * Math.sin(wd * t)); };
-  let x = [0, 0], max = 0, h = 1 / 120;
-  for (let i = 0; i <= 1200; i++) { const t = i * h; max = Math.max(max, Math.abs(x[0] - exacta(t))); x = rk4(f, x, 1, t, h); }
-  assert.ok(max < 1e-4, `error máximo RK4 = ${max}`); console.log(`Segundo orden: error máximo RK4=${max}`);
+  let x = [0, 0], xEuler = [0, 0], max = 0, maxEuler = 0, h = 1 / 120;
+  for (let i = 0; i <= 1200; i++) {
+    const t = i * h;
+    max = Math.max(max, Math.abs(x[0] - exacta(t)));
+    maxEuler = Math.max(maxEuler, Math.abs(xEuler[0] - exacta(t)));
+    x = rk4(f, x, 1, t, h);
+    xEuler = euler(f, xEuler, 1, t, h);
+  }
+  assert.ok(max < 1e-4, `error máximo RK4 = ${max}`); console.log(`Segundo orden: error máximo RK4=${max}, Euler=${maxEuler}`);
 });
 test('Actuador respeta saturación y velocidad máxima', () => {
   const a = new Actuador({ minimo: 0, maximo: 1, velocidadMaxima: .25 });
@@ -29,7 +35,7 @@ test('Actuador respeta saturación y velocidad máxima', () => {
 test('la fuente escalón entrega controles completos y cambia der.altura a los 2 s', () => {
   const entrada = new GestorEntrada({ fuente: 'escalon' });
   const antes = entrada.actualizar(1);
-  assert.equal(antes.der.altura, 0);
+  assert.equal(antes.der.altura, 0.612372);
   for (const mano of [antes.der, antes.izq]) {
     assert.deepEqual(Object.keys(mano).sort(), ['altura', 'dedos', 'giro', 'medidaCruda', 'pellizco', 'presente', 'puno', 'u_crudo', 'x'].sort());
     for (const campo of ['altura', 'x', 'pellizco', 'giro']) {
@@ -40,8 +46,32 @@ test('la fuente escalón entrega controles completos y cambia der.altura a los 2
   }
   assert.equal(typeof antes.pausa, 'boolean');
   const despues = entrada.actualizar(1);
-  assert.equal(despues.der.altura, 1);
-  assert.equal(despues.der.u_crudo.altura, 1);
+  assert.equal(despues.der.altura, 0.622372);
+  assert.equal(despues.der.u_crudo.altura, 0.622372);
+});
+test('escalón de verificación: tanque se aproxima al nuevo equilibrio en 80 s', () => {
+  const h0 = 1.5, vEquilibrio = 0.612372, vFinal = 0.622372, dt = 1 / 120;
+  const sistema = crearSistemaTanques({ tanques: 1, estadoInicial: [h0] });
+  const actuador = new Actuador({ velocidadMaxima: 0.25, inicial: 0.2 * Math.sqrt(h0) / 0.4 });
+  const equilibrioFinal = (0.4 * vFinal / 0.2) ** 2;
+  const umbral = h0 + .632 * (equilibrioFinal - h0);
+  let tiempo63 = null, hAnterior = sistema.x[0], tAnterior = 0;
+  for (let paso = 0; paso < 80 * 120; paso++) {
+    const t = sistema.t;
+    const mando = t < 2 ? vEquilibrio : vFinal;
+    const v1 = actuador.avanzar(mando, dt);
+    sistema.avanzar([v1, 1, 0], dt);
+    const hActual = sistema.x[0], tActual = sistema.t;
+    if (tiempo63 === null && tActual >= 2 && hAnterior < umbral && hActual >= umbral) {
+      const fraccion = (umbral - hAnterior) / (hActual - hAnterior);
+      tiempo63 = tAnterior + fraccion * (tActual - tAnterior) - 2;
+    }
+    hAnterior = hActual; tAnterior = tActual;
+  }
+  const final = sistema.x[0];
+  assert.ok(Math.abs(final - 1.5494) < 0.01 * 1.5494, `h1(80 s)=${final} m`);
+  assert.ok(Number.isFinite(tiempo63), 'el nivel cruza el 63,2 % del cambio');
+  console.log(`Escalón de verificación: h1(80 s)=${final} m; t63,2=${tiempo63} s desde t=2 s`);
 });
 test('la cámara conserva cada consigna mientras su mano está fuera de zona', () => {
   const controles = {

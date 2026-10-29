@@ -74,6 +74,11 @@ export class Simulacion extends EscenaBase {
     this.nivel = cargarNiveles().find((n) => n.id === Number(contextoJuego.nivelElegido)) || cargarNiveles()[0];
     this.gestor = contextoJuego.gestor = new GestorEntrada({ fuente: contextoJuego.fuenteElegida || undefined });
     this.gestor.elegir(contextoJuego.fuenteElegida || this.gestor.fuente);
+    this.modoVerificacionEscalon = this.gestor.fuente === 'escalon' && this.nivel.id === 1;
+    if (this.modoVerificacionEscalon) {
+      this.nivel.estadoInicial = [1.5];
+      this.nivel.duracion = 80;
+    }
     const h1 = this.nivel.estadoInicial[0];
     this.actuador1 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(h1) / PARAMETROS_TANQUES.caudalEntradaMaximo });
     this.actuador2 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: 1 });
@@ -487,7 +492,7 @@ export class Simulacion extends EscenaBase {
       const desborde = hs.some((h) => h >= PARAMETROS_TANQUES.alturaMaxima);
       if (desborde) { this.terminar(true); return; }
       if (this.tiempoJuego >= this.nivel.duracion) { this.terminar(false); return; }
-      if (this.nivel.criterio.tipo === 'consecutivo' && this.tiempoEnBandaSeguido >= this.nivel.criterio.segundos) { this.terminar(false); return; }
+      if (!this.modoVerificacionEscalon && this.nivel.criterio.tipo === 'consecutivo' && this.tiempoEnBandaSeguido >= this.nivel.criterio.segundos) { this.terminar(false); return; }
     }
     this.actualizarBarrasEnVivo();
     this.actualizarElementosVivos();
