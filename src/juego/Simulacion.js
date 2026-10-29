@@ -10,7 +10,7 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
-import { dibujarTanques, posicionEscalaTanque, posicionAyudaCascada } from '../hmi/tanques.js';
+import { dibujarTanques, posicionEscalaTanque, posicionAyudaCascada, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
 import { MAPA_CONTROL, leerSenal, leerSenalSiPresente } from './mapaControl.js';
 
 export class Simulacion extends EscenaBase {
@@ -47,7 +47,29 @@ export class Simulacion extends EscenaBase {
     this.ultimoTiempoMuestra = 0;
     this.crearFondo(`${this.nivel.nombre} · Operador de tanques`);
     this.add.text(36, 105, 'Tanques en cascada · A·dh/dt = caudales · válvulas con slew 0.25 s⁻¹', { fontSize: '16px', color: '#424c4f' });
-    this.render = this.add.graphics();
+    this.render = this.add.graphics().setDepth(-1);
+    this.conSprites = this.textures.exists('alambique');
+    this.spritesTanques = [];
+    this.spritesValvulas = [];
+    for (let i = 0; i < this.nivel.tanques; i++) {
+      if (this.conSprites) {
+        const p = posicionSpriteTanque(i, this.nivel.tanques);
+        this.spritesTanques.push(this.add.image(p.x, p.y, 'alambique').setDisplaySize(p.ancho, p.alto).setDepth(-.5));
+      }
+    }
+    this.conSpritesValvula = this.textures.exists('valvula-cuerpo') && this.textures.exists('valvula-volante');
+    if (this.conSpritesValvula) {
+      const puntos = posicionSpritesValvulas(this.nivel.tanques);
+      for (const [clave, punto] of [['v1', puntos.v1], ['v2', puntos.v2]]) {
+        if (!punto || (clave === 'v2' && this.nivel.tanques !== 2)) continue;
+        const cuerpo = this.add.image(punto.x, punto.y, 'valvula-cuerpo').setDisplaySize(46, 46);
+        const volante = this.add.sprite(punto.x, punto.y, 'valvula-volante').setDisplaySize(25, 25).play('valvula-en-servicio');
+        this.spritesValvulas.push({ clave, cuerpo, volante });
+      }
+    }
+    this.renderOverlay = this.add.graphics().setDepth(2);
+    this.placaAlarma = this.textures.exists('alarma-placa') ? this.add.image(615, 125, 'alarma-placa').setDisplaySize(35, 35).setDepth(3) : null;
+    this.runaAlarma = this.textures.exists('alarma-runa') ? this.add.sprite(615, 125, 'alarma-runa').setDisplaySize(25, 25).setDepth(4).play('runa-alerta') : null;
     this.etiquetasEscala = [];
     for (let tanque = 0; tanque < this.nivel.tanques; tanque++) {
       for (let metro = 0; metro <= 3; metro++) {
@@ -62,7 +84,6 @@ export class Simulacion extends EscenaBase {
       const ayuda = posicionAyudaCascada();
       this.ayudaCascada = this.add.text(ayuda.x, ayuda.y, 'Mano derecha: válvula de entrada v1\nPellizco izquierdo abierto = v2 abierta (sale líquido del alambique 2)', { fontSize: '12px', color: '#414b4e', lineSpacing: 2 });
       this.add.text(247, 376, 'q₁₂ = c₁√h₁', { fontSize: '11px', color: '#414b4e' });
-      this.add.text(430, 567, 'v2', { fontSize: '11px', color: '#414b4e' });
     }
     this.alarmText = this.add.text(36, this.nivel.tanques === 2 ? 635 : 615, '', { fontSize: '18px', color: '#252b2d', fontStyle: 'bold' });
     this.criterioTexto = this.add.text(660, 615, '', { fontSize: '15px', color: '#252b2d', fontStyle: 'bold' });
@@ -101,6 +122,7 @@ export class Simulacion extends EscenaBase {
       this.barras.forEach((barra) => limpiar(() => barra.destruir()));
       this.paramPanel?.forEach((elemento) => limpiar(() => elemento.destroy()));
       limpiar(() => this.render.destroy());
+      limpiar(() => this.renderOverlay.destroy());
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
     this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
@@ -199,11 +221,22 @@ export class Simulacion extends EscenaBase {
       tolerancia: banda,
       dentroBanda: Math.abs(yActual - referencia) <= banda,
       aperturaV2: this.actuador2.salida(),
+      aperturaV1: this.actuador1.salida(),
+      overlay: this.renderOverlay,
+      conSprites: this.conSprites,
     });
     this.refTexto.setText(`h${this.nivel.tanques === 2 ? '2' : '1'} ${yActual.toFixed(2)} m · referencia ${referencia.toFixed(2)} ±${banda.toFixed(2)} m · qd ${obtenerPerturbacion(this.nivel, this.tiempoJuego).toFixed(3)} m³/s`);
     const alarmasActivas = hs.map((h, i) => h >= 2.8 ? `HH${i + 1}` : h >= 2.4 ? `H${i + 1}` : '').filter(Boolean);
     this.alarmText.setText(alarmasActivas.length ? `ALARMA ${alarmasActivas.join(' · ')}` : '');
     this.alarmText.setColor(alarmasActivas.some((a) => a.startsWith('HH')) ? '#d52222' : '#c57a00');
+    if (this.runaAlarma) {
+      const hh = hs.some((h) => h >= 2.8), high = hs.some((h) => h >= 2.4);
+      this.runaAlarma.setTint(hh ? 0xff1744 : high ? 0xffd700 : 0x70777a);
+      this.runaAlarma.setAlpha(high ? 1 : .55);
+    }
+    for (const valve of this.spritesValvulas || []) {
+      valve.volante.setRotation((valve.clave === 'v1' ? this.actuador1.salida() : this.actuador2.salida()) * Math.PI * 2);
+    }
     const criterio = this.nivel.criterio;
     if (criterio.tipo === 'consecutivo') {
       const progreso = Math.min(criterio.segundos, this.tiempoEnBandaSeguido);

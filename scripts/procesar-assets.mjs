@@ -1,0 +1,128 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import sharp from 'sharp';
+
+const raiz = process.cwd();
+const origen = path.join(raiz, 'public/assets/originales');
+const salidaSprites = path.join(raiz, 'public/assets/sprites');
+const salidaFondos = path.join(raiz, 'public/assets/fondos');
+
+// Medidas y distribución tomadas de docs/recursos.md.
+const recursos = [
+  { archivo: 'alambique_cuerpo_vacio.png', destino: 'sprites/alambique_cuerpo_vacio.png', ancho: 215, alto: 300 },
+  { archivo: 'alambique_columna_liquido.jpg', destino: 'sprites/alambique_columna_liquido.png', altoMaximo: 300 },
+  { archivo: 'valvula_cuerpo_estatico.jpg', destino: 'sprites/valvula_cuerpo_estatico.png', ancho: 80, alto: 80 },
+  { archivo: 'valvula_volante_aislado.png', destino: 'sprites/valvula_volante_aislado.png', ancho: 50, alto: 50 },
+  { archivo: 'alarma_placa.png', destino: 'sprites/alarma_placa.png', ancho: 64, alto: 64 },
+  { archivo: 'alarma_runa.png', destino: 'sprites/alarma_runa.png', ancho: 64, alto: 64 },
+  { archivo: 'fondo_laboratorio.png', destino: 'fondos/fondo_laboratorio.png', ancho: 1280, alto: 720, fondo: true },
+  { archivo: 'baldosas_laboratorio.png', destino: 'sprites/baldosas_laboratorio.png', columnas: 4, filas: 4, cuadros: 16, cuadro: 64 },
+  { archivo: 'interfaz_iconos.png', destino: 'sprites/interfaz_iconos.png', columnas: 4, filas: 2, cuadros: 8, cuadro: 64 },
+  { archivo: 'logotipo_titulo.png', destino: 'sprites/logotipo_titulo.png', ancho: 400, alto: 256 },
+  { archivo: 'pantalla_post_partida.png', destino: 'sprites/pantalla_post_partida.png', ancho: 588, alto: 680 },
+];
+
+async function pixelesConTransparencia(archivo, quitarMagenta = true) {
+  const { data, info } = await sharp(archivo).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  if (quitarMagenta) {
+    for (let i = 0; i < data.length; i += info.channels) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      // El umbral tolera la compresión JPG y los bordes suavizados del fondo magenta.
+      const magenta = Math.min(r, b) - g;
+      if (r > 40 && b > 40 && g < 120 && magenta > 18) {
+        // Incluye el borde antialiasado de magenta; limpia RGB para evitar halos al escalar.
+        data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0;
+      }
+    }
+  }
+  return { data, info };
+}
+
+function limitesAlfa(data, info, offsetX = 0, offsetY = 0) {
+  let minX = info.width, minY = info.height, maxX = -1, maxY = -1;
+  for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {
+    if (data[(y * info.width + x) * info.channels + 3] > 8) {
+      minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+    }
+  }
+  if (maxX < 0) return null;
+  return { left: offsetX + minX, top: offsetY + minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+async function extraerRecorte(buffer, recorte) {
+  return sharp(buffer).extract(recorte).png().toBuffer();
+}
+
+async function crearCuadro(buffer, tamano, { base = true } = {}) {
+  const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const caja = limitesAlfa(data, info);
+  if (!caja) return Buffer.alloc(tamano * tamano * 4);
+  const recorte = await extraerRecorte(buffer, caja);
+  const contenido = await sharp(recorte).resize(tamano, tamano, { fit: 'inside', withoutEnlargement: false }).png().toBuffer();
+  const metadatos = await sharp(contenido).metadata();
+  const left = Math.floor((tamano - metadatos.width) / 2);
+  // Las hojas de objetos comparten la línea de base para que el giro/animación no salte.
+  const top = base ? tamano - metadatos.height : Math.floor((tamano - metadatos.height) / 2);
+  return sharp({ create: { width: tamano, height: tamano, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: contenido, left, top }]).png().toBuffer();
+}
+
+async function procesarUnico(recurso, archivo) {
+  const { data, info } = await pixelesConTransparencia(archivo, !recurso.fondo);
+  const buffer = await sharp(data, { raw: info }).png().toBuffer();
+  const limites = recurso.fondo ? { left: 0, top: 0, width: info.width, height: info.height } : limitesAlfa(data, info);
+  if (!limites) throw new Error(`No se encontró contenido visible en ${recurso.archivo}`);
+  let imagen = sharp(buffer).extract(limites);
+  if (recurso.altoMaximo) imagen = imagen.resize({ height: recurso.altoMaximo, withoutEnlargement: true });
+  else imagen = imagen.resize(recurso.ancho, recurso.alto, { fit: 'contain', background: recurso.fondo ? '#1c2026' : { r: 0, g: 0, b: 0, alpha: 0 } });
+  return imagen.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
+}
+
+async function procesarHoja(recurso, archivo) {
+  const { data, info } = await pixelesConTransparencia(archivo, true);
+  const celdaAncho = info.width / recurso.columnas, celdaAlto = info.height / recurso.filas;
+  const cuadros = [];
+  for (let i = 0; i < recurso.cuadros; i++) {
+    const col = i % recurso.columnas, fila = Math.floor(i / recurso.columnas);
+    const left = Math.floor(col * celdaAncho), top = Math.floor(fila * celdaAlto);
+    const right = Math.floor((col + 1) * celdaAncho), bottom = Math.floor((fila + 1) * celdaAlto);
+    const celda = await sharp(data, { raw: info }).extract({ left, top, width: right - left, height: bottom - top }).png().toBuffer();
+    cuadros.push(await crearCuadro(celda, recurso.cuadro, { base: recurso.archivo !== 'interfaz_iconos.png' }));
+  }
+  const composiciones = cuadros.map((input, i) => ({
+    input,
+    left: (i % recurso.columnas) * recurso.cuadro,
+    top: Math.floor(i / recurso.columnas) * recurso.cuadro,
+  }));
+  return sharp({
+    create: {
+      width: recurso.columnas * recurso.cuadro,
+      height: recurso.filas * recurso.cuadro,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  }).composite(composiciones).png({ compressionLevel: 9 }).toBuffer();
+}
+
+async function limpiarHalo(buffer) {
+  const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  for (let i = 0; i < data.length; i += info.channels) {
+    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+    const tonoMagenta = Math.min(r, b) > 35 && g < Math.min(r, b) * .45 && Math.abs(r - b) < 80;
+    if (a < 250 && tonoMagenta) { data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0; }
+  }
+  return sharp(data, { raw: info }).png({ compressionLevel: 9 }).toBuffer();
+}
+
+await fs.mkdir(salidaSprites, { recursive: true });
+await fs.mkdir(salidaFondos, { recursive: true });
+for (const recurso of recursos) {
+  const archivo = path.join(origen, recurso.archivo);
+  try { await fs.access(archivo); }
+  catch { console.warn(`[assets] Falta ${recurso.archivo}; se conserva el respaldo geométrico.`); continue; }
+  const salida = path.join(raiz, 'public/assets', recurso.destino);
+  let buffer = recurso.cuadros ? await procesarHoja(recurso, archivo) : await procesarUnico(recurso, archivo);
+  if (!recurso.fondo) buffer = await limpiarHalo(buffer);
+  await fs.writeFile(salida, buffer);
+  console.info(`[assets] ${recurso.archivo} → ${recurso.destino} (${(buffer.length / 1024).toFixed(1)} KB)`);
+}

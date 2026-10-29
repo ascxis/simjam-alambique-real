@@ -11,6 +11,7 @@ export class Menu extends EscenaBase {
   create() {
     document.getElementById('camera-debug-info')?.remove();
     this.crearFondo('Menú de operación');
+    if (this.textures.exists('logotipo')) this.add.image(1080, 178, 'logotipo').setDisplaySize(250, 160).setAlpha(.95);
     this.add.text(40, 130, 'Operador de tanques · sistema hidráulico no lineal', { fontSize: '19px', color: '#424c4f' });
     this.add.text(40, 195, 'Fuente de control', { fontSize: '20px', color: '#252b2d' });
 

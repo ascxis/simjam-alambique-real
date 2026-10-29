@@ -78,6 +78,7 @@ export class Fin extends EscenaBase {
 
   renderFin(data) {
     this.crearFondo('Lo que pasó en el modelo');
+    if (this.textures.exists('panel-final')) this.add.image(640, 405, 'panel-final').setDisplaySize(294, 340).setAlpha(.12).setDepth(-998);
     const nivel = data.nivel || { nombre: 'Nivel', tanques: 1, referencia: 1 };
     const muestras = data.muestras || [], resultado = data.resultado || evaluarNivel(nivel, muestras, data.alarmas || []);
     const metricas = metricasTanque(muestras, nivel);
