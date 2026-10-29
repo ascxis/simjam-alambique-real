@@ -127,11 +127,11 @@ export class Simulacion extends EscenaBase {
       this.ayudaCascada = null;
       const q = L.tuberiaQ12.etiqueta;
       this.panel(q, { profundidad: 1, radio: 5 });
-      this.add.text(q.x + 6, q.y + 5, 'q12 = c1·√h1', fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
+      this.add.text(q.x + 5, q.y + 5, 'q12 = c1·√h1', fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
     }
     this.alarmText = this.add.text(L.estado.x, L.estado.y + 27, '', fuenteInterfaz(13, '#E6E8EA', { fontStyle: 'bold' }));
     this.criterioTexto = this.add.text(L.criterio.x + 10, L.criterio.y + 2, '', fuenteInterfaz(14, '#E6E8EA', { fontStyle: 'bold' }));
-    this.progresoCriterio = dibujarProgreso(this, { x: L.criterio.x + 10, y: L.criterio.y + 32, ancho: L.criterio.ancho - 20, alto: 12 }, 0);
+    this.progresoCriterio = dibujarProgreso(this, { x: L.criterio.x + 10, y: L.criterio.y + L.criterio.progresoOffsetY, ancho: L.criterio.ancho - 20, alto: 12 }, 0);
     this.pausaPanel = this.panel(L.pausa.panel, { profundidad: 9 });
     this.pausaPanel.setVisible(false);
     this.pausaTexto = this.add.text(L.pausa.centroX, L.pausa.centroY, '', fuenteTitulo(26)).setOrigin(.5).setDepth(10);
@@ -174,7 +174,7 @@ export class Simulacion extends EscenaBase {
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
     this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
-    const ayudaLayout = this.nivel.tanques === 2 ? L.ayudaCascada : L.ayudaSimple;
+      const ayudaLayout = this.nivel.tanques === 2 ? L.ayudaCascada : L.ayudaSimple;
     this.ayuda = this.add.text(ayudaLayout.x, L.ayuda.y, '', fuenteInterfaz(13)).setDepth(5);
     this.ayuda.setWordWrapWidth(ayudaLayout.ancho);
     this.tiempoTexto = this.add.text(L.tiempo.x, L.tiempo.y, '', fuenteInterfaz(14, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
@@ -314,7 +314,7 @@ export class Simulacion extends EscenaBase {
     this.estadoCamara.setText(this.gestor.fuente === 'camara' ? (camara?.activo ? 'CÁMARA ACTIVA' : 'CÁMARA INACTIVA') : this.gestor.fuente.toUpperCase());
     this.ayuda.setText(this.nivel.tanques === 2
       ? 'Mano derecha → v1 entrada · Pellizco izquierdo abierto → v2 abierta'
-      : `${this.gestor.fuente} · P linealización · D depuración · F terminar`);
+      : `${this.gestor.fuente} · P parámetros\nD depuración · F terminar`);
     this.tiempoTexto.setText(`${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`}`);
     const seriesAltura = [{ clave: 'x', indice: 0, nombre: 'h1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'x', indice: 1, nombre: 'h2', color: 0x2ecc71 }] : [])];
     const opcionesNiveles = { ...L.tendenciaNiveles, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true };
