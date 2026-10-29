@@ -37,7 +37,7 @@ La HMI de la imagen es solo una maqueta: en el juego, las tendencias y los valor
 
 ## Lista de recursos
 
-Lista final entregada por Gemini (paso 6), limitada a los 11 archivos aceptados y ajustada por la pareja.
+Lista final entregada por Gemini (paso 6), limitada a los 11 archivos aceptados y ajustada por la pareja. En la sección 5.8 se agregaron mesa_laboratorio.png y caldero_real.png (13 archivos en total).
 El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run assets`) reescala cada imagen, **conservando la proporción**. Pantalla de 1280 × 720 y escala 1 m = 100 px.
 
 | Recurso | Archivo | Cuadro en el juego (px) | N.º de cuadros | Uso |
@@ -47,7 +47,8 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
 | Equipo principal | `alambique_columna_liquido.jpg`, parte derecha → `columna_liquido.png` | se ajusta al visor | 1 | Columna de líquido verde graduada. Opcional: el líquido se dibuja con Graphics |
 | Actuadores | `valvula_cuerpo_estatico.jpg` | 80 × 80 | 1 | Cuerpo de la válvula y tramo de tubería, sin volante |
 | Actuadores | `valvula_volante_aislado.png` | 50 × 50 | 1 | Volante de frente; el juego lo rota según la apertura v₁ o v₂ |
-| Perturbaciones | — | — | — | No aplica en el nivel 1 (sin perturbaciones). El caldero del nivel 2 es un extra opcional |
+| Perturbaciones | `caldero_real.png` | 110 px de ancho | 1 | El Caldero Real recibe la salida del alambique; en el nivel 2 representa el consumo qd. Un chorro verde dibujado con Graphics muestra el caudal de salida |
+| Mobiliario | `mesa_laboratorio.png` | 390 px de ancho | 1 | Mesa de trabajo sobre la que se apoya el alambique en los niveles 1 y 2. Vista un poco desde arriba: el tablero va del 17 % al 35 % de la altura de la imagen, y el alambique se apoya a la altura del 28 % |
 | Indicadores y alarmas | `alarma_placa.png` | 64 × 64 | 1 | Placa de piedra con el hueco de la runa |
 | Indicadores y alarmas | `alarma_runa.png` | 64 × 64 | 1 | Runa blanca; el juego la colorea: gris (apagada), `#FFD700` (alarma H) y `#FF1744` (alarma HH) |
 | Escenario 1 | `fondo_laboratorio.png` | 1280 × 720 | 1 | Fondo único 16:9. El juego es de pantalla fija (sin desplazamiento de cámara), así que no se usan capas de parallax |

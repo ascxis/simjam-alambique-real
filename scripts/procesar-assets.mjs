@@ -14,6 +14,8 @@ const recursos = [
     superior: [.213, .253, .227, .447], inferior: [.213, .661, .227, .853],
   } },
   { archivo: 'alambique_columna_liquido.jpg', destino: 'sprites/columna_liquido.png', recorteFraccion: [.693, .087, .773, .913], altoMaximo: 300 },
+  { archivo: 'mesa_laboratorio.jpg', destino: 'sprites/mesa_laboratorio.png', anchoObjetivo: 390 },
+  { archivo: 'caldero_real.jpg', destino: 'sprites/caldero_real.png', anchoObjetivo: 110 },
   { archivo: 'valvula_cuerpo_estatico.jpg', destino: 'sprites/valvula_cuerpo_estatico.png', ancho: 80, alto: 80 },
   { archivo: 'valvula_volante_aislado.png', destino: 'sprites/valvula_volante_aislado.png', ancho: 50, alto: 50 },
   { archivo: 'alarma_placa.png', destino: 'sprites/alarma_placa.png', ancho: 64, alto: 64 },
@@ -87,6 +89,7 @@ async function procesarUnico(recurso, archivo) {
   if (!limites) throw new Error(`No se encontró contenido visible en ${recurso.archivo}`);
   let imagen = sharp(buffer).extract(limites);
   if (recurso.altoMaximo) imagen = imagen.resize({ height: recurso.altoMaximo, withoutEnlargement: true });
+  else if (recurso.anchoObjetivo) imagen = imagen.resize({ width: recurso.anchoObjetivo, withoutEnlargement: false });
   else imagen = imagen.resize(recurso.ancho, recurso.alto, { fit: 'contain', background: recurso.fondo ? '#1c2026' : { r: 0, g: 0, b: 0, alpha: 0 } });
   return imagen.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
 }
@@ -113,10 +116,30 @@ async function procesarPiezaFraccion(recurso, archivo) {
   if (recurso.visores) {
     const aRecorte = (fracciones) => {
       const [vx0, vy0, vx1, vy1] = fracciones;
-      const xInicial = vx0 * origenMeta.width - recortePx.left - contenido.left;
-      const yInicial = vy0 * origenMeta.height - recortePx.top - contenido.top;
-      const xFinal = vx1 * origenMeta.width - recortePx.left - contenido.left;
-      const yFinal = vy1 * origenMeta.height - recortePx.top - contenido.top;
+      let xInicial = vx0 * origenMeta.width - recortePx.left - contenido.left;
+      let yInicial = vy0 * origenMeta.height - recortePx.top - contenido.top;
+      let xFinal = vx1 * origenMeta.width - recortePx.left - contenido.left;
+      let yFinal = vy1 * origenMeta.height - recortePx.top - contenido.top;
+
+      // El vidrio gris del arte tiene un borde algo mayor que la fracción nominal.
+      // Busca pixeles gris claro solo en una ventana acotada alrededor del visor esperado.
+      const margenX = Math.ceil(origenMeta.width * .012), margenY = Math.ceil(origenMeta.height * .018);
+      const roi = {
+        left: Math.max(0, Math.floor(vx0 * origenMeta.width - recortePx.left - contenido.left - margenX)),
+        top: Math.max(0, Math.floor(vy0 * origenMeta.height - recortePx.top - contenido.top - margenY)),
+        right: Math.min(contenido.width, Math.ceil(vx1 * origenMeta.width - recortePx.left - contenido.left + margenX)),
+        bottom: Math.min(contenido.height, Math.ceil(vy1 * origenMeta.height - recortePx.top - contenido.top + margenY)),
+      };
+      let minX = roi.right, minY = roi.bottom, maxX = -1, maxY = -1, pixeles = 0;
+      for (let y = roi.top; y < roi.bottom; y++) for (let x = roi.left; x < roi.right; x++) {
+        const i = ((y + contenido.top) * info.width + (x + contenido.left)) * info.channels;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const grisClaro = data[i + 3] > 200 && Math.min(r, g, b) > 85 && Math.max(r, g, b) - Math.min(r, g, b) < 55;
+        if (grisClaro) { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); pixeles++; }
+      }
+      if (pixeles > 100 && maxX >= minX && maxY >= minY) {
+        xInicial = minX; yInicial = minY; xFinal = maxX + 1; yFinal = maxY + 1;
+      }
       return {
         x: xInicial / contenido.width, y: yInicial / contenido.height,
         ancho: (xFinal - xInicial) / contenido.width, alto: (yFinal - yInicial) / contenido.height,
