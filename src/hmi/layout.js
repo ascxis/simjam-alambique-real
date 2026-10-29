@@ -1,0 +1,93 @@
+export const LAYOUT = Object.freeze({
+  canvas: { ancho: 1280, alto: 720 },
+  fondo: { viñeta: [
+    { ancho: 32, alpha: .17 }, { ancho: 64, alpha: .11 }, { ancho: 104, alpha: .075 },
+    { ancho: 150, alpha: .045 }, { alto: 24, alpha: .13 }, { alto: 48, alpha: .085 },
+    { alto: 78, alpha: .05 },
+  ] },
+  colores: {
+    fondo: 0x1c2026, borde: 0xb85a24, cobre: 0xb85a24, texto: '#E6E8EA',
+    titulo: '#F2E6C9', alarmaH: 0xffd700, alarmaHH: 0xff1744,
+    pocion: 0x2ecc71, banda: 0x00e676, panelHmi: 0x3a3d40,
+  },
+  menu: {
+    logo: { x: 640, y: 135, ancho: 400, alto: 256 },
+    panel: { x: 260, y: 270, ancho: 760, alto: 276, radio: 10 },
+    izquierda: { x: 292, ancho: 330 },
+    derecha: { x: 652, ancho: 336 },
+    fuenteLabelY: 292, fuenteY: 319, fuenteAlto: 38,
+    nivelLabelY: 375, nivelY: 402, nivelAlto: 38,
+    camaraLabelY: 292, camaraY: 319, camaraAlto: 38,
+    invertirY: 382,
+    botones: [
+      { x: 260, y: 558, ancho: 240, alto: 48 },
+      { x: 520, y: 558, ancho: 240, alto: 48 },
+      { x: 780, y: 558, ancho: 240, alto: 48 },
+    ],
+    controles: { x: 260, y: 624, ancho: 760, alto: 52 },
+    checkbox: { alto: 44, offsetX: 22 },
+    margenControl: { x: 22, y: 15, horizontal: 44 },
+  },
+  simulacion: {
+    barraSuperior: { x: 0, y: 0, ancho: 1280, alto: 80 },
+    titulo: { x: 28, y: 19 }, estadoCamara: { x: 1000, y: 29, ancho: 250 },
+    planta: { x: 20, y: 90, ancho: 620, alto: 560 },
+    piso: { x: 20, y: 650, ancho: 620, alto: 70 },
+    hmi: { x: 660, y: 90, ancho: 600, alto: 560, radio: 10 },
+    hmiInterior: { x: 680, ancho: 560 },
+    estado: { x: 680, y: 105, ancho: 560, alto: 27 },
+    tendenciaNiveles: { x: 680, y: 150, ancho: 560, alto: 182 },
+    tendenciaValvulas: { x: 680, y: 340, ancho: 560, alto: 128 },
+    barraV1: { x: 690, y: 499, ancho: 250, alto: 36 },
+    barraV2: { x: 970, y: 499, ancho: 250, alto: 36 },
+    criterio: { x: 680, y: 542, ancho: 560, alto: 78 },
+    footer: { x: 20, y: 660, ancho: 1240, alto: 52, radio: 10 },
+    ayuda: { x: 38, y: 671, ancho: 500, alto: 32 },
+    ayudaSimple: { x: 250, ancho: 450 },
+    ayudaCascada: { x: 38, ancho: 280 },
+    reloj: { x: 800, y: 686, tamano: 24 },
+    tiempo: { x: 822, y: 674, ancho: 190, alto: 26 },
+    terminar: { x: 1090, y: 667, ancho: 145, alto: 38 },
+    tanqueSolo: { centroX: 330, baseY: 650, alto: 300 },
+    tanque1Cascada: { centroX: 190, baseY: 430, alto: 260 },
+    tanque2Cascada: { centroX: 470, baseY: 650, alto: 260 },
+    soporte: { x: 124, y: 430, ancho: 132, baseY: 650 },
+    valvula1Solo: { x: 330, tuboDesdeY: 115, margenTanque: 22 },
+    valvula1Cascada: { x: 190, tuboDesdeY: 105, margenTanque: 22 },
+    valvula2Cascada: { margenDerecho: 40, margenBase: 16 },
+    etiquetaSolo: { x: 20, y: 654, ancho: 210, alto: 42 },
+    etiqueta1Cascada: { x: 84, y: 434, ancho: 239, alto: 40 },
+    etiqueta2Cascada: { x: 370, y: 654, ancho: 240, alto: 42 },
+    alarmaSolo: { x: 20, y: 655, tamano: 40 },
+    alarma1Cascada: { x: 38, y: 433, tamano: 40 },
+    alarma2Cascada: { x: 320, y: 655, tamano: 40 },
+    escalaTanque: { ancho: 34, margenX: 4, margenSuperior: 20, margenInferior: 16 },
+    valvulaSprite: { cuerpo: 46, volante: 25 },
+    pausa: { panel: { x: 390, y: 315, ancho: 500, alto: 70 }, centroX: 640, centroY: 350 },
+    parametros: { panel: { x: 390, y: 250, ancho: 500, alto: 190 }, texto: { x: 420, y: 278 } },
+  },
+  final: {
+    marco: { x: 20, y: 20, ancho: 588, alto: 680 },
+    graficaH: { x: 38, y: 50, ancho: 552, alto: 270 },
+    graficaV: { x: 38, y: 335, ancho: 552, alto: 250 },
+    descarga: { x: 190, y: 625, ancho: 250, alto: 44 },
+    panel: { x: 630, y: 20, ancho: 630, alto: 680, radio: 10 },
+    titulo: { x: 660, y: 42 }, resultado: { x: 660, y: 92, ancho: 570 },
+    metricas: { x: 660, y: 145, ancho: 570 }, modelo: { x: 660, y: 218, ancho: 570, alto: 192 },
+    explicacion: { x: 660, y: 432, ancho: 570, alto: 132 },
+    volver: { x: 1010, y: 630, ancho: 210, alto: 44 },
+    franjaCsv: { y: 630, alto: 60 },
+    encabezadosCsv: { x: 44, y: 672 },
+  },
+  calibracion: { panel: { x: 230, y: 160, ancho: 820, alto: 410, radio: 10 }, texto: { x: 290, y: 245, ancho: 700, alto: 180 }, boton: { x: 520, y: 500, ancho: 240, alto: 44 } },
+  arranque: { panel: { x: 350, y: 260, ancho: 580, alto: 200, radio: 10 }, titulo: { x: 470, y: 295 }, barra: { x: 420, y: 385, ancho: 440, alto: 18 } },
+});
+
+export function obtenerCajasTanques(cantidad) {
+  const config = LAYOUT.simulacion;
+  const medidas = cantidad === 2 ? [config.tanque1Cascada, config.tanque2Cascada] : [config.tanqueSolo];
+  return medidas.map(({ centroX, baseY, alto }) => {
+    const ancho = alto * (215 / 300);
+    return { x: centroX - ancho / 2, y: baseY - alto, w: ancho, h: alto };
+  });
+}

@@ -5,48 +5,60 @@ import { obtenerSesionCamara, listarCamaras } from '../vision/servicioCamara.js'
 import { obtenerVideoPreview } from '../hmi/vistaCamara.js';
 import { GestorEntrada } from '../entrada/gestorEntrada.js';
 import { cargarNiveles } from '../modelo/niveles.js';
+import { LAYOUT } from '../hmi/layout.js';
+import { fuenteInterfaz } from '../hmi/estilo.js';
+
+const selectCss = 'box-sizing:border-box;background:#1C2026;color:#E6E8EA;border:1px solid #B85A24;border-radius:8px;padding:7px 10px;font:15px Segoe UI,Arial,sans-serif;';
 
 export class Menu extends EscenaBase {
   constructor() { super('Menu'); }
   create() {
     document.getElementById('camera-debug-info')?.remove();
-    this.crearFondo('Menú de operación');
-    this.add.rectangle(640, 380, 1230, 540, 0xe2e3e3, .55).setDepth(-998);
-    if (this.textures.exists('logotipo')) this.add.image(1080, 178, 'logotipo').setDisplaySize(250, 160).setAlpha(.95);
-    this.add.text(40, 130, 'Operador de tanques · sistema hidráulico no lineal', { fontSize: '19px', color: '#424c4f' });
-    this.add.text(40, 195, 'Fuente de control', { fontSize: '20px', color: '#252b2d' });
+    this.crearFondo();
+    const M = LAYOUT.menu;
+    if (this.textures.exists('logotipo')) this.add.image(M.logo.x, M.logo.y, 'logotipo').setDisplaySize(M.logo.ancho, M.logo.alto);
+    this.panel(M.panel);
+    this.panel(M.controles, { profundidad: 1 });
+    this.add.text(M.izquierda.x, M.fuenteLabelY, 'Fuente de control', fuenteInterfaz(17, '#F2E6C9', { fontStyle: 'bold' }));
+    this.add.text(M.izquierda.x, M.nivelLabelY, 'Nivel', fuenteInterfaz(17, '#F2E6C9', { fontStyle: 'bold' }));
+    this.add.text(M.derecha.x, M.camaraLabelY, 'Cámara', fuenteInterfaz(17, '#F2E6C9', { fontStyle: 'bold' }));
 
     const valoresFuente = ['camara', 'gamepad', 'teclado', 'escalon'];
     const solicitada = new URLSearchParams(location.search).get('control');
     let fuenteActiva = valoresFuente.includes(solicitada) ? solicitada : 'camara';
     const select = document.createElement('select');
     select.innerHTML = '<option value="camara">Cámara</option><option value="gamepad">Gamepad</option><option value="teclado">Teclado</option><option value="escalon">Escalón de prueba</option>';
-    Object.assign(select.style, { width: '310px', height: '40px', padding: '7px', fontSize: '16px' });
-    const fuenteDom = this.add.dom(40, 226, select).setOrigin(0, 0);
+    select.style.cssText = `${selectCss}width:${M.izquierda.ancho}px;height:${M.fuenteAlto}px`;
+    const fuenteDom = this.add.dom(M.izquierda.x + M.izquierda.ancho / 2, M.fuenteY + M.fuenteAlto / 2, select);
     select.value = fuenteActiva;
     select.addEventListener('change', () => { if (valoresFuente.includes(select.value)) fuenteActiva = select.value; });
     contextoJuego.fuenteElegida = fuenteActiva;
 
-    this.add.text(40, 300, 'Nivel', { fontSize: '20px', color: '#252b2d' });
     const niveles = cargarNiveles();
     const nivelSelect = document.createElement('select');
     niveles.forEach((nivel) => nivelSelect.add(new Option(`${nivel.id}. ${nivel.nombre}`, String(nivel.id))));
-    Object.assign(nivelSelect.style, { width: '380px', height: '38px', padding: '6px', fontSize: '15px' });
-    const nivelDom = this.add.dom(40, 330, nivelSelect).setOrigin(0, 0);
+    nivelSelect.style.cssText = `${selectCss}width:${M.izquierda.ancho}px;height:${M.nivelAlto}px`;
+    const nivelDom = this.add.dom(M.izquierda.x + M.izquierda.ancho / 2, M.nivelY + M.nivelAlto / 2, nivelSelect);
     nivelSelect.value = String(contextoJuego.nivelElegido || 1);
     nivelSelect.addEventListener('change', () => { contextoJuego.nivelElegido = Number(nivelSelect.value); });
-    this.add.text(40, 378, 'Mano derecha: válvula de entrada · pellizco izquierdo: salida del tanque 2', { fontSize: '15px', color: '#414b4e' });
-    const camSelect = document.createElement('select'); camSelect.id = 'camera-select'; camSelect.innerHTML = '<option value="">Cámara predeterminada</option>'; camSelect.value = leerPreferencia('alambique.cameraId', '');
-    Object.assign(camSelect.style, { width: '245px', height: '38px', padding: '6px', fontSize: '14px' });
-    const cameraSelectDom = this.add.dom(1025, 366, camSelect).setOrigin(0, 0.5);
-    const invertir = document.createElement('label'); invertir.style.cssText = 'display:flex;align-items:center;gap:6px;width:220px;height:38px;font:14px system-ui;color:#252b2d'; invertir.innerHTML = '<input type="checkbox"> Intercambiar derecha / izquierda';
+
+    const camSelect = document.createElement('select'); camSelect.id = 'camera-select'; camSelect.innerHTML = '<option value="">Cámara predeterminada</option>';
+    camSelect.style.cssText = `${selectCss}width:${M.derecha.ancho}px;height:${M.camaraAlto}px`;
+    const cameraSelectDom = this.add.dom(M.derecha.x + M.derecha.ancho / 2, M.camaraY + M.camaraAlto / 2, camSelect);
+    const invertir = document.createElement('label');
+    invertir.style.cssText = `display:flex;align-items:center;gap:8px;width:${M.derecha.ancho}px;height:${M.checkbox.alto}px;color:#E6E8EA;font:14px Segoe UI,Arial,sans-serif`;
+    invertir.innerHTML = '<input type="checkbox" style="accent-color:#B85A24"> Intercambiar derecha / izquierda';
     invertir.querySelector('input').checked = leerPreferencia('alambique.intercambiarEtiquetas', 'false') === 'true';
-    const invertirDom = this.add.dom(800, 366, invertir).setOrigin(0, 0.5);
-    invertir.querySelector('input').addEventListener('change', (ev) => { const valor = ev.target.checked; guardarPreferencia('alambique.intercambiarEtiquetas', String(valor)); if (contextoJuego.camara) contextoJuego.camara.intercambiar = valor; });
+    const invertirDom = this.add.dom(M.derecha.x + M.derecha.ancho / 2, M.invertirY + M.checkbox.alto / 2, invertir);
+    invertir.querySelector('input').addEventListener('change', (ev) => {
+      guardarPreferencia('alambique.intercambiarEtiquetas', String(ev.target.checked));
+      if (contextoJuego.camara) contextoJuego.camara.intercambiar = ev.target.checked;
+    });
 
     const poblarCamaras = async () => {
       const cams = await listarCamaras();
-      const actual = leerPreferencia('alambique.cameraId', ''); camSelect.replaceChildren(new Option('Cámara predeterminada', ''));
+      const actual = leerPreferencia('alambique.cameraId', '');
+      camSelect.replaceChildren(new Option('Cámara predeterminada', ''));
       cams.forEach((d, i) => camSelect.add(new Option(d.label || `Cámara ${i + 1}`, d.deviceId)));
       camSelect.value = cams.some((d) => d.deviceId === actual) ? actual : '';
       return cams;
@@ -56,7 +68,7 @@ export class Menu extends EscenaBase {
       const camara = contextoJuego.camara;
       if (camara?.activo) { try { await camara.iniciar(obtenerVideoPreview(), camSelect.value || undefined); } catch (e) { alert(`No se pudo abrir esa cámara: ${e.message}`); } }
     });
-    this.events.once('shutdown', () => { fuenteDom.destroy(); nivelDom.destroy(); cameraSelectDom.destroy(); invertirDom.destroy(); });
+    this.events.once('shutdown', () => [fuenteDom, nivelDom, cameraSelectDom, invertirDom].forEach((dom) => dom.destroy()));
     poblarCamaras().catch(() => {});
 
     const activarCamara = async () => {
@@ -72,29 +84,27 @@ export class Menu extends EscenaBase {
         return null;
       }
     };
-    this.boton(45, 408, 'Iniciar simulación', async () => {
+    this.boton(M.botones[0], 'Iniciar simulación', async () => {
       if (valoresFuente.includes(select.value)) fuenteActiva = select.value;
       contextoJuego.fuenteElegida = fuenteActiva;
       contextoJuego.nivelElegido = Number(nivelSelect.value) || 1;
       if (fuenteActiva === 'camara') await activarCamara();
       this.scene.start('Simulacion');
     });
-    this.boton(45, 478, 'Calibrar cámara', async () => {
+    this.boton(M.botones[1], 'Calibrar cámara', async () => {
       contextoJuego.fuenteElegida = 'camara'; contextoJuego.gestor = new GestorEntrada({ fuente: 'camara' });
       try {
         const camara = obtenerSesionCamara(); camara.intercambiar = invertir.querySelector('input').checked;
         await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined);
         obtenerVideoPreview().style.display = 'block'; await poblarCamaras(); this.scene.start('Calibracion');
-      } catch (e) {
-        const gamepad = confirm(`No se pudo iniciar la cámara (${e.message}).\nAceptar: usar gamepad. Cancelar: usar teclado.`);
-        contextoJuego.fuenteElegida = gamepad ? 'gamepad' : 'teclado'; this.scene.start('Menu');
-      }
+      } catch (e) { alert(`No se pudo iniciar la cámara: ${e.message}`); }
     });
-    this.add.text(40, 555, 'Controles: mano derecha → entrada · pellizco izquierdo → salida tanque 2\nGamepad / teclado alternativos · P parámetros · D depuración · Enter pausa', { fontSize: '15px', color: '#414b4e', lineSpacing: 6 });
-    this.boton(800, 408, 'Probar / actualizar cámaras', async () => {
+    this.boton(M.botones[2], 'Probar cámaras', async () => {
       const cams = await activarCamara();
-      if (cams?.length === 1) alert('Cámara activa. Se encontró una cámara.');
-      else if (cams?.length > 1) alert(`Cámara activa. Elige dispositivo en el selector. Se encontraron ${cams.length} cámaras.`);
+      if (cams?.length) alert(`Cámara activa. ${cams.length} dispositivo(s) disponible(s).`);
     });
+    this.add.text(M.controles.x + M.margenControl.x, M.controles.y + M.margenControl.y,
+      'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar',
+      fuenteInterfaz(14)).setWordWrapWidth(M.controles.ancho - M.margenControl.horizontal);
   }
 }

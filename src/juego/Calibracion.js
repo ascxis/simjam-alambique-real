@@ -1,10 +1,15 @@
 import { EscenaBase } from './EscenaBase.js';
 import { contextoJuego } from './contexto.js';
+import { LAYOUT } from '../hmi/layout.js';
+import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
 
 export class Calibracion extends EscenaBase {
   constructor() { super('Calibracion'); }
   create() {
-    this.crearFondo('Calibración de las manos');
+    this.crearFondo();
+    const C = LAYOUT.calibracion;
+    this.panel(C.panel);
+    this.add.text(C.panel.x + 60, C.panel.y + 35, 'Calibración de las manos', fuenteTitulo(30));
     const pasos = [
       { canal: 'altura', lado: 'min', instruccion: 'Mano abajo' }, { canal: 'altura', lado: 'max', instruccion: 'Mano arriba' },
       { canal: 'pellizco', lado: 'min', instruccion: 'Pellizco cerrado' }, { canal: 'pellizco', lado: 'max', instruccion: 'Pellizco abierto' },
@@ -12,7 +17,7 @@ export class Calibracion extends EscenaBase {
     ];
     const tareas = ['der', 'izq'].flatMap((mano) => pasos.map((paso) => ({ ...paso, mano })));
     let indice = 0, segundo = 3, acumulados = [];
-    const texto = this.add.text(100, 180, '', { fontSize: '25px', color: '#252b2d' });
+    const texto = this.add.text(C.texto.x, C.texto.y, '', fuenteInterfaz(23, '#E6E8EA')).setWordWrapWidth(C.texto.ancho);
     const mostrar = () => {
       if (indice >= tareas.length) { contextoJuego.gestor.camara.guardarCalibracion(); texto.setText('Calibración de ambas manos guardada.'); this.time.delayedCall(1200, () => this.scene.start('Menu')); return; }
       const tarea = tareas[indice]; segundo = 3; acumulados = [];
@@ -29,6 +34,6 @@ export class Calibracion extends EscenaBase {
         }
       } });
     };
-    mostrar(); this.boton(100, 380, 'Omitir calibración', () => this.scene.start('Menu'));
+    mostrar(); this.boton(C.boton, 'Omitir calibración', () => this.scene.start('Menu'));
   }
 }

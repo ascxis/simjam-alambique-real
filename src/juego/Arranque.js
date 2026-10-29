@@ -1,13 +1,17 @@
 import { EscenaBase } from './EscenaBase.js';
+import { LAYOUT } from '../hmi/layout.js';
+import { fuenteTitulo } from '../hmi/estilo.js';
 
 export class Arranque extends EscenaBase {
   constructor() { super('Arranque'); }
   preload() {
-    this.cameras.main.setBackgroundColor('#e7e8e8');
-    this.add.text(390, 320, 'Preparando el laboratorio…', { fontSize: '24px', color: '#252b2d' });
-    this.add.rectangle(640, 370, 500, 22, 0xc4c8c9);
-    this.barraCarga = this.add.rectangle(390, 370, 0, 16, 0x64777d).setOrigin(0, .5);
-    this.load.on('progress', (valor) => this.barraCarga.setSize(490 * valor, 16));
+    this.cameras.main.setBackgroundColor('#1C2026');
+    const A = LAYOUT.arranque;
+    this.panel(A.panel);
+    this.add.text(A.titulo.x, A.titulo.y, 'Preparando el laboratorio…', fuenteTitulo(26));
+    this.add.rectangle(A.barra.x + A.barra.ancho / 2, A.barra.y, A.barra.ancho, A.barra.alto, 0x3a3d40).setStrokeStyle(1, 0xb85a24);
+    this.barraCarga = this.add.rectangle(A.barra.x, A.barra.y + A.barra.alto / 2, 0, A.barra.alto - 4, 0xb85a24).setOrigin(0, .5);
+    this.load.on('progress', (valor) => this.barraCarga.setSize((A.barra.ancho - 4) * valor, A.barra.alto - 4));
 
     this.load.image('alambique', 'assets/sprites/alambique_cuerpo_vacio.png');
     this.load.image('liquido-referencia', 'assets/sprites/alambique_columna_liquido.png');

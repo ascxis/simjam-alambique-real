@@ -3,6 +3,8 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { evaluarNivel } from '../modelo/niveles.js';
 import { PARAMETROS_TANQUES } from '../modelo/tanques.js';
 import { contextoJuego } from './contexto.js';
+import { LAYOUT } from '../hmi/layout.js';
+import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
 
 function metricasTanque(muestras, nivel) {
   const dentro = (m) => Math.abs(m.y - m.h_sp) <= m.tolerancia;
@@ -77,36 +79,41 @@ export class Fin extends EscenaBase {
   }
 
   renderFin(data) {
-    this.crearFondo('Lo que pasó en el modelo');
-    if (this.textures.exists('panel-final')) this.add.image(340, 360, 'panel-final').setDisplaySize(588, 680).setAlpha(.42).setDepth(-998);
-    this.add.rectangle(640, 132, 1220, 92, 0xe2e3e3, .76).setDepth(-997);
-    this.add.rectangle(640, 548, 1220, 220, 0xe2e3e3, .80).setDepth(-997);
+    this.crearFondo();
+    const F = LAYOUT.final;
+    if (this.textures.exists('panel-final')) this.add.image(F.marco.x + F.marco.ancho / 2, F.marco.y + F.marco.alto / 2, 'panel-final').setDisplaySize(F.marco.ancho, F.marco.alto).setDepth(-4);
+    else this.panel(F.marco, { profundidad: -4 });
+    this.panel(F.panel, { profundidad: -4 });
     const nivel = data.nivel || { nombre: 'Nivel', tanques: 1, referencia: 1 };
     const muestras = data.muestras || [], resultado = data.resultado || evaluarNivel(nivel, muestras, data.alarmas || []);
     const metricas = metricasTanque(muestras, nivel);
     const tau = medirTauPrimerTramo(muestras);
-    const estado = data.desborde ? 'DESBORDE · partida terminada' : resultado.superado ? 'NIVEL SUPERADO' : 'NIVEL NO SUPERADO';
-    this.add.text(36, 108, `${nivel.nombre} · ${estado} · criterio: ${resultado.texto}`, { fontSize: '19px', color: resultado.superado && !data.desborde ? '#2f7146' : '#922d2d', fontStyle: 'bold' });
-    this.add.text(36, 143, `Nivel final ${metricas.valorFinal.toFixed(3)} m · máximo ${metricas.nivelMaximo.toFixed(3)} m · tiempo en banda ${metricas.tiempoEnBanda.toFixed(1)} s · IAE ${metricas.iae.toFixed(3)} m·s`, { fontSize: '16px', color: '#252b2d' });
+    const estado = data.desborde ? 'DESBORDE · PARTIDA TERMINADA' : resultado.superado ? 'NIVEL SUPERADO' : 'NO SUPERADO';
+    this.add.text(F.titulo.x, F.titulo.y, 'Lo que pasó en el modelo', fuenteTitulo(27));
+    this.add.text(F.resultado.x, F.resultado.y, `${estado} · ${resultado.texto || ''}`, fuenteInterfaz(19, resultado.superado && !data.desborde ? '#2ECC71' : '#FF1744', { fontStyle: 'bold' })).setWordWrapWidth(F.resultado.ancho);
+    this.add.text(F.metricas.x, F.metricas.y, `Nivel final ${metricas.valorFinal.toFixed(3)} m\nMáximo ${metricas.nivelMaximo.toFixed(3)} m · en banda ${metricas.tiempoEnBanda.toFixed(1)} s\nIAE ${metricas.iae.toFixed(3)} m·s · ISE ${metricas.ise.toFixed(3)} m²·s`, fuenteInterfaz(15)).setLineSpacing(4);
     const alturas = muestras.map((m) => ({ ...m, h: m.y }));
-    dibujarTendencia(this, { x: 45, y: 190, ancho: 565, alto: 235, muestras: alturas, clave: 'h', min: 0, max: 3, unidad: 'm', titulo: 'Nivel controlado h(t) y tolerancia', series: [{ clave: 'h', nombre: `h${nivel.tanques}`, color: 0x325f68 }, { clave: 'h_sp', nombre: 'referencia', color: 0x75643d }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', tiempoCompleto: true, ejeTiempo: true });
-    dibujarTendencia(this, { x: 640, y: 190, ancho: 565, alto: 235, muestras, clave: 'u', min: 0, max: 1, unidad: '', titulo: 'Apertura de válvulas v(t)', series: [{ clave: 'u', nombre: 'v1 entrada', color: 0x425e67 }, ...(nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2 salida', color: 0x875a3e }] : [])], tiempoCompleto: true, ejeTiempo: true });
+    dibujarTendencia(this, { ...F.graficaH, muestras: alturas, clave: 'h', min: 0, max: 3, unidad: 'm', titulo: 'Nivel controlado h(t) y tolerancia', series: [{ clave: 'h', nombre: `h${nivel.tanques}`, color: 0xe6e8ea }, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', tiempoCompleto: true, ejeTiempo: true });
+    dibujarTendencia(this, { ...F.graficaV, muestras, clave: 'u', min: 0, max: 1, unidad: '', titulo: 'Apertura de válvulas v(t)', series: [{ clave: 'u', nombre: 'v1 entrada', color: 0xe6e8ea }, ...(nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2 salida', color: 0x2ecc71 }] : [])], tiempoCompleto: true, ejeTiempo: true });
     const alarmasTexto = (data.alarmas || []).length ? data.alarmas.map((a) => `${a.tipo}${a.tanque} @ ${a.t.toFixed(1)} s (${a.altura.toFixed(2)} m)`).join(' · ') : 'sin alarmas H / HH';
     const comparacionTau = tau ? `${tau.tau.toFixed(2)} s frente a ${tau.teorico.toFixed(2)} s (v₁=${tau.v1.toFixed(2)}, h_eq=${tau.equilibrio.toFixed(2)} m)` : 'no disponible';
-    this.add.text(45, 440, `Modelo: A·dh₁/dt = 0.4v₁ − 0.2√h₁; A·dh₂/dt = 0.2√h₁ − 0.2v₂√h₂ − qd\nParámetros: A=${data.parametros?.area ?? 1} m² · c₁=c₂=0.2 m²·⁵/s · qin,max=0.4 m³/s · slew=0.25 s⁻¹\nAlarmas: ${alarmasTexto}\nτ medido / teórico tras estabilizar v₁: ${comparacionTau} · ISE ${metricas.ise.toFixed(3)}`, { fontSize: '14px', color: '#303638', lineSpacing: 5, wordWrap: { width: 1135 } });
-    this.add.text(45, 545, 'El caudal de salida depende de √h, por eso el tanque es no lineal.\nAlrededor de una altura de operación, la ecuación se aproxima por un modelo lineal con τ y K locales.\nLa válvula limita la rapidez del caudal y la perturbación qd cambia el equilibrio.\nLas tendencias y alarmas permiten comparar la respuesta con la referencia y su banda.', { fontSize: '14px', color: '#414b4e', lineSpacing: 5 });
-    this.boton(45, 637, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`));
-    this.boton(260, 637, 'Volver al menú', () => this.scene.start('Menu'));
-    this.add.text(510, 647, `CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp · τ local ${tau?.teorico.toFixed(2) ?? 'n/d'} s`, { fontSize: '13px', color: '#424c4f', padding: { left: 2, right: 2, top: 1, bottom: 9 }, lineSpacing: 4 });
+    this.add.text(F.modelo.x, F.modelo.y, `Modelo\nA·dh₁/dt = 0.4v₁ − 0.2√h₁\nA·dh₂/dt = 0.2√h₁ − 0.2v₂√h₂ − qd\nParámetros: A=${data.parametros?.area ?? 1} m² · c₁=c₂=0.2 m²·⁵/s\nqin,max=0.4 m³/s · slew=0.25 s⁻¹\nAlarmas: ${alarmasTexto}\nτ medido / teórico: ${comparacionTau}`, fuenteInterfaz(13, '#E6E8EA', { lineSpacing: 3 })).setWordWrapWidth(F.modelo.ancho);
+    this.add.text(F.explicacion.x, F.explicacion.y, 'El caudal de salida depende de √h, por eso el tanque es no lineal.\nAlrededor de una altura de operación se aproxima con un modelo lineal y sus valores locales de τ y K.\nLa válvula limita la rapidez del caudal; qd modifica el equilibrio.\nLas tendencias comparan la respuesta con la referencia y su banda.', fuenteInterfaz(14, '#E6E8EA', { lineSpacing: 5 })).setWordWrapWidth(F.explicacion.ancho);
+    this.panel({ x: F.marco.x, y: F.franjaCsv.y, ancho: F.marco.ancho, alto: F.franjaCsv.alto }, { profundidad: -2, alpha: .78, radio: 0 });
+    this.boton(F.descarga, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`));
+    this.add.text(F.encabezadosCsv.x, F.encabezadosCsv.y, 'CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp', fuenteInterfaz(12)).setDepth(5);
+    this.boton(F.volver, 'Volver al menú', () => this.scene.start('Menu'));
   }
 
   mostrarFinFallback(data) {
     const nivel = data.nivel || { id: '?', nombre: 'Nivel' };
     const resultado = data.resultado || {};
     const estado = data.desborde ? 'Desborde' : resultado.superado ? 'Nivel superado' : 'Nivel no superado';
-    this.add.text(36, 62, 'Lo que pasó en el modelo', { fontSize: '30px', color: '#252b2d', fontStyle: 'bold' });
-    this.add.text(36, 120, `${nivel.nombre} · ${estado} · ${resultado.texto || 'resultado no disponible'}`, { fontSize: '19px', color: '#252b2d', wordWrap: { width: 1180 } });
-    this.boton(45, 637, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`));
-    this.boton(260, 637, 'Volver al menú', () => this.scene.start('Menu'));
+    const F = LAYOUT.final;
+    this.crearFondo(); this.panel(F.marco); this.panel(F.panel);
+    this.add.text(F.titulo.x, F.titulo.y, 'Lo que pasó en el modelo', fuenteTitulo(27));
+    this.add.text(F.resultado.x, F.resultado.y, `${nivel.nombre} · ${estado} · ${resultado.texto || 'resultado no disponible'}`, fuenteInterfaz(18, resultado.superado ? '#2ECC71' : '#FF1744')).setWordWrapWidth(F.resultado.ancho);
+    this.boton(F.descarga, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`));
+    this.boton(F.volver, 'Volver al menú', () => this.scene.start('Menu'));
   }
 }
