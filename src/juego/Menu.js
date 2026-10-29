@@ -103,8 +103,8 @@ export class Menu extends EscenaBase {
       const cams = await activarCamara();
       if (cams?.length) alert(`Cámara activa. ${cams.length} dispositivo(s) disponible(s).`);
     });
-    this.add.text(M.controles.x + M.margenControl.x, M.controles.y + M.margenControl.y,
+    this.add.text(M.controles.x + M.controles.ancho / 2, M.controles.y + M.controles.alto / 2,
       'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar',
-      fuenteInterfaz(14)).setWordWrapWidth(M.controles.ancho - M.margenControl.horizontal);
+      fuenteInterfaz(14, '#E6E8EA', { align: 'center', lineSpacing: 4 })).setOrigin(.5).setWordWrapWidth(M.controles.ancho - M.margenControl.horizontal);
   }
 }

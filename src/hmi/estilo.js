@@ -25,6 +25,7 @@ export function dibujarPanel(scene, rect, { fondo = LAYOUT.colores.fondo, alpha 
 
 export function crearBoton(scene, rect, etiqueta, callback, { fondo = LAYOUT.colores.cobre, texto = LAYOUT.colores.titulo, tamano = 17 } = {}) {
   const contenedor = scene.add.container(rect.x, rect.y);
+  contenedor.setSize(rect.ancho, rect.alto);
   const g = scene.add.graphics();
   const pintar = (color) => {
     g.clear();
@@ -33,12 +34,13 @@ export function crearBoton(scene, rect, etiqueta, callback, { fondo = LAYOUT.col
   };
   pintar(fondo);
   const label = scene.add.text(rect.ancho / 2, rect.alto / 2, etiqueta, fuenteInterfaz(tamano, texto, { fontStyle: 'bold' })).setOrigin(.5);
-  contenedor.add([g, label]).setSize(rect.ancho, rect.alto).setInteractive(
-    new Phaser.Geom.Rectangle(0, 0, rect.ancho, rect.alto), Phaser.Geom.Rectangle.Contains,
-  );
-  contenedor.on('pointerover', () => pintar(0xd47a3f));
-  contenedor.on('pointerout', () => pintar(fondo));
-  contenedor.on('pointerdown', callback);
+  const hitArea = scene.add.zone(0, 0, rect.ancho, rect.alto).setOrigin(0, 0)
+    .setInteractive(new Phaser.Geom.Rectangle(0, 0, rect.ancho, rect.alto), Phaser.Geom.Rectangle.Contains);
+  hitArea.input.useHandCursor = true;
+  contenedor.add([g, label, hitArea]);
+  hitArea.on('pointerover', () => pintar(0xd47a3f));
+  hitArea.on('pointerout', () => pintar(fondo));
+  hitArea.on('pointerdown', callback);
   return contenedor;
 }
 

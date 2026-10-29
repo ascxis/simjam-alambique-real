@@ -59,6 +59,7 @@ export class Simulacion extends EscenaBase {
     if (this.textures.exists('baldosas')) this.piso = this.add.tileSprite(L.piso.x + L.piso.ancho / 2, L.piso.y + L.piso.alto / 2, L.piso.ancho, L.piso.alto, 'baldosas', 0).setDepth(-10);
     else this.add.rectangle(L.piso.x + L.piso.ancho / 2, L.piso.y + L.piso.alto / 2, L.piso.ancho, L.piso.alto, 0x34383b).setDepth(-10);
     this.render = this.add.graphics().setDepth(-1);
+    this.renderTuberias = this.add.graphics().setDepth(-.55);
     this.conSprites = this.textures.exists('alambique');
     this.spritesTanques = [];
     this.spritesValvulas = [];
@@ -81,15 +82,17 @@ export class Simulacion extends EscenaBase {
     this.renderOverlay = this.add.graphics().setDepth(2);
     if (this.nivel.tanques === 2) {
       const s = L.soporte;
-      this.add.rectangle(s.x + s.ancho / 2, s.y + (s.baseY - s.y) / 2, s.ancho, s.baseY - s.y, 0x4a5056).setDepth(-.6);
-      this.add.rectangle(s.x + s.ancho / 2, s.baseY - 6, s.ancho + 26, 12, 0x4a5056).setDepth(-.4);
+      if (this.textures.exists('baldosas')) this.add.tileSprite(s.x + s.ancho / 2, s.y + (s.baseY - s.y) / 2, s.ancho, s.baseY - s.y, 'baldosas', 0).setDepth(-.65);
+      const bordePedestal = this.add.graphics().setDepth(-.6);
+      bordePedestal.lineStyle(L.bordePedestal.ancho, LAYOUT.colores.oscuro, 1).strokeRect(s.x, s.y, s.ancho, s.baseY - s.y);
+      bordePedestal.lineStyle(L.bordePedestal.ancho, LAYOUT.colores.oscuro, 1).lineBetween(s.x - L.bordePedestal.voladizo, s.baseY, s.x + s.ancho + L.bordePedestal.voladizo, s.baseY);
     }
     this.placasAlarmas = [];
     this.runasAlarmas = [];
     if (this.textures.exists('alarma-placa') && this.textures.exists('alarma-runa')) {
       for (const p of posicionSpritesValvulas(this.nivel.tanques).alarmas) {
-        this.placasAlarmas.push(this.add.image(p.x, p.y, 'alarma-placa').setDisplaySize(40, 40).setDepth(3));
-        this.runasAlarmas.push(this.add.sprite(p.x, p.y, 'alarma-runa').setDisplaySize(26, 26).setDepth(4).play('runa-alerta'));
+        this.placasAlarmas.push(this.add.image(p.x, p.y, 'alarma-placa').setDisplaySize(L.alarmaSolo.tamano, L.alarmaSolo.tamano).setDepth(3));
+        this.runasAlarmas.push(this.add.sprite(p.x, p.y, 'alarma-runa').setDisplaySize(L.alarmaSolo.tamano, L.alarmaSolo.tamano).setDepth(4).play('runa-alerta'));
       }
     }
     this.etiquetasEscala = [];
@@ -122,6 +125,9 @@ export class Simulacion extends EscenaBase {
     this.refTexto = this.add.text(L.estado.x, L.estado.y, '', fuenteInterfaz(15, '#E6E8EA', { fontStyle: 'bold' }));
     if (this.nivel.tanques === 2) {
       this.ayudaCascada = null;
+      const q = L.tuberiaQ12.etiqueta;
+      this.panel(q, { profundidad: 1, radio: 5 });
+      this.add.text(q.x + 6, q.y + 5, 'q12 = c1·√h1', fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
     }
     this.alarmText = this.add.text(L.estado.x, L.estado.y + 27, '', fuenteInterfaz(13, '#E6E8EA', { fontStyle: 'bold' }));
     this.criterioTexto = this.add.text(L.criterio.x + 10, L.criterio.y + 2, '', fuenteInterfaz(14, '#E6E8EA', { fontStyle: 'bold' }));
@@ -163,12 +169,13 @@ export class Simulacion extends EscenaBase {
       this.barras.forEach((barra) => limpiar(() => barra.destruir()));
       this.paramPanel?.forEach((elemento) => limpiar(() => elemento.destroy()));
       limpiar(() => this.render.destroy());
+      limpiar(() => this.renderTuberias.destroy());
       limpiar(() => this.renderOverlay.destroy());
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
     this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
     const ayudaLayout = this.nivel.tanques === 2 ? L.ayudaCascada : L.ayudaSimple;
-    this.ayuda = this.add.text(ayudaLayout.x, L.ayuda.y, '', fuenteInterfaz(this.nivel.tanques === 2 ? 11 : 13)).setDepth(5);
+    this.ayuda = this.add.text(ayudaLayout.x, L.ayuda.y, '', fuenteInterfaz(13)).setDepth(5);
     this.ayuda.setWordWrapWidth(ayudaLayout.ancho);
     this.tiempoTexto = this.add.text(L.tiempo.x, L.tiempo.y, '', fuenteInterfaz(14, '#E6E8EA', { fontStyle: 'bold' })).setDepth(5);
     this.relojIcono = this.textures.exists('interfaz') ? this.add.image(L.reloj.x, L.reloj.y, 'interfaz', 6).setDisplaySize(L.reloj.tamano, L.reloj.tamano).setDepth(5) : null;
@@ -271,6 +278,7 @@ export class Simulacion extends EscenaBase {
       aperturaV2: this.actuador2.salida(),
       aperturaV1: this.actuador1.salida(),
       overlay: this.renderOverlay,
+      tuberias: this.renderTuberias,
       conSprites: this.conSprites,
       conSpritesValvula: this.conSpritesValvula,
     });
@@ -305,12 +313,12 @@ export class Simulacion extends EscenaBase {
     this.progresoCriterio.actualizar(Math.min(1, valorProgreso));
     this.estadoCamara.setText(this.gestor.fuente === 'camara' ? (camara?.activo ? 'CÁMARA ACTIVA' : 'CÁMARA INACTIVA') : this.gestor.fuente.toUpperCase());
     this.ayuda.setText(this.nivel.tanques === 2
-      ? 'Mano derecha: válvula de entrada v1\nPellizco izquierdo abierto = v2 abierta (sale líquido del alambique 2)'
+      ? 'Mano derecha → v1 entrada · Pellizco izquierdo abierto → v2 abierta'
       : `${this.gestor.fuente} · P linealización · D depuración · F terminar`);
     this.tiempoTexto.setText(`${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`}`);
     const seriesAltura = [{ clave: 'x', indice: 0, nombre: 'h1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'x', indice: 1, nombre: 'h2', color: 0x2ecc71 }] : [])];
-    const opcionesNiveles = { ...L.tendenciaNiveles, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda de tolerancia', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true };
-    const opcionesValvulas = { ...L.tendenciaValvulas, muestras: this.muestrasVista, min: 0, max: 1, unidad: 'apertura', titulo: 'Válvulas v1 / v2', ejeTiempo: true, series: [{ clave: 'u', nombre: 'v1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x2ecc71 }] : [])] };
+    const opcionesNiveles = { ...L.tendenciaNiveles, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true };
+    const opcionesValvulas = { ...L.tendenciaValvulas, muestras: this.muestrasVista, min: 0, max: 1, unidad: '', titulo: 'Válvulas v1 / v2', tituloEjeY: 'apertura', formatoTickY: (v) => Number(v.toFixed(2)).toString(), ejeTiempo: true, series: [{ clave: 'u', nombre: 'v1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x2ecc71 }] : [])] };
     if (!this.graf) this.graf = dibujarTendencia(this, opcionesNiveles); else this.graf.actualizar(opcionesNiveles);
     if (!this.grafValvulas) this.grafValvulas = dibujarTendencia(this, opcionesValvulas); else this.grafValvulas.actualizar(opcionesValvulas);
     const xV1 = L.barraV1.x;
