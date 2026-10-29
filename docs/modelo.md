@@ -158,4 +158,40 @@ Alarmas: H = 2,4 m, HH = 2,8 m; desborde a 3,0 m (fin de la partida).
 
 ## Escala física → pantalla (por ejemplo 1 m = 100 px)
 
-1 m = 100 px. La altura máxima del alambique (3 m) ocupa 300 px y cabe en la pantalla de 1280×720.
+El nivel se lee en el visor de vidrio de cada alambique: el fondo del visor es 0 m y su parte superior es 3 m (la altura máxima, donde desborda), así que 1 m = (alto del visor en px) / 3. En la misma escala se dibujan el líquido, la banda de tolerancia, la referencia y las marcas de alarma H (2,4 m) y HH (2,8 m), y a la derecha del visor va una escala de 0 a 3 m. Al principio se había previsto 1 m = 100 px (300 px para 3 m), pero con el arte de Gemini (sección 5.8) el nivel se muestra dentro del visor del dibujo, que es más pequeño.
+
+## Verificación del modelo (sección 5.9 a)
+
+### Pruebas unitarias (`npm test`)
+
+| Sistema probado | Método | Paso h (s) | Error máximo | ¿Pasa? |
+|---|---|---|---|---|
+| Primer orden (K = 2, τ = 0,5 s) | RK4 | 1/120 | 3,5·10⁻¹⁰ | Sí |
+| Primer orden (K = 2, τ = 0,5 s) | Euler | 1/120 | 4,5·10⁻³ | No (supera 1·10⁻⁴; solo se compara) |
+| Segundo orden (ζ = 0,3, ωn = 4 rad/s) | RK4 | 1/120 | 1,3·10⁻⁸ | Sí |
+| Segundo orden (ζ = 0,3, ωn = 4 rad/s) | Euler | 1/120 | 2,2·10⁻² | No (supera 1·10⁻⁴; solo se compara) |
+| Modelo del juego (alambique, escalón de Vensim de 20 s) | RK4 | 1/120 | 5,1·10⁻⁶ m | Sí |
+
+Con el mismo paso, RK4 es entre un millón y diez millones de veces más exacto que Euler (1,7·10⁶ en segundo orden y 1,3·10⁷ en primer orden). Por eso el juego integra con RK4.
+
+### Escalón del juego frente a Vensim y frente al cálculo de la sección 5.3
+
+- **Prueba:** el alambique empieza en equilibrio en h0 = 1,5 m (v1 = 0,612372). A los 2 s el mando de v1 sube 0,01 (a 0,622372), y la válvula sigue esa orden con su velocidad máxima de 0,25 1/s. La prueba dura 80 s.
+- **Por qué un escalón pequeño:** así se compara con la linealización alrededor de 1,5 m. El escalón de la sección 5.3 (v1 de 0 a 1) desborda el alambique a los 26,6 s y nunca se estabiliza.
+- **Archivos:**
+  - `docs/juego_escalon.csv`: partida con `?control=escalon`.
+  - `docs/vensim_escalon_verificacion.csv`: simulación de `vensim/alambique_escalon_verificacion.mdl` (RK4 Auto, TIME STEP 0,01 s).
+  - `docs/verificacion_escalon.png`: gráfica de las dos curvas y del modelo lineal.
+
+| Magnitud | Juego | Vensim | Cálculo a mano (5.3) | Diferencia juego–Vensim | Diferencia juego–5.3 |
+|---|---|---|---|---|---|
+| Valor final h1 (m) | 1,5493 | 1,5493 | 1,5490 (1,5 + K_v1·0,01) | 0,00 % | 0,6 % del cambio |
+| Cambio Δh1 (m) | 0,0493 | 0,0493 | 0,0490 | 0,0 % | 0,6 % |
+| τ (63,2 %, medido desde t = 2 s) | 12,36 s | 12,37 s | 12,25 s | 0,1 % | 0,9 % |
+| ts (2 %, desde t = 2 s) | 47,5 s | 47,5 s | 47,9 s (τ·ln 50) | 0,0 % | 0,9 % |
+
+- **Error máximo entre las curvas del juego y de Vensim:** 1,1·10⁻⁴ m, que es el 0,2 % del cambio.
+- **Resultado:** todas las diferencias quedan por debajo del 2 %, así que el modelo del juego **verifica**.
+- **Por qué el τ medido es un poco mayor que el de la 5.3:**
+  - la válvula tarda 0,04 s en subir 0,01;
+  - en un modelo no lineal, τ = 2A√h/c crece con el nivel (a 1,55 m vale 12,45 s).

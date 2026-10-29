@@ -36,7 +36,7 @@ export class GestorEntrada {
     let controles;
     if (this.fuente === 'gamepad') controles = this.gamepad.actualizar();
     else if (this.fuente === 'teclado') controles = this.teclado.actualizar(dt);
-    else if (this.fuente === 'escalon') { this.t += dt; this.escalon.der.altura = this.t >= 2 ? 1 : 0; controles = this.escalon; }
+    else if (this.fuente === 'escalon') { this.t += dt; this.escalon.der.altura = this.t >= 2 ? 0.622372 : 0.612372; controles = this.escalon; }
     else controles = this.camara.controles;
     controles = completarControles(controles);
     return this.fuente === 'camara' ? controles : actualizarCrudosDesdeSalidas(controles);

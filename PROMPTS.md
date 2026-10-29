@@ -60,6 +60,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 53 | 5.8 | Codex | Rendimiento de la cámara y respuesta de las barras | Funcionó en parte |
 | 54 | 5.8 | Codex | Calibración saturada y costo de los textos | Funcionó en parte (falla el paso de giro) |
 | 55 | 5.8 | Codex | Sentido del giro y calibración solo de los canales usados | Funcionó |
+| 56 | 5.9 a) | Codex | Escalón de verificación alrededor de 1,5 m y error de Euler en segundo orden | Funcionó |
 
 ---
 
@@ -1212,6 +1213,34 @@ No cambies el modelo, los niveles ni el CSV. No modifiques docs/, vensim/, PROMP
 ```
 
 - **Resultado:** la calibración pide solo la altura de la mano derecha y el pellizco de la izquierda. Ya no falla, y la barra de v1 sigue a la mano en todo el recorrido.
+
+---
+
+## 56. Escalón de verificación (5.9 a)
+
+- **Cierre de la 5.8:**
+  - `npm test` pasa las 9 pruebas y `npm run build` funciona; commit "Integración de personajes y escenarios".
+  - Medidas con la cámara en el nivel 1: juego a 42,9 FPS (47,5 ms por cuadro), detección a 18–20,6 FPS (41 ms por detección, delegado GPU, video de 320 × 240) y cámara a 30 FPS.
+  - La detección queda en el límite de los 20 FPS de la guía. Se aplicó la medida que indica la guía (bajar la resolución) y el límite lo pone el tiempo de detección del equipo.
+- **Motivo del cambio:** el escalón anterior (v1 de 0 a 1) desborda el alambique a los 26,6 s, así que no se estabiliza como pide el paso 2 de la 5.9. Se cambia por un escalón pequeño alrededor del punto de operación del nivel 1 (h0 = 1,5 m), para comparar con la linealización de la 5.3. Según el cálculo de la pareja, con Δv1 = +0,01 el cambio final es 0,0494 m (el lineal es 0,0490, una diferencia del 0,8 %) y τ ≈ 12,41 s (el lineal es 12,25 s, una diferencia del 1,3 %). Con Δv1 = +0,02 la diferencia en τ ya sería del 2,5 %, por encima del 2 %.
+- **Vensim:** se creó `vensim/alambique_escalon_verificacion.mdl`: el mismo diagrama de Forrester, con el volumen inicial en 1,5 m³, v1 = IF THEN ELSE(Time<2, 0.612372, MIN(0.622372, 0.612372+0.25*(Time-2))) y FINAL TIME = 80. El modelo de la 5.3 no se modifica.
+
+```
+Verificación del modelo (5.9 a). Cambia la prueba de escalón para que el nivel se estabilice y se pueda comparar con la linealización de docs/modelo.md (h0 = 1,5 m, τ = 12,25 s, K_v1 = 4,90 m). No cambies el modelo, los niveles normales ni el formato del CSV.
+1. Con ?control=escalon (o "Escalón de prueba" en el menú), en el nivel 1:
+   - estado inicial h1 = 1,5 m; el actuador v1 arranca en el equilibrio 0.612372 (= c1·√1.5 / 0.4);
+   - mando de v1: 0.612372 hasta t = 2 s y 0.622372 desde t = 2 s (un escalón de +0,01); el actuador sigue con su velocidad máxima de 0,25 1/s;
+   - duración de 80 s; no termines la partida por el criterio del nivel ni por el tiempo en banda, solo a los 80 s (o con F);
+   - la pantalla final y el CSV funcionan igual que siempre.
+   Ahora el escalón cambia der.altura de 0 a 1: cámbialo para que entregue directamente esos valores de mando, y actualiza la prueba "la fuente escalón…" de test/modelo.test.js.
+2. En test/modelo.test.js imprime también el error máximo de Euler en la prueba de segundo orden (ζ = 0.3, ωn = 4, h = 1/120), igual que en la de primer orden, sin exigirle un límite.
+3. Agrega a test/modelo.test.js una prueba "escalón de verificación": simula con crearSistemaTanques y Actuador el mismo escalón del punto 1 durante 80 s y comprueba que el valor final queda a menos del 1 % de (0.4·0.622372/0.2)² = 1.5494 m. Imprime h1(80 s) y el tiempo en que h1 alcanza el 63,2 % del cambio, medido desde t = 2 s.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** `npm test` aprueba las 10 pruebas. Euler en segundo orden da un error de 2,19·10⁻²; en el escalón de verificación, h1(80 s) = 1,54929 m y t63,2 = 12,40 s desde t = 2 s. La partida con `?control=escalon` dura 80 s y se guardó como `docs/juego_escalon.csv`.
+- **Comparación (ver modelo.md, sección 5.9 a):** el juego y Vensim difieren como máximo en 1,1·10⁻⁴ m. Frente al cálculo de la 5.3, el valor final difiere un 0,6 % y τ un 0,9 % (12,36 s frente a 12,25 s). El modelo verifica, con diferencias por debajo del 2 %.
+- **Problema con el CSV de Vensim:** el archivo exportado llegó con los decimales dañados (por ejemplo, 1,50002 aparecía como "150.002"), seguramente por abrirlo y guardarlo con la configuración regional en español. Se reconstruyó cada valor a partir de sus dígitos (todos los niveles están entre 1 y 10 m), se revisó que la curva fuera continua y creciente, y se guardó como `t,h1` con punto decimal.
 
 ---
 
