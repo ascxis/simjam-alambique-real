@@ -163,6 +163,11 @@ export function convertirVisoresCascada(caja, metadatos) {
   }]));
 }
 
+export function obtenerVisorTanque(indice, cantidad = 1, conSprites = true) {
+  const caja = obtenerCajasTanques(cantidad)[indice];
+  return caja ? vidrio(caja, conSprites) : null;
+}
+
 export function dibujarLiquidosCascada(liquido, visores, alturas, referencia, tolerancia, dentroBanda) {
   liquido.clear();
   if (!visores?.superior || !visores?.inferior) return;
