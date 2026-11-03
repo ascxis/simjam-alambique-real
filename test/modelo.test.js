@@ -125,6 +125,14 @@ test('el registro exporta CSV con coma, punto decimal y encabezados exactos', ()
   registro.agregar(1 / 30, { t: 2.5, u_crudo: 1, u: 0.75, x: [0.25], y: 0.25 });
   assert.equal(registro.csv(), 't,u_crudo,u,x1,y\n2.5,1,0.75,0.25,0.25');
 });
+test('la primera fila del CSV usa el mando inicial como u_crudo y u', () => {
+  const registro = new Registro({ frecuencia: 30, encabezados: ['t', 'u_crudo', 'u', 'x1', 'y'] });
+  const mandoInicial = 0.2 * Math.sqrt(0.5) / 0.4;
+  registro.agregar(1 / 30, { t: 0, u_crudo: mandoInicial, u: mandoInicial, x: [0.5], y: 0.5 });
+  const [encabezado, primeraFila] = registro.csv().split('\n');
+  const columnas = encabezado.split(','), valores = primeraFila.split(',');
+  assert.equal(valores[columnas.indexOf('u_crudo')], valores[columnas.indexOf('u')]);
+});
 test('el modelo de tanque coincide con el escalón Vensim hasta 20 s', () => {
   const lineas = readFileSync(new URL('../docs/vensim_escalon.csv', import.meta.url), 'utf8').trim().split(/\r?\n/);
   const separador = lineas[0].includes(',') ? ',' : ';';

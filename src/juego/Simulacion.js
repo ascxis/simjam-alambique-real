@@ -11,7 +11,7 @@ import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
 import { dibujarTanquesFijos, dibujarNivelesTanques, dibujarTuberia, dibujarLiquidosCascada, convertirVisoresCascada, obtenerVisorTanque, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
-import { MAPA_CONTROL, leerSenal, leerSenalSiPresente } from './mapaControl.js';
+import { MAPA_CONTROL, leerSenalSiPresente } from './mapaControl.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
 import { dibujarProgreso } from '../hmi/actuadores.js';
@@ -386,7 +386,7 @@ export class Simulacion extends EscenaBase {
     const x0 = [...this.sistema.x], y0 = this.nivel.tanques === 2 ? x0[1] : x0[0];
     const v10 = this.actuador1.salida(), v20 = this.actuador2.salida();
     const ref0 = obtenerReferencia(this.nivel, 0), banda0 = obtenerTolerancia(this.nivel, 0), qd0 = obtenerPerturbacion(this.nivel, 0);
-    const muestraInicial = { t: 0, u_crudo: leerSenal(controlesIniciales, MAPA_CONTROL.v1, 'u_crudo', v10), u: v10, x: x0, y: y0, v2: v20, q_d: qd0, h_sp: ref0, referencia: ref0, tolerancia: banda0, banda_inf: ref0 - banda0, banda_sup: ref0 + banda0 };
+    const muestraInicial = { t: 0, u_crudo: v10, u: v10, x: x0, y: y0, v2: v20, q_d: qd0, h_sp: ref0, referencia: ref0, tolerancia: banda0, banda_inf: ref0 - banda0, banda_sup: ref0 + banda0 };
     this.muestras.push(muestraInicial);
     this.muestrasVista.push(muestraInicial);
     this.registro.filas.push([0, muestraInicial.u_crudo, v10, x0[0], x0[1] ?? '', y0, v20, qd0, ref0]);
