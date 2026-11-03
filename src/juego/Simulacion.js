@@ -10,7 +10,7 @@ import { dibujarTendencia } from '../hmi/tendencia.js';
 import { dibujarBarraActuador } from '../hmi/actuadores.js';
 import { crearPanelDepuracion } from '../hmi/panelDepuracion.js';
 import { mostrarVistaCamaraDepuracion } from '../hmi/vistaCamara.js';
-import { dibujarTanquesFijos, dibujarNivelesTanques, dibujarTuberia, dibujarLiquidosCascada, convertirVisoresCascada, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
+import { dibujarTanquesFijos, dibujarNivelesTanques, dibujarTuberia, dibujarLiquidosCascada, convertirVisoresCascada, obtenerVisorTanque, posicionEscalaTanque, posicionSpriteTanque, posicionSpritesValvulas } from '../hmi/tanques.js';
 import { MAPA_CONTROL, leerSenal, leerSenalSiPresente } from './mapaControl.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
@@ -71,6 +71,8 @@ export class Simulacion extends EscenaBase {
     this.selectWasLong = false;
     this.ultimaAlarma = {};
     this.tiempoJuego = 0;
+    this.izquierdaPresenteAnterior = false;
+    this.ayudaPellizcoHasta = 0;
     this.nivel = cargarNiveles().find((n) => n.id === Number(contextoJuego.nivelElegido)) || cargarNiveles()[0];
     this.gestor = contextoJuego.gestor = new GestorEntrada({ fuente: contextoJuego.fuenteElegida || undefined });
     this.gestor.elegir(contextoJuego.fuenteElegida || this.gestor.fuente);
@@ -109,6 +111,7 @@ export class Simulacion extends EscenaBase {
     this.renderEntradaFixtures = this.add.graphics().setDepth(-.4);
     this.renderVisorLiquido = this.add.graphics().setDepth(1.5);
     this.renderVisorOverlay = this.add.graphics().setDepth(2);
+    this.renderEquilibrio = this.add.graphics().setDepth(2.5);
     this.renderChorro = this.add.graphics().setDepth(4);
     this.conSprites = this.textures.exists('alambique');
     this.spritesTanques = [];
@@ -152,6 +155,7 @@ export class Simulacion extends EscenaBase {
       for (const v of Object.values(this.visoresCascada)) this.mascaraGeometricaVisores.fillRect(v.x, v.y, v.w, v.h);
       this.mascaraVisores = this.mascaraGeometricaVisores.createGeometryMask();
       this.renderVisorLiquido.setMask(this.mascaraVisores);
+      this.renderEquilibrio.setMask(this.mascaraVisores);
     } else {
       for (let i = 0; i < this.nivel.tanques; i++) {
         if (!this.conSprites) continue;
@@ -180,6 +184,16 @@ export class Simulacion extends EscenaBase {
       }
     }
     this.renderOverlay = this.add.graphics().setDepth(2);
+    this.etiquetasEquilibrio = Array.from({ length: this.nivel.tanques }, (_, indice) => {
+      const visor = this.esCascada
+        ? this.visoresCascada[indice === 0 ? 'superior' : 'inferior']
+        : obtenerVisorTanque(indice, this.nivel.tanques, this.conSprites);
+      const xDerecha = visor.x + visor.w + L.equilibrio.etiquetaOffsetX;
+      const x = xDerecha + L.equilibrio.etiquetaAncho <= L.planta.x + L.planta.ancho
+        ? xDerecha
+        : visor.x - L.equilibrio.etiquetaAncho - L.equilibrio.etiquetaOffsetX;
+      return this.add.text(x, visor.y, 'equilibrio', fuenteInterfaz(9, '#FFFFFF', { backgroundColor: 'rgba(28,32,38,0.9)', padding: { x: 2, y: 1 } })).setDepth(6).setVisible(false);
+    });
     if (this.textures.exists('caldero-real')) {
       const cfg = L.caldero, fuente = this.textures.get('caldero-real').getSourceImage();
       const ancho = cfg.ancho, alto = ancho * fuente.height / fuente.width;
@@ -343,6 +357,7 @@ export class Simulacion extends EscenaBase {
       limpiar(() => this.renderCanalSalida.destroy());
       limpiar(() => this.renderTuberiaCascada.destroy());
       limpiar(() => this.renderOverlay.destroy());
+      limpiar(() => this.renderEquilibrio.destroy());
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
     this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
@@ -357,6 +372,12 @@ export class Simulacion extends EscenaBase {
     this.barras[0] = dibujarBarraActuador(this, L.barraV1.x, L.barraV1.y, 'v1 entrada', this.actuador1.salida(), this.sistema.x[0], 'm', 'h1', L.barraV1.ancho, this.mando1Visual);
     if (this.nivel.tanques === 2) this.barras[1] = dibujarBarraActuador(this, L.barraV2.x, L.barraV2.y, 'v2 salida', this.actuador2.salida(), this.sistema.x[1], 'm', 'h2', L.barraV2.ancho, this.mando2Visual);
     this.add.text(L.ayudaValvulas.x, L.ayudaValvulas.y, '▲ mano · ■ válvula (tarda 4 s de 0 a 100 %)', fuenteInterfaz(10, '#E6E8EA')).setDepth(5);
+    if (this.nivel.id === 3) {
+      const ayuda = L.ayudaPellizco;
+      this.graficoAyudaPellizco = this.add.graphics().setDepth(7);
+      this.textoAyudaPellizco = this.add.text(ayuda.textoX, ayuda.textoY, 'Pellizco izquierdo: abrir = v2 abierta', fuenteInterfaz(11, '#F2E6C9', { fontStyle: 'bold' })).setDepth(7).setVisible(false);
+      this.graficoAyudaPellizco.setVisible(false);
+    }
     this.botonTerminar = this.boton(L.terminar, 'Terminar', () => {
       console.info('[DIAG] botón Terminar', { terminado: this.terminado, sysIsActive: this.sys.isActive(), tiempoJuego: this.tiempoJuego });
       this.terminar(false);
@@ -504,6 +525,7 @@ export class Simulacion extends EscenaBase {
     }
     this.actualizarBarrasEnVivo();
     this.actualizarElementosVivos();
+    this.actualizarAyudaPellizco(c);
     this.actualizarFlujoSalida();
     if (this.debug !== this.debugVisibleAnterior) {
       contextoJuego.vistaDepuracionActiva = this.debug;
@@ -565,6 +587,57 @@ export class Simulacion extends EscenaBase {
     for (const valve of this.spritesValvulas || []) valve.volante.setRotation((valve.clave === 'v1' ? this.actuador1.salida() : this.actuador2.salida()) * Math.PI * 1.5);
     this.etiquetasValvulas?.v1?.setText(`v1 ${Math.round(this.actuador1.salida() * 100)} %`);
     this.etiquetasValvulas?.v2?.setText(`v2 ${Math.round(this.actuador2.salida() * 100)} %`);
+    this.dibujarMarcasEquilibrio();
+  }
+
+  dibujarMarcasEquilibrio() {
+    if (!this.renderEquilibrio || !this.etiquetasEquilibrio) return;
+    const p = PARAMETROS_TANQUES, qd = obtenerPerturbacion(this.nivel, this.tiempoJuego);
+    const v1 = this.actuador1.salida(), h1 = Math.max(0, this.sistema.x[0] ?? 0);
+    const qd1 = this.nivel.tanques === 1 ? qd : 0;
+    const alturas = [Math.max(0, Math.min(3, ((p.caudalEntradaMaximo * v1 - qd1) / p.coeficienteDescarga1) ** 2))];
+    if (this.nivel.tanques === 2) {
+      const v2 = this.actuador2.salida();
+      alturas.push(v2 <= 0 ? 3 : Math.max(0, Math.min(3, ((p.coeficienteDescarga1 * Math.sqrt(h1) - qd) / (p.coeficienteDescarga2 * v2)) ** 2)));
+    }
+    this.renderEquilibrio.clear();
+    const L = LAYOUT.simulacion, dash = L.equilibrio.dash, espacio = L.equilibrio.espacio;
+    alturas.forEach((altura, indice) => {
+      const visor = this.esCascada
+        ? this.visoresCascada[indice === 0 ? 'superior' : 'inferior']
+        : obtenerVisorTanque(indice, this.nivel.tanques, this.conSprites);
+      const arriba = visor.top ?? visor.y, abajo = visor.bottom ?? visor.y + visor.h;
+      const y = abajo - (abajo - arriba) * altura / 3;
+      const izquierda = visor.x + 1, derecha = visor.x + visor.w - 1;
+      this.renderEquilibrio.lineStyle(1.5, 0xffffff, .95);
+      for (let x = izquierda; x < derecha; x += dash + espacio) this.renderEquilibrio.lineBetween(x, y, Math.min(derecha, x + dash), y);
+      const etiqueta = this.etiquetasEquilibrio[indice];
+      etiqueta?.setY(y - L.equilibrio.etiquetaAlto / 2).setVisible(true);
+    });
+  }
+
+  actualizarAyudaPellizco(controles) {
+    if (!this.graficoAyudaPellizco || !this.textoAyudaPellizco) return;
+    const presente = Boolean(controles?.izq?.presente);
+    if (presente && !this.izquierdaPresenteAnterior) this.ayudaPellizcoHasta = Math.max(this.ayudaPellizcoHasta, this.tiempoJuego + 3);
+    this.izquierdaPresenteAnterior = presente;
+    const visible = this.tiempoJuego <= 8 || this.tiempoJuego < this.ayudaPellizcoHasta;
+    this.graficoAyudaPellizco.setVisible(visible);
+    this.textoAyudaPellizco.setVisible(visible);
+    if (!visible) return;
+    const { iconoX: x, iconoY: y } = LAYOUT.simulacion.ayudaPellizco;
+    const fase = (performance.now() / 1000 * Math.PI * 2) % (Math.PI * 2);
+    const apertura = (1 - Math.cos(fase)) / 2;
+    const g = this.graficoAyudaPellizco;
+    g.clear();
+    g.lineStyle(3, 0xe6e8ea, 1);
+    g.lineBetween(x + 3, y + 17, x + 11, y + 13);
+    g.lineBetween(x + 11, y + 13, x + 11 + apertura * 8, y + 5);
+    g.lineBetween(x + 22, y + 17, x + 15 - apertura * 5, y + 13);
+    g.lineBetween(x + 15 - apertura * 5, y + 13, x + 15 - apertura * 5, y + 3);
+    g.lineStyle(1, 0xb85a24, .95);
+    g.lineBetween(x + 5, y + 20, x + 20, y + 20);
+    g.fillStyle(0xb85a24, 1).fillCircle(x + 11 + apertura * 8, y + 5, 2.3).fillCircle(x + 15 - apertura * 5, y + 3, 2.3);
   }
 
   actualizarHmi(camara) {

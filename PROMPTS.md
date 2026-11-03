@@ -63,7 +63,8 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 56 | 5.9 a) | Codex | Escalón de verificación alrededor de 1,5 m y error de Euler en segundo orden | Funcionó |
 | 57 | 5.9 b) | Codex | Medición del filtro: selector de α, ruido, τ y retraso | Funcionó en parte |
 | 58 | 5.9 b) | Codex | Ajuste de la medición del retraso del filtro | Funcionó |
-| 59 | 5.9 b) | Codex | α = 0,5 por defecto | (pendiente) |
+| 59 | 5.9 b) | Codex | α = 0,5 por defecto | Funcionó |
+| 60 | 5.9 d) | Codex | Correcciones del playtest: ayuda del pellizco y marca de equilibrio | Funcionó |
 
 ---
 
@@ -1292,7 +1293,26 @@ Filtro de los gestos (5.9 b, punto 7): en las pruebas con la cámara se midió �
 No cambies nada más. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
 ```
 
-- **Resultado:** (pendiente)
+- **Resultado:** el panel D muestra α = 0,500 y los botones 0,2 · 0,5 · 0,8. La 5.9 se cierra con el commit "Correcciones del playtest".
+
+---
+
+## 60. Correcciones del playtest (5.9 d)
+
+- **Origen:** observaciones y respuestas de la otra pareja (ver docs/pruebas_5_9.md, sección 5.9 d).
+
+```
+Correcciones del playtest (5.9 d). Otra pareja jugó sin explicaciones. Identificó el concepto (un tanque con caudal de entrada y de salida), pero: (a) en el nivel 3 creyó que v2 se controlaba subiendo y bajando la mano izquierda, como v1, cuando es con el pellizco; y (b) al preguntarle qué parámetro cambia el comportamiento, solo mencionó que la mano abre y cierra la válvula, sin notar que cada apertura lleva el nivel a un equilibrio distinto y que llega con retraso. Cambia solo la HMI; no cambies el modelo, los niveles ni el CSV.
+1. Ayuda del pellizco en el nivel 3: durante los primeros 8 s del nivel, y cada vez que la mano izquierda entre a la zona después de haber salido, muestra junto a la barra de v2 una animación pequeña (dibujada con Graphics) de un pulgar y un índice que se abren y se cierran, con el texto "Pellizco izquierdo: abrir = v2 abierta". Que no tape las tendencias ni el visor.
+2. Marca de equilibrio en el visor: dibuja una línea punteada blanca, delgada, en el nivel al que llegaría el alambique si la apertura actual se mantuviera:
+   - alambique 1: h1_eq = ((0.4·v1 − qd1) / c1)², donde qd1 es el consumo que se resta al alambique 1 (niveles 1 y 2), recortado entre 0 y 3 m;
+   - alambique 2 (nivel 3): h2_eq = ((c1·√h1 − qd) / (c2·v2))², recortado entre 0 y 3 m (si v2 = 0, la marca va en 3 m).
+   Al lado, una etiqueta corta: "equilibrio". La marca se mueve en cuanto cambia la válvula, mientras el líquido llega despacio, y así se ve el retraso del tanque.
+3. En la pantalla "Lo que pasó en el modelo", agrega a la explicación una línea: "Cada apertura de la válvula lleva el nivel a un equilibrio distinto, h_eq = (0,4·v1/c)², y el tanque tarda unas 4τ en llegar a él".
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** en los tres niveles, el visor muestra la marca "equilibrio" en el nivel al que llegará el líquido con la apertura actual. Por ejemplo, en el nivel 1, con v1 = 58 %, la marca queda cerca de 1,35 m mientras h1 todavía va en 0,68 m. En el nivel 3 aparece la ayuda "Pellizco izquierdo: abrir = v2 abierta" junto a la barra de v2.
 
 ---
 
