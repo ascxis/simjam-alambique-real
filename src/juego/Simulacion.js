@@ -292,7 +292,15 @@ export class Simulacion extends EscenaBase {
     this.pausaPanel = this.panel(L.pausa.panel, { profundidad: 9 });
     this.pausaPanel.setVisible(false);
     this.pausaTexto = this.add.text(L.pausa.centroX, L.pausa.centroY, '', fuenteTitulo(26)).setOrigin(.5).setDepth(10);
-    this.panelDepuracion = crearPanelDepuracion(this, { intercambiar: contextoJuego.camara?.intercambiar ?? (leerPreferencia('alambique.intercambiarEtiquetas', 'false') === 'true'), onIntercambiar: (value) => { guardarPreferencia('alambique.intercambiarEtiquetas', String(value)); if (contextoJuego.camara) contextoJuego.camara.intercambiar = value; } });
+    this.panelDepuracion = crearPanelDepuracion(this, {
+      intercambiar: contextoJuego.camara?.intercambiar ?? (leerPreferencia('alambique.intercambiarEtiquetas', 'false') === 'true'),
+      onIntercambiar: (value) => { guardarPreferencia('alambique.intercambiarEtiquetas', String(value)); if (contextoJuego.camara) contextoJuego.camara.intercambiar = value; },
+      alfa: this.gestor.camara.alfa,
+      onAlfa: (value) => {
+        this.gestor.camara.alfa = value;
+        try { localStorage.setItem('alambique.alfa', String(value)); } catch {}
+      },
+    });
     this.panelDepuracion.setVisible(false);
     document.activeElement?.blur?.();
     if (this.game.canvas) { this.game.canvas.setAttribute('tabindex', '0'); this.game.canvas.focus({ preventScroll: true }); }
@@ -512,7 +520,7 @@ export class Simulacion extends EscenaBase {
       const dep = this.gestor.camara.depuracion();
       const fpsJuego = this.game.loop.actualFps || (dt > 0 ? 1 / dt : 0);
       const alertaFPS = camara?.activo && camara.fps < 15 ? ' · detección lenta: más luz, cerrar pestañas o bajar resolución' : '';
-      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, tiempoDeteccionMs: camara?.promedioDeteccionMs, tiempoCuadroMs: this.tiempoMedioCuadroMs, delegado: camara?.delegado, resolucion: camara?.obtenerResolucion?.(), avisoResolucion: camara?.avisoResolucion, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x });
+      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, tiempoDeteccionMs: camara?.promedioDeteccionMs, tiempoCuadroMs: this.tiempoMedioCuadroMs, delegado: camara?.delegado, resolucion: camara?.obtenerResolucion?.(), avisoResolucion: camara?.avisoResolucion, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x, canales: dep.canales });
       this.ultimoDebug = ahoraHmi;
     }
   }
