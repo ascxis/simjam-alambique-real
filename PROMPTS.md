@@ -61,6 +61,9 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 54 | 5.8 | Codex | Calibración saturada y costo de los textos | Funcionó en parte (falla el paso de giro) |
 | 55 | 5.8 | Codex | Sentido del giro y calibración solo de los canales usados | Funcionó |
 | 56 | 5.9 a) | Codex | Escalón de verificación alrededor de 1,5 m y error de Euler en segundo orden | Funcionó |
+| 57 | 5.9 b) | Codex | Medición del filtro: selector de α, ruido, τ y retraso | Funcionó en parte |
+| 58 | 5.9 b) | Codex | Ajuste de la medición del retraso del filtro | Funcionó |
+| 59 | 5.9 b) | Codex | α = 0,5 por defecto | (pendiente) |
 
 ---
 
@@ -1241,6 +1244,55 @@ No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No contr
 - **Resultado:** `npm test` aprueba las 10 pruebas. Euler en segundo orden da un error de 2,19·10⁻²; en el escalón de verificación, h1(80 s) = 1,54929 m y t63,2 = 12,40 s desde t = 2 s. La partida con `?control=escalon` dura 80 s y se guardó como `docs/juego_escalon.csv`.
 - **Comparación (ver modelo.md, sección 5.9 a):** el juego y Vensim difieren como máximo en 1,1·10⁻⁴ m. Frente al cálculo de la 5.3, el valor final difiere un 0,6 % y τ un 0,9 % (12,36 s frente a 12,25 s). El modelo verifica, con diferencias por debajo del 2 %.
 - **Problema con el CSV de Vensim:** el archivo exportado llegó con los decimales dañados (por ejemplo, 1,50002 aparecía como "150.002"), seguramente por abrirlo y guardarlo con la configuración regional en español. Se reconstruyó cada valor a partir de sus dígitos (todos los niveles están entre 1 y 10 m), se revisó que la curva fuera continua y creciente, y se guardó como `t,h1` con punto decimal.
+
+---
+
+## 57. Medición del filtro de los gestos (5.9 b)
+
+- **Cambio de sesión:** a partir de esta entrada se usa Codex con otra cuenta de ChatGPT (plan gratuito), en un chat nuevo del mismo proyecto, porque se acabó el límite de uso de la primera cuenta.
+- **Motivo:** el paso 7 de la 5.9 pide comparar α = 0,2, 0,5 y 0,8 (ruido en reposo y retraso), pero el juego tenía α fijo en 0,35 y no medía el retraso.
+
+```
+Prueba del filtro de los gestos (5.9 b). Solo agrega herramientas de medición al panel de depuración (D); no cambies el modelo, los niveles, el CSV ni el comportamiento normal del juego.
+1. En el panel D agrega cuatro botones para elegir el α del filtro exponencial de los gestos: 0,2 · 0,35 (el actual) · 0,5 · 0,8. El cambio se aplica al instante y se guarda en localStorage (alambique.alfa); por defecto queda 0,35.
+2. En el panel D muestra para la altura de la mano derecha y el pellizco de la izquierda:
+   - el ruido en reposo: la oscilación pico a pico del valor filtrado en los últimos 2 s;
+   - el τ equivalente del filtro en ms (τ = −Ts / ln(1 − α), con el Ts medido).
+3. Medición del retraso: cuando el valor sin filtrar de un canal cambia más de 0,4 en menos de 150 ms (un movimiento brusco), mide el tiempo, en ms, hasta que el valor filtrado recorre el 90 % de ese salto. Muestra en el panel D el último retraso medido y el promedio de los últimos 5, por canal.
+4. Botón "Copiar medición" en el panel D que copie al portapapeles una línea de texto con: α, Ts, τ, ruido y retraso de cada canal.
+No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** el panel D tiene los botones de α, el ruido, τ y "Copiar medición". Con α = 0,2 y la mano quieta: ruido de 0,0035 y τ = 280 ms (Ts = 62 ms). El retraso casi nunca se mide ("—"): a unos 16 FPS, un movimiento brusco tarda más de 150 ms en la señal sin filtrar y no cumple la condición.
+
+---
+
+## 58. Ajuste de la medición del retraso del filtro (5.9 b)
+
+```
+Ajuste de la medición del retraso (5.9 b, punto 7). Con la detección a unos 16 FPS (Ts ≈ 62 ms), un movimiento brusco de la mano de abajo hacia arriba tarda 200–400 ms en la señal sin filtrar, así que la condición actual (cambio mayor que 0,4 en menos de 150 ms) casi nunca se cumple y el retraso queda en "—".
+Cambia la detección del movimiento brusco en el panel D:
+1. Un movimiento empieza cuando el valor sin filtrar se aleja más de 0,05 de su valor en reposo (el promedio de los 0,5 s anteriores, con la mano quieta).
+2. Termina cuando el valor sin filtrar se queda quieto (cambia menos de 0,03 durante 0,3 s). Solo cuenta si el salto total es mayor que 0,4.
+3. El retraso es el tiempo entre el momento en que el valor sin filtrar alcanza el 90 % del salto y el momento en que el valor filtrado alcanza ese mismo 90 %. Así se mide solo el retraso que agrega el filtro.
+4. Muestra también el contador de movimientos medidos (n) y conserva "último" y "media 5".
+No cambies nada más. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** el panel D ya mide el retraso con el contador n. Mediciones de la pareja (ver docs/pruebas_5_9.md): α = 0,2 → ruido 0,0035 y retraso ≈ 770 ms; α = 0,5 → 0,033 y ≈ 161 ms; α = 0,8 → 0,08 y ≈ 39 ms. El último movimiento de cada serie sale atípico porque es la mano yendo a pulsar "Copiar medición"; se descarta.
+
+---
+
+## 59. α = 0,5 por defecto (5.9 b)
+
+```
+Filtro de los gestos (5.9 b, punto 7): en las pruebas con la cámara se midió α = 0,2 → ruido 0,0035 y retraso ≈ 770 ms; α = 0,5 → ruido 0,033 y retraso ≈ 161 ms; α = 0,8 → ruido 0,08 y retraso ≈ 39 ms. La pareja eligió α = 0,5.
+1. Deja α = 0,5 como valor por defecto del filtro exponencial de los gestos (hoy es 0,35), en el código y en el valor inicial de localStorage (alambique.alfa). Si alguien ya tiene guardado otro α, se respeta el guardado; el botón 0,35 del panel D cámbialo por 0,5 para que los botones queden 0,2 · 0,5 · 0,8.
+2. Actualiza las pruebas de test/modelo.test.js que dependan del α por defecto.
+No cambies nada más. No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** (pendiente)
 
 ---
 

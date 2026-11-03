@@ -32,6 +32,9 @@ test('Actuador respeta saturación y velocidad máxima', () => {
   const a = new Actuador({ minimo: 0, maximo: 1, velocidadMaxima: .25 });
   assert.equal(a.avanzar(3, 1), .25); assert.equal(a.avanzar(3, 1), .5); assert.equal(a.avanzar(-2, 10), 0);
 });
+test('el filtro de gestos usa alfa 0.5 por defecto', () => {
+  assert.equal(new EntradaGestos().alfa, 0.5);
+});
 test('la fuente escalón entrega controles completos y cambia der.altura a los 2 s', () => {
   const entrada = new GestorEntrada({ fuente: 'escalon' });
   const antes = entrada.actualizar(1);
