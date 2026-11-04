@@ -629,7 +629,10 @@ No cambies el modelo, la entrada ni el formato del CSV. No modifiques docs/, ven
 
 ## 32. Correcciones intermedias del simulador de tanques (5.7)
 
-- **Prompts:** (copiar aquí, en orden, los textos enviados a Codex desde el historial de la conversación: reloj en tiempo real, detección en un Web Worker y mensajes "terminar: ..." en la consola).
+- **Prompts (resumen de lo pedido a Codex, en orden):**
+  1. **Reloj en tiempo real:** con la cámara activa, el tiempo de la partida avanzaba más lento que el reloj real, porque el juego bajaba de FPS y cada cuadro sumaba un dt fijo. Se pidió medir el tiempo transcurrido con `performance.now()` y alimentar con él el acumulador del integrador RK4 de paso fijo, sin cambiar `src/modelo/`.
+  2. **Detección en un Web Worker:** para que MediaPipe no frenara el ciclo del juego, se pidió mover la detección de manos a un Web Worker y recibir los resultados por mensajes, manteniendo la misma interfaz de `src/vision/`.
+  3. **Mensajes "terminar" en la consola:** como la partida con cámara no pasaba a la pantalla final, se pidió registrar en la consola cada paso del cierre ("terminar: inicio", "terminar: cambio de escena") al pulsar F, al pulsar Terminar y al llegar a los 120 s, para ver dónde se detenía.
 - **Resultado:** el reloj del juego avanza en tiempo real (dt medido con performance.now()). Los mensajes "terminar: inicio" y "terminar: cambio de escena" aparecen en la consola al pulsar F, al pulsar Terminar y a los 120 s.
 - **Errores de la IA:** movió la detección de manos a un Web Worker de tipo módulo, donde MediaPipe falla porque usa importScripts; se volvió a la detección en el hilo principal. La partida con cámara sigue sin pasar a la pantalla final y el juego se congela.
 
@@ -1346,7 +1349,3 @@ No modifiques docs/, vensim/, analisis/, PROMPTS.md, index.html ni vite.config.j
 ```
 
 - **Resultado:** el panel P permite elegir A y c1 en −20 %, nominal y +20 %, con "Aplicar y reiniciar" y "Valores nominales". El escalón arranca en el equilibrio de cada juego de parámetros y dura 120 s. Las 5 corridas y la tabla de sensibilidad están en docs/identificacion.md.
-
----
-
-<!-- Siguientes entradas: 5.7 (prompt específico del simulador), 5.8 (arte), 5.9 y 5.11 (prompts de corrección). -->
