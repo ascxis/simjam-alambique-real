@@ -67,6 +67,8 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 60 | 5.9 d) | Codex | Correcciones del playtest: ayuda del pellizco y marca de equilibrio | Funcionó |
 | 61 | 5.10 | Codex | Primera fila del CSV con u_crudo correcto | Funcionó |
 | 62 | 5.10 d) | Codex | Panel P para el análisis de sensibilidad (A y c1 ±20 %) | Funcionó |
+| 63 | Día 2, 5.1 | Codex | Revisión del estado del proyecto antes del día 2 (sin modificar archivos) | Funcionó |
+| 64 | Día 2, 5.1 | Codex | Correcciones de la revisión: registro sin DOM y originales fuera de public/ | Funcionó |
 
 ---
 
@@ -1349,3 +1351,46 @@ No modifiques docs/, vensim/, analisis/, PROMPTS.md, index.html ni vite.config.j
 ```
 
 - **Resultado:** el panel P permite elegir A y c1 en −20 %, nominal y +20 %, con "Aplicar y reiniciar" y "Valores nominales". El escalón arranca en el equilibrio de cada juego de parámetros y dura 120 s. Las 5 corridas y la tabla de sensibilidad están en docs/identificacion.md.
+
+---
+
+# Día 2
+
+## 63. Revisión del estado del proyecto antes del día 2 (5.1)
+
+```
+Revisa el estado del proyecto antes de empezar el día 2 de la SimJam y no
+modifiques ningún archivo:
+1. Ejecuta npm test, npm run build y npm run preview e informa si hay errores.
+2. Verifica los requisitos de la sección 5.5.1 de la guía del día 1:
+   Phaser 3.87 por CDN, base: './' en vite.config.js, MediaPipe 0.10.14 por
+   CDN con Hand Landmarker, sin import de phaser y rutas relativas.
+3. Confirma que src/modelo/ no importa Phaser ni el DOM, que las escenas no
+   calculan física por su cuenta y que los actuadores usan la clase Actuador.
+   Lista dónde se lee el estado del modelo para dibujar.
+4. Lista los elementos del simulador (equipo principal, actuadores,
+   perturbaciones, indicadores), cómo se dibujan hoy (figuras, Graphics o
+   sprites) y qué variable del modelo controla cada uno.
+5. Confirma que niveles.js carga los 3 niveles de docs/niveles.md.
+6. Compara public/assets/ con docs/recursos.md.
+7. Entrégame en una tabla lo que está listo y lo que falta para mejorar el
+   arte y el sonido.
+```
+
+- **Resultado:** npm test 13/13, npm run build sin errores y npm run preview arranca en localhost:4173. Cumple los requisitos de la 5.5.1 (Phaser 3.87 y MediaPipe 0.10.14 por CDN, base './', sin import de Phaser, rutas relativas). niveles.js carga los 3 niveles de docs/niveles.md. Los 13 originales de docs/recursos.md están presentes. No hay audio.
+- **Problemas detectados por la revisión:** src/modelo/registro.js usa document.createElement para descargar el CSV, así que src/modelo/ depende del DOM; public/assets pesa 10,74 MiB (límite 10 MB) porque incluye los originales de Gemini (8,46 MiB); hay un PNG procesado sin usar (alambique_columna_liquido.png).
+
+---
+
+## 64. Correcciones de la revisión: registro sin DOM y originales fuera de public/ (5.1)
+
+```
+Corrige dos puntos de la revisión del día 2 antes de registrar la línea base. No cambies las ecuaciones, los parámetros, el integrador, la clase Actuador, el paso h ni src/modelo/niveles.json, y no cambies la capa de gestos (src/entrada/) ni el mapa de controles.
+1. src/modelo/ debe ser independiente del DOM: deja en src/modelo/registro.js solo la parte que guarda las muestras y arma el texto CSV (sin document ni window). Mueve la descarga del archivo (document.createElement, Blob y el enlace) a un módulo nuevo fuera del modelo, por ejemplo src/hmi/descargarCSV.js, y úsalo desde la escena que hoy descarga el CSV. El CSV debe quedar exactamente igual: mismos encabezados (t,u_crudo,u,x1,x2,y,v2,q_d,h_sp), coma como separador y punto decimal.
+2. Tamaño de public/assets: hoy pesa 10,74 MiB y el límite es 10 MB, porque Vite copia a dist/ todo lo que está en public/, incluidos los originales de Gemini (8,46 MiB), que el juego no carga. Mueve public/assets/originales/ a una carpeta fuera de public, arte_fuente/originales/, y ajusta scripts del comando "npm run assets" para que lea los originales desde ahí y siga escribiendo los procesados en public/assets/. No toques los procesados que ya existen. Revisa si public/assets/.../alambique_columna_liquido.png se usa en algún lugar; si no se usa, bórralo.
+3. Actualiza docs/recursos.md con la nueva ruta de los originales y una nota: "Los originales están fuera de public/ para que no se copien a dist/ ni al ZIP; los nuevos recursos del día 2 se guardan también en arte_fuente/originales/".
+Al terminar ejecuta npm test, npm run assets y npm run build, dime cuánto pesan public/assets y dist/, qué archivos cambiaste, y sugiere el mensaje del commit.
+```
+
+- **Resultado:** src/modelo/registro.js solo acumula las muestras y arma el CSV; la descarga pasó a src/hmi/descargarCSV.js, usado desde Fin.js, con el mismo formato (BOM, encabezados, coma y punto decimal). Los 13 originales se movieron a arte_fuente/originales/ y scripts/procesar-assets.mjs los lee desde ahí; se borró alambique_columna_liquido.png, que no se usaba. npm test 13/13, npm run assets y npm run build sin errores. public/assets pasó de 10,74 MiB a 2,15 MiB y dist/ pesa 2,26 MiB.
+- **Decisión:** la guía indica guardar los originales en public/assets/originales/, pero Vite copia todo public/ a dist/ y el límite es 10 MB; por eso los originales del día 2 también irán en arte_fuente/originales/.

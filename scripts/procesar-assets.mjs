@@ -3,7 +3,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const raiz = process.cwd();
-const origen = path.join(raiz, 'public/assets/originales');
+const origen = path.join(raiz, 'arte_fuente/originales');
 const salidaSprites = path.join(raiz, 'public/assets/sprites');
 const salidaFondos = path.join(raiz, 'public/assets/fondos');
 
