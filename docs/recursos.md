@@ -1,7 +1,7 @@
 # Recursos gráficos — Alambique Real: El Arte de la Alquimia
 
 Recursos creados con Gemini (skill `director-arte-videojuegos`), sección 5.4.
-Las imágenes originales se guardan en `public/assets/originales/` y se procesan con `npm run assets` (sección 5.8).
+Las imágenes originales se guardan en `arte_fuente/originales/` y se procesan con `npm run assets` (sección 5.8). Los originales están fuera de public/ para que no se copien a dist/ ni al ZIP; los nuevos recursos del día 2 se guardan también en arte_fuente/originales/.
 
 ## Guía de estilo visual
 

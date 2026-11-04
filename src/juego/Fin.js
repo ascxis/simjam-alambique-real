@@ -5,6 +5,7 @@ import { PARAMETROS_TANQUES } from '../modelo/tanques.js';
 import { contextoJuego } from './contexto.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
+import { descargarCSV } from '../hmi/descargarCSV.js';
 
 function metricasTanque(muestras, nivel) {
   const dentro = (m) => Math.abs(m.y - m.h_sp) <= m.tolerancia;
@@ -123,7 +124,7 @@ export class Fin extends EscenaBase {
     const ecuacionH2 = nivel.tanques === 2 ? `\nA·dh₂/dt = ${parametros.coeficienteDescarga1}√h₁ − ${parametros.coeficienteDescarga2}v₂√h₂ − qd` : '';
     this.add.text(F.modelo.x, F.modelo.y, `${ecuacionH1}${ecuacionH2}\nParámetros: A=${parametros.area} m² · c₁=${parametros.coeficienteDescarga1} · c₂=${parametros.coeficienteDescarga2} m²·⁵/s\nqin,max=${parametros.caudalEntradaMaximo} m³/s · slew=0.25 s⁻¹\nAlarmas: ${alarmasTexto}\nτ medido / teórico: ${comparacionTau}`, fuenteInterfaz(14, '#E6E8EA', { lineSpacing: 3 })).setWordWrapWidth(F.modelo.ancho);
     this.add.text(F.explicacion.x, F.explicacion.y, 'El caudal de salida depende de √h, por eso el tanque es no lineal.\nCerca de una altura de operación se aproxima con un modelo lineal y valores locales de τ y K.\nLa válvula limita la rapidez del caudal; qd modifica el equilibrio.\nCada apertura de la válvula lleva el nivel a un equilibrio distinto, h_eq = (0,4·v1/c)², y el tanque tarda unas 4τ en llegar a él.\nLas tendencias comparan la respuesta con la referencia y su banda.', fuenteInterfaz(16, '#E6E8EA', { lineSpacing: 8 })).setWordWrapWidth(F.explicacion.ancho);
-    this.boton(F.descarga, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`), { tamano: 11 });
+    this.boton(F.descarga, 'Descargar CSV', () => descargarCSV(data.registro, `nivel-${nivel.id}-partida.csv`), { tamano: 11 });
     this.add.text(F.encabezadosCsv.x, F.encabezadosCsv.y, 'CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp', fuenteInterfaz(13)).setDepth(5);
     this.boton(F.volver, 'Volver al menú', () => this.scene.start('Menu'));
   }
@@ -136,7 +137,7 @@ export class Fin extends EscenaBase {
     this.crearFondo(); this.panel(F.marco); this.panel(F.panel);
     this.add.text(F.titulo.x, F.titulo.y, 'Lo que pasó en el modelo', fuenteTitulo(22)).setOrigin(.5);
     this.add.text(F.resultado.x, F.resultado.y, `${nivel.nombre} · ${estado} · ${resultado.texto || 'resultado no disponible'}`, fuenteInterfaz(18, resultado.superado ? '#2ECC71' : '#FF1744')).setWordWrapWidth(F.resultado.ancho);
-    this.boton(F.descarga, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`), { tamano: 11 });
+    this.boton(F.descarga, 'Descargar CSV', () => descargarCSV(data.registro, `nivel-${nivel.id}-partida.csv`), { tamano: 11 });
     this.boton(F.volver, 'Volver al menú', () => this.scene.start('Menu'));
   }
 }
