@@ -105,7 +105,15 @@ export class Menu extends EscenaBase {
       if (cams?.length) alert(`Cámara activa. ${cams.length} dispositivo(s) disponible(s).`);
     });
     this.add.text(M.controles.x + M.controles.ancho / 2, M.controles.y + M.controles.alto / 2,
-      'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar',
+      'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar · G galería',
       fuenteInterfaz(14, '#E6E8EA', { align: 'center', lineSpacing: 4 })).setOrigin(.5).setWordWrapWidth(M.controles.ancho - M.margenControl.horizontal).setAlpha(1);
+    this.teclaGaleria = (event) => {
+      if (event.code === 'KeyG' && !event.repeat && this.sys.isActive()) {
+        event.preventDefault();
+        this.scene.start('Galeria');
+      }
+    };
+    document.addEventListener('keydown', this.teclaGaleria, true);
+    this.events.once('shutdown', () => document.removeEventListener('keydown', this.teclaGaleria, true));
   }
 }

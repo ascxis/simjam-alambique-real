@@ -2,6 +2,7 @@ import { EscenaBase } from './EscenaBase.js';
 import { contextoJuego } from './contexto.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
+import { registrarAnimaciones } from './animaciones.js';
 
 export class Arranque extends EscenaBase {
   constructor() { super('Arranque'); }
@@ -66,10 +67,7 @@ export class Arranque extends EscenaBase {
     }
   }
   create() {
-    // El volante sigue la salida del actuador; la animación provee el estado activo
-    // del sprite y la escena aplica su giro a partir del modelo.
-    this.anims.create({ key: 'valvula-en-servicio', frames: [{ key: 'valvula-volante', frame: '__BASE' }], frameRate: 1, repeat: -1 });
-    this.anims.create({ key: 'runa-alerta', frames: [{ key: 'alarma-runa', frame: '__BASE' }], frameRate: 1, repeat: -1 });
+    registrarAnimaciones(this);
     this.scene.start('Menu');
   }
 }
