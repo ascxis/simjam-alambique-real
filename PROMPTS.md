@@ -76,6 +76,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 69 | Día 2, 5.3 | Gemini | Perturbación del nivel 3: sifón ondulante | Funcionó parcialmente (retoques) |
 | 70 | Día 2, 5.3 | Gemini | Escenario: capas, baldosas y decoraciones animadas | Funcionó parcialmente (retoques) |
 | 71 | Día 2, 5.3 | Gemini | Efectos visuales: salpicadura, vapor, chispa, polvo, aparición y desborde | Funcionó parcialmente (retoques) |
+| 72 | Día 2, 5.4 a) | Gemini | Diseño de audio (docs/audio.md) | Funcionó, con ajustes de la pareja |
 
 ---
 
@@ -1545,4 +1546,41 @@ El mismo mensaje se repitió para efecto_vapor (6 cuadros), efecto_chispa (4), e
 
 - **Resultado:** los seis efectos, con retoques (ver docs/recursos.md).
 - **Errores de la IA detectados:** marcos y números entre cuadros, tintes rosados, una copia fantasma en la chispa y, en el desborde, una olla que no es el alambique (se extrajo solo el líquido).
+
+---
+
+## 72. Diseño de audio (5.4 a)
+
+Chat nuevo con la skill disenador-juegos-simulacion. Adjuntos: docs/diseno.md, docs/modelo.md y docs/recursos.md.
+
+```
+/disenador-juegos-simulacion
+Con base en el documento de diseño y el modelo adjuntos, crea el DISEÑO DE
+AUDIO del simulador en Markdown:
+1. Música: una pista por situación (menú, operación normal, perturbación o
+   tensión, nivel superado, nivel fallido), con estilo, tempo aproximado en
+   BPM, instrumentos y emoción. Todas instrumentales, discretas para no tapar
+   las alarmas, y que se puedan repetir en bucle.
+2. Efectos sonoros: tabla con evento, descripción del sonido, duración
+   (máximo 1 s) y prioridad (alta, media, baja). Incluye actuadores
+   (abrir, cerrar, encender), perturbaciones, interfaz y resultado del nivel.
+3. Sonidos del modelo: un sonido propio para cada evento del sistema (por
+   ejemplo entrada en la banda, alarma alta y muy alta, desborde, choque,
+   piezas dañadas, nivel superado).
+4. Sonificación: qué variable del modelo modifica qué parámetro del sonido
+   (volumen, tono, frecuencia de corte de un filtro, ritmo o paneo), con su
+   rango y la constante de tiempo de suavizado en segundos. Revisa que el
+   sonido siga a la variable sin saltos y sin retardo perceptible.
+5. Mezcla: volumen relativo de música, efectos, interfaz y sonificación; las
+   alarmas de prioridad alta siempre se oyen sobre la música.
+Para la sonificación respeta el mapa variable -> representación de la sección
+"Día 2" de recursos.md: burbujeo con tasa proporcional a q_in (2 a 12 por
+segundo), tono del burbujeo de 200 a 800 Hz según el nivel h del alambique
+controlado, suavizado con setTargetAtTime (tau = 0,03 s), y alarmas H y HH
+distintas, con ducking de la música en HH. Usa nombres de archivo
+sfx_<evento> y musica_<situacion> para cada sonido.
+```
+
+- **Resultado:** docs/audio.md con música por situación, efectos, eventos del modelo, sonificación y mezcla.
+- **Errores de la IA detectados y corregidos por la pareja:** incluyó eventos que no existen en el modelo de tanques (choque entre alambiques y piezas dañadas, tomados de los ejemplos del prompt); repitió "entrada en banda" con dos archivos; usó un ducking de −12 dB en 0,1 s distinto del de la guía (−40 % con τ = 0,05 s y recuperación a los 300 ms); y creó un quinto canal de alarmas cuando la guía pide cuatro. Los ajustes quedaron anotados al final de docs/audio.md.
 
