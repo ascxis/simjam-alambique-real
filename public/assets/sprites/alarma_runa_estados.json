@@ -1,0 +1,10 @@
+{
+  "frameWidth": 32,
+  "frameHeight": 32,
+  "frameCount": 3,
+  "estados": [
+    "normal",
+    "H",
+    "HH"
+  ]
+}
