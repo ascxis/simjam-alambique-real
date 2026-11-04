@@ -75,3 +75,35 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
   La pareja eligió los alambiques apilados para el nivel 3 porque muestran la cascada por gravedad: el alambique 1 descarga en el 2. El dibujo trae una llave manual en el tubo de unión; en el modelo, esa llave siempre está abierta (q12 = c1·√h1).
 - **Baldosas:** no se usan en la simulación. Las pruebas mostraron que los bloques no combinan con el fondo, que ya trae piso; los alambiques se apoyan en ese piso con sombra y una base baja de hierro dibujada con Graphics.
 - **Panel final:** Gemini proponía 1280 × 720, pero el panel es vertical (proporción ≈ 0,86); estirarlo a 16:9 lo deformaría. Se usa 588 × 680, centrado sobre el fondo.
+
+## Día 2: especificación de los sprites (sección 5.2 a)
+
+Todas las hojas de un mismo elemento usan el mismo tamaño de cuadro, una sola fila y fondo magenta #FF00FF. Los originales se guardan en `arte_fuente/originales/` y los procesados en `public/assets/sprites/`.
+
+| Elemento | Tamaño del cuadro | Estados y número de cuadros | Velocidad sugerida |
+|---|---|---|---|
+| Equipo principal: alambique de cobre (simple y cascada) | 192x192 px | Reposo 1, funcionando 4 (brillo del cobre y vapor en la boca), falla 4 (desborde: líquido que se derrama por la tapa), alarma 2 (runa y remaches en rojo) | Funcionando: timeScale proporcional a q_in (0,5 a 2) |
+| Actuadores: válvula de entrada v₁ y válvula de salida v₂ (nivel 3) | 64x64 px | Cuerpo fijo + volante móvil; marca semitransparente del mando; variante de falla en rojo | Sin animación fija: el volante gira según la salida del Actuador |
+| Piezas que se deforman | Según el elemento | Líquido del visor, chorro de entrada, flujo de la tubería de salida, superficie del líquido | Se dibujan desde x(t) en cada cuadro |
+| Perturbación: consumo del caldero real (nivel 2, escalón de +0,08 m³/s) | 64x64 px | Aviso 3 (el cucharón se levanta y brilla), activa 4 (cucharón que extrae poción), fin 3 | 8 fps |
+| Perturbación: consumo oscilante (nivel 3, ±0,04 m³/s, período 40 s) | 64x64 px | Aviso 3, activa 4 (sifón con onda), fin 3 | 8 fps |
+| Indicadores y alarmas (runa) | 32x32 px | Normal, alarma alta (H), alarma muy alta (HH) | Parpadeo de 2 Hz solo en alarma |
+| Baldosas | 32x32 px | Hoja de 8x4: piso de piedra, muros, tuberías de cobre, pasarelas y variaciones | No aplica |
+| Fondos | 1280x720 px | Tres capas: lejana (muros y ventanales), media (estantes con frascos), primer plano (velas y mesa) | Fijos (cámara fija) |
+| Efectos | 64x64 px | Salpicadura 5, vapor 6, chispa 4, polvo 4, aparición 5 y desborde 6 (efecto propio del concepto) | 15 a 20 fps, sin bucle |
+
+## Día 2: mapa variable del modelo → representación (sección 5.2 b)
+
+Rangos del modelo: h de 0 a 3 m (desborde a 3,0 m), v de 0 a 1, q_in = 0,4·v₁ de 0 a 0,4 m³/s, q₁₂ = c₁·√h₁, q_d de −0,04 a 0,08 m³/s. Alarmas: H = 2,4 m y HH = 2,8 m.
+
+| Variable del modelo | Rango | Representación visual | Función | Sonificación |
+|---|---|---|---|---|
+| h₁, h₂ (nivel de cada alambique) | 0 a 3 m | Altura del líquido en el visor recortada con setCrop según h/3 | Lineal saturada | Tono del burbujeo de 200 a 800 Hz según h del alambique controlado (sube cuando el nivel sube); suavizado con setTargetAtTime, τ = 0,03 s |
+| q_in = 0,4·v₁ (caudal de entrada) | 0 a 0,4 m³/s | Ancho del chorro de entrada (2 a 10 px), amplitud del oleaje de la superficie y timeScale de la animación "funcionando" (0,5 a 2) | Lineal saturada | Tasa del burbujeo de 2 a 12 burbujas por segundo |
+| v₁, v₂ (salida del Actuador) | 0 a 1 | Ángulo del volante de cada válvula, de 0° a 270° | Lineal | Clic corto al abrir o cerrar más de 0,1 |
+| Mando de la mano (u) | 0 a 1 | Marca semitransparente del volante en la posición ordenada | Lineal | — |
+| q₁₂ = c₁·√h₁ (salida del alambique 1) | 0 a 0,35 m³/s | Ancho del flujo verde en la tubería de salida y en la cascada | Lineal saturada | — |
+| q_d (consumo del caldero) | −0,04 a 0,08 m³/s | Tamaño del cucharón o de la onda de la perturbación; aviso antes de que actúe | Lineal en la magnitud | Sonido de aviso al empezar el aviso |
+| h frente a H y HH | Umbrales | Runa normal, H (ámbar) o HH (roja, parpadeo de 2 Hz); franja de color en el visor | Umbral con histéresis: H entra en 2,4 m y sale en 2,3 m; HH entra en 2,8 m y sale en 2,7 m | Alarma H y alarma HH, distintas; la HH baja la música (ducking) |
+| h ≥ 3,0 m | Evento | Estado "falla" del alambique y efecto de desborde | Umbral | Sonido propio de desborde |
+| Error h − h_sp dentro de la banda (±tolerancia) | Evento | Brillo verde suave del nivel en la HMI | Umbral con histéresis | Sonido corto de confirmación al entrar en la banda |
