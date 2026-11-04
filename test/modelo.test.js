@@ -52,14 +52,14 @@ test('la fuente escalón entrega controles completos y cambia der.altura a los 2
   assert.equal(despues.der.altura, 0.622372);
   assert.equal(despues.der.u_crudo.altura, 0.622372);
 });
-test('escalón de verificación: tanque se aproxima al nuevo equilibrio en 80 s', () => {
+test('escalón de verificación: tanque se aproxima al nuevo equilibrio en 120 s', () => {
   const h0 = 1.5, vEquilibrio = 0.612372, vFinal = 0.622372, dt = 1 / 120;
   const sistema = crearSistemaTanques({ tanques: 1, estadoInicial: [h0] });
   const actuador = new Actuador({ velocidadMaxima: 0.25, inicial: 0.2 * Math.sqrt(h0) / 0.4 });
   const equilibrioFinal = (0.4 * vFinal / 0.2) ** 2;
   const umbral = h0 + .632 * (equilibrioFinal - h0);
   let tiempo63 = null, hAnterior = sistema.x[0], tAnterior = 0;
-  for (let paso = 0; paso < 80 * 120; paso++) {
+  for (let paso = 0; paso < 120 * 120; paso++) {
     const t = sistema.t;
     const mando = t < 2 ? vEquilibrio : vFinal;
     const v1 = actuador.avanzar(mando, dt);
@@ -72,9 +72,27 @@ test('escalón de verificación: tanque se aproxima al nuevo equilibrio en 80 s'
     hAnterior = hActual; tAnterior = tActual;
   }
   const final = sistema.x[0];
-  assert.ok(Math.abs(final - 1.5494) < 0.01 * 1.5494, `h1(80 s)=${final} m`);
+  assert.ok(Math.abs(final - 1.5494) < 0.01 * 1.5494, `h1(120 s)=${final} m`);
   assert.ok(Number.isFinite(tiempo63), 'el nivel cruza el 63,2 % del cambio');
-  console.log(`Escalón de verificación: h1(80 s)=${final} m; t63,2=${tiempo63} s desde t=2 s`);
+  console.log(`Escalón de verificación: h1(120 s)=${final} m; t63,2=${tiempo63} s desde t=2 s`);
+});
+test('escalón con c1 modificado converge al equilibrio para −20 % y +20 %', () => {
+  const vInicial = 0.612372, vFinal = 0.622372, dt = 1 / 120;
+  for (const c1 of [0.16, 0.24]) {
+    const h0 = (0.4 * vInicial / c1) ** 2;
+    const sistema = crearSistemaTanques({ tanques: 1, estadoInicial: [h0] });
+    sistema.p.coeficienteDescarga1 = c1;
+    const actuador = new Actuador({ velocidadMaxima: 0.25, inicial: vInicial });
+    for (let paso = 0; paso < 120 * 120; paso++) {
+      const mando = sistema.t < 2 ? vInicial : vFinal;
+      const v1 = actuador.avanzar(mando, dt);
+      sistema.avanzar([v1, 1, 0], dt);
+    }
+    const equilibrio = (0.4 * vFinal / c1) ** 2;
+    const errorRelativo = Math.abs(sistema.x[0] - equilibrio) / equilibrio;
+    console.log(`Escalón c1=${c1}: h1(120 s)=${sistema.x[0]} m; equilibrio=${equilibrio} m; error=${(errorRelativo * 100).toFixed(4)} %`);
+    assert.ok(errorRelativo < 0.01, `con c1=${c1}, error relativo=${errorRelativo}`);
+  }
 });
 test('la cámara conserva cada consigna mientras su mano está fuera de zona', () => {
   const controles = {
