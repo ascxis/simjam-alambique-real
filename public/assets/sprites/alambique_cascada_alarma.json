@@ -1,0 +1,53 @@
+{
+  "archivo": "sprites/alambique_cascada_alarma.png",
+  "familia": "alambique_cascada",
+  "estado": "alarma",
+  "frameWidth": 256,
+  "frameHeight": 768,
+  "frameCount": 2,
+  "escalaComun": 0.48685433022044583,
+  "visoresPorCuadro": [
+    {
+      "superior": {
+        "x": 0.37890625,
+        "y": 0.2552083333333333,
+        "ancho": 0.046875,
+        "alto": 0.09375
+      },
+      "inferior": {
+        "x": 0.37890625,
+        "y": 0.640625,
+        "ancho": 0.05078125,
+        "alto": 0.11197916666666667
+      }
+    },
+    {
+      "superior": {
+        "x": 0.37890625,
+        "y": 0.2552083333333333,
+        "ancho": 0.05078125,
+        "alto": 0.11197916666666667
+      },
+      "inferior": {
+        "x": 0.37890625,
+        "y": 0.640625,
+        "ancho": 0.05078125,
+        "alto": 0.11848958333333333
+      }
+    }
+  ],
+  "visores": {
+    "superior": {
+      "x": 0.37890625,
+      "y": 0.2552083333333333,
+      "ancho": 0.046875,
+      "alto": 0.09375
+    },
+    "inferior": {
+      "x": 0.37890625,
+      "y": 0.640625,
+      "ancho": 0.05078125,
+      "alto": 0.11197916666666667
+    }
+  }
+}

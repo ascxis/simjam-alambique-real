@@ -1,0 +1,845 @@
+{
+  "version": 2,
+  "resources": [
+    {
+      "key": "alambique",
+      "type": "image",
+      "path": "sprites/alambique_cuerpo_vacio.png",
+      "available": true
+    },
+    {
+      "key": "liquido-referencia",
+      "type": "image",
+      "path": "sprites/columna_liquido.png",
+      "available": true
+    },
+    {
+      "key": "alambique-cascada",
+      "type": "image",
+      "path": "sprites/alambique_cascada.png",
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-visores",
+      "type": "json",
+      "path": "sprites/alambique_cascada.json",
+      "available": true
+    },
+    {
+      "key": "mesa-laboratorio",
+      "type": "image",
+      "path": "sprites/mesa_laboratorio.png",
+      "available": true
+    },
+    {
+      "key": "caldero-real",
+      "type": "image",
+      "path": "sprites/caldero_real.png",
+      "available": true
+    },
+    {
+      "key": "valvula-cuerpo",
+      "type": "image",
+      "path": "sprites/valvula_cuerpo_estatico.png",
+      "available": true
+    },
+    {
+      "key": "valvula-volante",
+      "type": "image",
+      "path": "sprites/valvula_volante_aislado.png",
+      "available": true
+    },
+    {
+      "key": "alarma-placa",
+      "type": "image",
+      "path": "sprites/alarma_placa.png",
+      "available": true
+    },
+    {
+      "key": "alarma-runa",
+      "type": "image",
+      "path": "sprites/alarma_runa.png",
+      "available": true
+    },
+    {
+      "key": "fondo-laboratorio",
+      "type": "image",
+      "path": "fondos/fondo_laboratorio.png",
+      "available": true
+    },
+    {
+      "key": "baldosas",
+      "type": "spritesheet",
+      "path": "sprites/baldosas_laboratorio.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 16,
+      "columns": 4,
+      "rows": 4,
+      "available": true
+    },
+    {
+      "key": "interfaz",
+      "type": "spritesheet",
+      "path": "sprites/interfaz_iconos.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 8,
+      "columns": 4,
+      "rows": 2,
+      "available": true
+    },
+    {
+      "key": "logotipo",
+      "type": "image",
+      "path": "sprites/logotipo_titulo.png",
+      "available": true
+    },
+    {
+      "key": "panel-final",
+      "type": "image",
+      "path": "sprites/pantalla_post_partida.png",
+      "available": true
+    },
+    {
+      "key": "alambique-simple-reposo",
+      "type": "spritesheet",
+      "path": "sprites/alambique_simple_reposo.png",
+      "width": 256,
+      "height": 640,
+      "frameWidth": 256,
+      "frameHeight": 640,
+      "frameCount": 1,
+      "columns": 1,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-simple-reposo-meta",
+      "type": "json",
+      "path": "sprites/alambique_simple_reposo.json",
+      "available": true
+    },
+    {
+      "key": "alambique-simple-funcionando",
+      "type": "spritesheet",
+      "path": "sprites/alambique_simple_funcionando.png",
+      "width": 1024,
+      "height": 640,
+      "frameWidth": 256,
+      "frameHeight": 640,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-simple-funcionando-meta",
+      "type": "json",
+      "path": "sprites/alambique_simple_funcionando.json",
+      "available": true
+    },
+    {
+      "key": "alambique-simple-falla",
+      "type": "spritesheet",
+      "path": "sprites/alambique_simple_falla.png",
+      "width": 1024,
+      "height": 640,
+      "frameWidth": 256,
+      "frameHeight": 640,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-simple-falla-meta",
+      "type": "json",
+      "path": "sprites/alambique_simple_falla.json",
+      "available": true
+    },
+    {
+      "key": "alambique-simple-alarma",
+      "type": "spritesheet",
+      "path": "sprites/alambique_simple_alarma.png",
+      "width": 512,
+      "height": 640,
+      "frameWidth": 256,
+      "frameHeight": 640,
+      "frameCount": 2,
+      "columns": 2,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-simple-alarma-meta",
+      "type": "json",
+      "path": "sprites/alambique_simple_alarma.json",
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-reposo",
+      "type": "spritesheet",
+      "path": "sprites/alambique_cascada_reposo.png",
+      "width": 256,
+      "height": 768,
+      "frameWidth": 256,
+      "frameHeight": 768,
+      "frameCount": 1,
+      "columns": 1,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-reposo-meta",
+      "type": "json",
+      "path": "sprites/alambique_cascada_reposo.json",
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-funcionando",
+      "type": "spritesheet",
+      "path": "sprites/alambique_cascada_funcionando.png",
+      "width": 1024,
+      "height": 768,
+      "frameWidth": 256,
+      "frameHeight": 768,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-funcionando-meta",
+      "type": "json",
+      "path": "sprites/alambique_cascada_funcionando.json",
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-falla",
+      "type": "spritesheet",
+      "path": "sprites/alambique_cascada_falla.png",
+      "width": 1024,
+      "height": 768,
+      "frameWidth": 256,
+      "frameHeight": 768,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-falla-meta",
+      "type": "json",
+      "path": "sprites/alambique_cascada_falla.json",
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-alarma",
+      "type": "spritesheet",
+      "path": "sprites/alambique_cascada_alarma.png",
+      "width": 512,
+      "height": 768,
+      "frameWidth": 256,
+      "frameHeight": 768,
+      "frameCount": 2,
+      "columns": 2,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-alarma-meta",
+      "type": "json",
+      "path": "sprites/alambique_cascada_alarma.json",
+      "available": true
+    },
+    {
+      "key": "valvula-tira",
+      "type": "spritesheet",
+      "path": "sprites/valvula_tira.png",
+      "width": 320,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 5,
+      "columns": 5,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "valvula-tira-meta",
+      "type": "json",
+      "path": "sprites/valvula_tira.json",
+      "available": true
+    },
+    {
+      "key": "alambique-liquido",
+      "type": "image",
+      "path": "sprites/alambique_liquido.png",
+      "available": true
+    },
+    {
+      "key": "chorro-entrada",
+      "type": "image",
+      "path": "sprites/chorro_entrada.png",
+      "available": true
+    },
+    {
+      "key": "flujo-tuberia-salida",
+      "type": "image",
+      "path": "sprites/flujo_tuberia_salida.png",
+      "available": true
+    },
+    {
+      "key": "cucharon-aviso",
+      "type": "spritesheet",
+      "path": "efectos/perturbacion_cucharon_aviso.png",
+      "width": 192,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 3,
+      "columns": 3,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "cucharon-aviso-meta",
+      "type": "json",
+      "path": "efectos/perturbacion_cucharon_aviso.json",
+      "available": true
+    },
+    {
+      "key": "cucharon-activa",
+      "type": "spritesheet",
+      "path": "efectos/perturbacion_cucharon_activa.png",
+      "width": 256,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "cucharon-activa-meta",
+      "type": "json",
+      "path": "efectos/perturbacion_cucharon_activa.json",
+      "available": true
+    },
+    {
+      "key": "cucharon-fin",
+      "type": "spritesheet",
+      "path": "efectos/perturbacion_cucharon_fin.png",
+      "width": 192,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 3,
+      "columns": 3,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "cucharon-fin-meta",
+      "type": "json",
+      "path": "efectos/perturbacion_cucharon_fin.json",
+      "available": true
+    },
+    {
+      "key": "sifon-aviso",
+      "type": "spritesheet",
+      "path": "efectos/perturbacion_sifon_aviso.png",
+      "width": 192,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 3,
+      "columns": 3,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "sifon-aviso-meta",
+      "type": "json",
+      "path": "efectos/perturbacion_sifon_aviso.json",
+      "available": true
+    },
+    {
+      "key": "sifon-activa",
+      "type": "spritesheet",
+      "path": "efectos/perturbacion_sifon_activa.png",
+      "width": 256,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "sifon-activa-meta",
+      "type": "json",
+      "path": "efectos/perturbacion_sifon_activa.json",
+      "available": true
+    },
+    {
+      "key": "sifon-fin",
+      "type": "spritesheet",
+      "path": "efectos/perturbacion_sifon_fin.png",
+      "width": 192,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 3,
+      "columns": 3,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "sifon-fin-meta",
+      "type": "json",
+      "path": "efectos/perturbacion_sifon_fin.json",
+      "available": true
+    },
+    {
+      "key": "deco-engranaje",
+      "type": "spritesheet",
+      "path": "sprites/deco_engranaje.png",
+      "width": 256,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "deco-engranaje-meta",
+      "type": "json",
+      "path": "sprites/deco_engranaje.json",
+      "available": true
+    },
+    {
+      "key": "deco-frasco",
+      "type": "spritesheet",
+      "path": "sprites/deco_frasco.png",
+      "width": 256,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "deco-frasco-meta",
+      "type": "json",
+      "path": "sprites/deco_frasco.json",
+      "available": true
+    },
+    {
+      "key": "deco-vela",
+      "type": "spritesheet",
+      "path": "sprites/deco_vela.png",
+      "width": 256,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "deco-vela-meta",
+      "type": "json",
+      "path": "sprites/deco_vela.json",
+      "available": true
+    },
+    {
+      "key": "efecto-salpicadura",
+      "type": "spritesheet",
+      "path": "efectos/efecto_salpicadura.png",
+      "width": 320,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 5,
+      "columns": 5,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "efecto-salpicadura-meta",
+      "type": "json",
+      "path": "efectos/efecto_salpicadura.json",
+      "available": true
+    },
+    {
+      "key": "efecto-vapor",
+      "type": "spritesheet",
+      "path": "efectos/efecto_vapor.png",
+      "width": 384,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 6,
+      "columns": 6,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "efecto-vapor-meta",
+      "type": "json",
+      "path": "efectos/efecto_vapor.json",
+      "available": true
+    },
+    {
+      "key": "efecto-chispa",
+      "type": "spritesheet",
+      "path": "efectos/efecto_chispa.png",
+      "width": 256,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "efecto-chispa-meta",
+      "type": "json",
+      "path": "efectos/efecto_chispa.json",
+      "available": true
+    },
+    {
+      "key": "efecto-polvo",
+      "type": "spritesheet",
+      "path": "efectos/efecto_polvo.png",
+      "width": 256,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "efecto-polvo-meta",
+      "type": "json",
+      "path": "efectos/efecto_polvo.json",
+      "available": true
+    },
+    {
+      "key": "efecto-aparicion",
+      "type": "spritesheet",
+      "path": "efectos/efecto_aparicion.png",
+      "width": 320,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 5,
+      "columns": 5,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "efecto-aparicion-meta",
+      "type": "json",
+      "path": "efectos/efecto_aparicion.json",
+      "available": true
+    },
+    {
+      "key": "efecto-desborde",
+      "type": "spritesheet",
+      "path": "efectos/efecto_desborde.png",
+      "width": 384,
+      "height": 64,
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 6,
+      "columns": 6,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "efecto-desborde-meta",
+      "type": "json",
+      "path": "efectos/efecto_desborde.json",
+      "available": true
+    },
+    {
+      "key": "alarma-runa-estados",
+      "type": "spritesheet",
+      "path": "sprites/alarma_runa_estados.png",
+      "width": 96,
+      "height": 32,
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 3,
+      "columns": 3,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alarma-runa-estados-meta",
+      "type": "json",
+      "path": "sprites/alarma_runa_estados.json",
+      "available": true
+    },
+    {
+      "key": "fondo-lejano",
+      "type": "image",
+      "path": "fondos/fondo_lejano.png",
+      "available": true
+    },
+    {
+      "key": "fondo-medio",
+      "type": "image",
+      "path": "fondos/fondo_medio.png",
+      "available": true
+    },
+    {
+      "key": "fondo-cercano",
+      "type": "image",
+      "path": "fondos/fondo_cercano.png",
+      "available": true
+    },
+    {
+      "key": "laboratorio-tiles",
+      "type": "spritesheet",
+      "path": "tiles/laboratorio_tiles.png",
+      "width": 256,
+      "height": 128,
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 32,
+      "columns": 8,
+      "rows": 4,
+      "available": true
+    },
+    {
+      "key": "laboratorio-tiles-meta",
+      "type": "json",
+      "path": "tiles/laboratorio_tiles.json",
+      "available": true
+    },
+    {
+      "key": "musica_menu",
+      "type": "audio",
+      "path": "assets/audio/musica_menu.ogg",
+      "files": [
+        "assets/audio/musica_menu.ogg",
+        "assets/audio/musica_menu.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "musica_operacion",
+      "type": "audio",
+      "path": "assets/audio/musica_operacion.ogg",
+      "files": [
+        "assets/audio/musica_operacion.ogg",
+        "assets/audio/musica_operacion.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "musica_perturbacion",
+      "type": "audio",
+      "path": "assets/audio/musica_perturbacion.ogg",
+      "files": [
+        "assets/audio/musica_perturbacion.ogg",
+        "assets/audio/musica_perturbacion.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "musica_superado",
+      "type": "audio",
+      "path": "assets/audio/musica_superado.ogg",
+      "files": [
+        "assets/audio/musica_superado.ogg",
+        "assets/audio/musica_superado.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "musica_fallido",
+      "type": "audio",
+      "path": "assets/audio/musica_fallido.ogg",
+      "files": [
+        "assets/audio/musica_fallido.ogg",
+        "assets/audio/musica_fallido.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_interfaz_clic",
+      "type": "audio",
+      "path": "assets/audio/sfx_interfaz_clic.ogg",
+      "files": [
+        "assets/audio/sfx_interfaz_clic.ogg",
+        "assets/audio/sfx_interfaz_clic.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_interfaz_aceptar",
+      "type": "audio",
+      "path": "assets/audio/sfx_interfaz_aceptar.ogg",
+      "files": [
+        "assets/audio/sfx_interfaz_aceptar.ogg",
+        "assets/audio/sfx_interfaz_aceptar.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_interfaz_cancelar",
+      "type": "audio",
+      "path": "assets/audio/sfx_interfaz_cancelar.ogg",
+      "files": [
+        "assets/audio/sfx_interfaz_cancelar.ogg",
+        "assets/audio/sfx_interfaz_cancelar.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_actuador_mover",
+      "type": "audio",
+      "path": "assets/audio/sfx_actuador_mover.ogg",
+      "files": [
+        "assets/audio/sfx_actuador_mover.ogg",
+        "assets/audio/sfx_actuador_mover.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_actuador_tope",
+      "type": "audio",
+      "path": "assets/audio/sfx_actuador_tope.ogg",
+      "files": [
+        "assets/audio/sfx_actuador_tope.ogg",
+        "assets/audio/sfx_actuador_tope.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_perturbacion_aviso",
+      "type": "audio",
+      "path": "assets/audio/sfx_perturbacion_aviso.ogg",
+      "files": [
+        "assets/audio/sfx_perturbacion_aviso.ogg",
+        "assets/audio/sfx_perturbacion_aviso.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_perturbacion_inicio",
+      "type": "audio",
+      "path": "assets/audio/sfx_perturbacion_inicio.ogg",
+      "files": [
+        "assets/audio/sfx_perturbacion_inicio.ogg",
+        "assets/audio/sfx_perturbacion_inicio.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_perturbacion_fin",
+      "type": "audio",
+      "path": "assets/audio/sfx_perturbacion_fin.ogg",
+      "files": [
+        "assets/audio/sfx_perturbacion_fin.ogg",
+        "assets/audio/sfx_perturbacion_fin.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_resultado_superado",
+      "type": "audio",
+      "path": "assets/audio/sfx_resultado_superado.ogg",
+      "files": [
+        "assets/audio/sfx_resultado_superado.ogg",
+        "assets/audio/sfx_resultado_superado.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_resultado_fallido",
+      "type": "audio",
+      "path": "assets/audio/sfx_resultado_fallido.ogg",
+      "files": [
+        "assets/audio/sfx_resultado_fallido.ogg",
+        "assets/audio/sfx_resultado_fallido.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_modelo_en_banda",
+      "type": "audio",
+      "path": "assets/audio/sfx_modelo_en_banda.ogg",
+      "files": [
+        "assets/audio/sfx_modelo_en_banda.ogg",
+        "assets/audio/sfx_modelo_en_banda.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_modelo_fuera_banda",
+      "type": "audio",
+      "path": "assets/audio/sfx_modelo_fuera_banda.ogg",
+      "files": [
+        "assets/audio/sfx_modelo_fuera_banda.ogg",
+        "assets/audio/sfx_modelo_fuera_banda.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_modelo_cambio_referencia",
+      "type": "audio",
+      "path": "assets/audio/sfx_modelo_cambio_referencia.ogg",
+      "files": [
+        "assets/audio/sfx_modelo_cambio_referencia.ogg",
+        "assets/audio/sfx_modelo_cambio_referencia.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_alarma_h",
+      "type": "audio",
+      "path": "assets/audio/sfx_alarma_h.ogg",
+      "files": [
+        "assets/audio/sfx_alarma_h.ogg",
+        "assets/audio/sfx_alarma_h.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_alarma_hh",
+      "type": "audio",
+      "path": "assets/audio/sfx_alarma_hh.ogg",
+      "files": [
+        "assets/audio/sfx_alarma_hh.ogg",
+        "assets/audio/sfx_alarma_hh.mp3"
+      ],
+      "available": false
+    },
+    {
+      "key": "sfx_modelo_desborde",
+      "type": "audio",
+      "path": "assets/audio/sfx_modelo_desborde.ogg",
+      "files": [
+        "assets/audio/sfx_modelo_desborde.ogg",
+        "assets/audio/sfx_modelo_desborde.mp3"
+      ],
+      "available": false
+    }
+  ]
+}

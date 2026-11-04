@@ -1,0 +1,39 @@
+{
+  "archivo": "sprites/alambique_cascada_reposo.png",
+  "familia": "alambique_cascada",
+  "estado": "reposo",
+  "frameWidth": 256,
+  "frameHeight": 768,
+  "frameCount": 1,
+  "escalaComun": 0.3139240506329114,
+  "visoresPorCuadro": [
+    {
+      "superior": {
+        "x": 0.37890625,
+        "y": 0.2526041666666667,
+        "ancho": 0.046875,
+        "alto": 0.08072916666666667
+      },
+      "inferior": {
+        "x": 0.37890625,
+        "y": 0.6380208333333334,
+        "ancho": 0.1015625,
+        "alto": 0.08984375
+      }
+    }
+  ],
+  "visores": {
+    "superior": {
+      "x": 0.37890625,
+      "y": 0.2526041666666667,
+      "ancho": 0.046875,
+      "alto": 0.08072916666666667
+    },
+    "inferior": {
+      "x": 0.37890625,
+      "y": 0.6380208333333334,
+      "ancho": 0.1015625,
+      "alto": 0.08984375
+    }
+  }
+}
