@@ -69,6 +69,13 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 62 | 5.10 d) | Codex | Panel P para el análisis de sensibilidad (A y c1 ±20 %) | Funcionó |
 | 63 | Día 2, 5.1 | Codex | Revisión del estado del proyecto antes del día 2 (sin modificar archivos) | Funcionó |
 | 64 | Día 2, 5.1 | Codex | Correcciones de la revisión: registro sin DOM y originales fuera de public/ | Funcionó |
+| 65 | Día 2, 5.3 | Gemini | Equipo principal: alambique por estados y partes deformables | Hubo que corregir |
+| 66 | Día 2, 5.3 | Gemini | Equipo principal: cascada del nivel 3 | Funcionó |
+| 67 | Día 2, 5.3 | Gemini | Actuador: válvula (cuerpo, volante, fantasma y falla) | Hubo que corregir |
+| 68 | Día 2, 5.3 | Gemini | Perturbación del nivel 2: cucharón del Caldero Real | Hubo que corregir |
+| 69 | Día 2, 5.3 | Gemini | Perturbación del nivel 3: sifón ondulante | Funcionó parcialmente (retoques) |
+| 70 | Día 2, 5.3 | Gemini | Escenario: capas, baldosas y decoraciones animadas | Funcionó parcialmente (retoques) |
+| 71 | Día 2, 5.3 | Gemini | Efectos visuales: salpicadura, vapor, chispa, polvo, aparición y desborde | Funcionó parcialmente (retoques) |
 
 ---
 
@@ -1394,3 +1401,148 @@ Al terminar ejecuta npm test, npm run assets y npm run build, dime cuánto pesan
 
 - **Resultado:** src/modelo/registro.js solo acumula las muestras y arma el CSV; la descarga pasó a src/hmi/descargarCSV.js, usado desde Fin.js, con el mismo formato (BOM, encabezados, coma y punto decimal). Los 13 originales se movieron a arte_fuente/originales/ y scripts/procesar-assets.mjs los lee desde ahí; se borró alambique_columna_liquido.png, que no se usaba. npm test 13/13, npm run assets y npm run build sin errores. public/assets pasó de 10,74 MiB a 2,15 MiB y dist/ pesa 2,26 MiB.
 - **Decisión:** la guía indica guardar los originales en public/assets/originales/, pero Vite copia todo public/ a dist/ y el límite es 10 MB; por eso los originales del día 2 también irán en arte_fuente/originales/.
+
+---
+
+## 65. Equipo principal: alambique por estados (5.3, paso 1)
+
+Adjuntos: docs/diseno.md, docs/recursos.md (guía de estilo y especificación de la 5.2), el sprite actual y una captura del nivel 1.
+
+```
+/director-arte-videojuegos
+Mejora el equipo principal "alambique de cobre", que representa un tanque de una planta de tratamiento de líquidos (aquí, un alambique de alquimia que se llena por una válvula de entrada y se vacía por un orificio en el fondo). Adjunto la versión actual. Respeta la guía de estilo y las reglas para Phaser.
+1. Lectura: que se reconozca a primera vista y que su forma muestre su función física: tubo de entrada arriba con su válvula, visor de vidrio vertical para leer el nivel, salida por el fondo hacia la tubería y runa de alarma en el frente.
+2. HMI: tonos neutros y apagados de cobre envejecido; el color intenso queda solo para alarmas.
+3. Genera una hoja de sprites por estado, una sola fila, cuadros de 192x192 px, en la misma escala y posición en todos los cuadros, fondo magenta #FF00FF: reposo (1 cuadro), funcionando (4: leve brillo del cobre y un hilo de vapor en la boca que se mueve), falla (4: el líquido rebosa por la tapa y escurre por el cuerpo, porque la falla del modelo es el desborde a 3 m) y alarma (2: runa y remaches en rojo intenso, alternando encendido y apagado).
+4. Entrega por separado las partes que el juego deformará según el modelo: el líquido verde del visor (una columna rectangular que el juego recortará según el nivel), el chorro de líquido que cae desde la válvula de entrada y el tramo de flujo de la tubería de salida, en reposo y con bordes limpios.
+```
+
+Corrección enviada después:
+
+```
+Buen resultado, el estilo y la alarma están bien. Corrige estos puntos y entrégalo en PNG:
+1. Usa en TODOS los cuadros la misma válvula de volante de los cuadros 2 a 10; el cuadro de reposo tiene un grifo distinto.
+2. El visor de vidrio debe quedar VACÍO (vidrio oscuro, sin líquido ni burbujas) en todos los cuadros, porque el juego dibuja el líquido según el nivel del modelo. En la falla, el líquido verde puede rebosar por la tapa y escurrir por fuera del cuerpo, pero no dentro del visor.
+3. La falla debe tener 4 cuadros (ahora tiene 3).
+4. Entrega una hoja por estado (4 imágenes): reposo (1 cuadro), funcionando (4), falla (4) y alarma (2). Cada hoja en una sola fila, con cuadros de 256x640 px exactos, uno junto al otro sin espacios, el alambique centrado en la misma posición y escala en todos los cuadros, y nada (vapor, gotas) que se salga de su cuadro.
+5. Fondo magenta #FF00FF sólido, sin degradados en los bordes.
+Después entrega por separado las partes que el juego deformará: la columna de líquido verde del visor, el chorro que cae desde la válvula de entrada y el tramo de flujo de la tubería de salida.
+```
+
+Luego se pidió repetir la alarma (visor con la mitad inferior más clara) y el reposo (una copia exacta del cuadro 4 de "funcionando" sin vapor).
+
+- **Resultado:** alambique_reposo, alambique_funcionando (4), alambique_falla (4), alambique_alarma (2) y alambique_partes.
+- **Errores de la IA detectados:** (1) pintó líquido dentro del visor, que habría mostrado un nivel falso encima del nivel real del modelo; (2) cambió la válvula entre cuadros; (3) entregó 3 cuadros de falla en vez de 4; (4) no respetó el tamaño de cuadro (dibujó el tanque alto, por eso la especificación se ajustó a 256x640 px); (5) un reposo con otro alambique distinto. Se detectaron comparando los cuadros entre sí y midiendo los anchos y las proporciones de cada cuadro.
+
+---
+
+## 66. Equipo principal: cascada del nivel 3 (5.3, paso 1)
+
+```
+/director-arte-videojuegos
+Con el mismo estilo, escala y estados del alambique que acabas de crear (usa la hoja "funcionando" como referencia exacta), genera la versión en cascada: dos alambiques idénticos apilados; el de arriba descarga por su tubo de salida lateral al de abajo mediante un tubo corto de cobre con un vidrio visor del flujo intermedio. Visores de vidrio oscuro vacíos. Una hoja por estado, una sola fila, fondo magenta #FF00FF, en PNG: reposo (1 cuadro), funcionando (4), falla (4: el de abajo rebosa) y alarma (2).
+```
+
+- **Resultado:** las cuatro hojas salieron coherentes y fieles a la física (el tubo con el visor de q₁₂ une los dos alambiques). Cuadro de 256x768 px.
+
+---
+
+## 67. Actuador: válvula (5.3, paso 2)
+
+```
+/director-arte-videojuegos
+Crea el actuador "válvula de alquimia" (válvula), con el mismo estilo y escala del equipo principal (adjunto la hoja "funcionando" como referencia).
+1. Pieza fija y pieza móvil por separado: cuerpo de la válvula de cobre y volante de bronce con 4 radios visto de frente, sobre fondo magenta, cuadros de 64x64 px, para que el juego gire el volante según la apertura del actuador (0° cerrada, 270° abierta). El volante debe estar centrado en su cuadro para poder girarlo sobre su centro.
+2. Una marca semitransparente para mostrar el mando de la mano: una silueta fantasma del volante en tono claro, que el juego dibujará en la posición que ordena la mano.
+3. Variante en color de falla: el mismo cuerpo y volante con brillo rojo intenso.
+```
+
+Corrección enviada después:
+
+```
+La tira de 5 cuadros tiene la idea correcta, pero corrígela así, en PNG:
+1. Sin marcos ni bordes negros alrededor de los cuadros.
+2. Fondo magenta puro #FF00FF idéntico en TODOS los cuadros, también detrás del volante fantasma y de la variante de falla (ahora esos fondos son rosado claro y morado).
+3. El cuerpo de la válvula debe ser de cobre como en la imagen adjunta del cuerpo (sin pátina verde).
+4. Volante de bronce de 4 radios, visto de frente y centrado en su cuadro, igual en las tres versiones (normal, fantasma semitransparente gris claro y falla con brillo rojo).
+5. Cinco cuadros del mismo tamaño en una fila: cuerpo, volante, volante fantasma, cuerpo en falla y volante en falla.
+```
+
+- **Resultado:** valvula_tira con las 5 piezas coherentes.
+- **Errores de la IA detectados:** mezcló estilos (pixel art y pintura digital), volantes de 4, 6 y 8 radios, marcos negros, fondos que no eran magenta puro detrás del fantasma y de la falla, y en un intento el volante salió borroso y duplicado.
+
+---
+
+## 68. Perturbación del nivel 2: cucharón del Caldero Real (5.3, paso 3)
+
+```
+/director-arte-videojuegos
+Crea la perturbación "cucharón del Caldero Real", que representa un aumento del consumo: el caldero extrae poción del alambique durante 40 s, con el mismo estilo del simulador (pintura digital, como el alambique adjunto; no pixel art).
+1. Su forma debe anunciar su efecto: es prolongada, así que debe ser ancha y pesada (un cucharón grande de hierro que se hunde y saca líquido verde).
+2. Hojas de sprites en una fila, cuadros de 64x64 px, fondo magenta #FF00FF puro y sin marcos, en PNG: aviso (3 cuadros: el cucharón se levanta y brilla en ámbar, un gesto claro que el jugador alcance a ver), activa (4: el cucharón se sumerge y saca líquido) y fin (3: el cucharón se retira).
+```
+
+Corrección enviada después:
+
+```
+Corrige el cucharón, en PNG y con fondo magenta #FF00FF puro:
+1. Forma ancha y pesada, porque la perturbación es prolongada (40 s): cuenco grande y profundo de hierro, mango corto y grueso. Misma orientación en TODOS los cuadros (mango hacia arriba a la izquierda).
+2. Sin llamas: el aviso es un halo ámbar suave alrededor del cucharón, no fuego.
+3. Entrega TRES hojas separadas, cada una en una sola fila con cuadros del mismo tamaño:
+   - aviso (3 cuadros): el cucharón se levanta y el halo ámbar crece;
+   - activa (4 cuadros): el cucharón baja, se hunde y sale lleno de poción verde que gotea;
+   - fin (3 cuadros): el cucharón vacío se retira y se desvanece.
+```
+
+- **Resultado:** aviso y activa correctos. El cuadro 2 de la activa (charco rectangular) y el fin se retocaron a mano (ver docs/recursos.md).
+- **Errores de la IA detectados:** un cucharón delgado (anuncia una perturbación rápida, no prolongada), llamas en el aviso (sugieren fuego), cuadros volteados, y una transparencia hecha mezclando con el magenta, que habría dejado un cucharón morado.
+
+---
+
+## 69. Perturbación del nivel 3: sifón ondulante (5.3, paso 3)
+
+```
+/director-arte-videojuegos
+Crea la perturbación "sifón ondulante", que representa un consumo que sube y baja de forma periódica (senoidal, período de 40 s), con el mismo estilo del cucharón adjunto (pintura digital, no pixel art).
+1. Su forma debe anunciar su efecto: es oscilante, así que debe ser ondulada: un sifón de vidrio curvo en forma de S con una onda de líquido verde que va y viene.
+2. El mismo sifón, escala y orientación en TODOS los cuadros.
+3. Tres hojas separadas, cada una en una sola fila, cuadros del mismo tamaño, fondo magenta #FF00FF puro sin marcos, en PNG:
+   - aviso (3 cuadros): el sifón aparece y lo rodea un halo ámbar suave que crece (sin fuego);
+   - activa (4 cuadros): la onda verde avanza y retrocede dentro del vidrio;
+   - fin (3 cuadros): el sifón vacío, sin halo. No hagas transparencias; el juego las aplica.
+```
+
+- **Resultado:** activa y fin útiles; el aviso salió con otro sifón y se armó a mano con el sifón del fin y un halo ámbar opaco.
+- **Errores de la IA detectados:** el vidrio transparente dejaba ver el magenta (el sifón habría quedado rosado) y el aviso no era el mismo objeto.
+
+---
+
+## 70. Escenario: capas, baldosas y decoraciones (5.3, paso 4)
+
+```
+/director-arte-videojuegos
+Mejora el escenario "Laboratorio del Alambique Real", que representa una planta de destilación dentro de un laboratorio de alquimia medieval (muros de piedra, ventanales góticos, estantes con frascos). Mismo estilo de pintura digital que el alambique adjunto, no pixel art.
+1. Profundidad: tres capas separadas de 1280x720 px: fondo lejano (muros y ventanales, sin magenta, cubre todo), estructuras medias (estantes, frascos y libros, fondo magenta #FF00FF puro) y detalles cercanos en primer plano (velas, cadenas y bordes de mesa, fondo magenta #FF00FF puro). Los objetos sobre magenta deben ser opacos: sin vidrios transparentes ni brillos semitransparentes que dejen ver el magenta.
+2. Baldosas: hoja de 32x32 px en cuadrícula 8x4 con piso de piedra, muros, tuberías de cobre rectas y en codo, pasarelas y variaciones. Todas encajan sin cortes.
+3. Objetos decorativos animados (4 cuadros cada uno, fondo magenta puro, objetos opacos): vela con llama que parpadea, frasco con burbujas, engranaje de cobre que gira.
+4. Contraste: el fondo con colores apagados y poco detalle, para que el alambique y la HMI se lean primero.
+```
+
+Como Gemini respondió solo con una descripción, se pidió cada imagen por separado ("Genera ahora la imagen fondo_lejano.png: …", y así con fondo_medio, fondo_cercano, laboratorio_tiles, deco_vela, deco_frasco y deco_engranaje).
+
+- **Resultado:** las tres capas y las decoraciones, con retoques de halos, cuadrícula y copias fantasma; las baldosas se rearmaron en 8x4 de 32 px (ver docs/recursos.md).
+- **Errores de la IA detectados:** respondió con texto sin generar imágenes; baldosas en pixel art y de tamaños distintos; halos rosados en velas; una cuadrícula con números dibujada sobre el engranaje; copias borrosas en el frasco.
+
+---
+
+## 71. Efectos visuales (5.3, paso 5)
+
+```
+Genera ahora la imagen efecto_salpicadura.png: una fila de 5 cuadros iguales de 64x64 px, salpicadura de poción verde que sale, se abre y cae, fondo magenta #FF00FF puro, gotas opacas sin brillos ni transparencias. Mismo estilo de pintura digital del alambique.
+```
+
+El mismo mensaje se repitió para efecto_vapor (6 cuadros), efecto_chispa (4), efecto_polvo (4), efecto_aparicion (5) y efecto_desborde (6), cambiando la descripción.
+
+- **Resultado:** los seis efectos, con retoques (ver docs/recursos.md).
+- **Errores de la IA detectados:** marcos y números entre cuadros, tintes rosados, una copia fantasma en la chispa y, en el desborde, una olla que no es el alambique (se extrajo solo el líquido).
+
