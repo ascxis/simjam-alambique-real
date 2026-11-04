@@ -10,16 +10,11 @@ function limites(caja) {
   const escala = caja.h / ALTURA_CUADRO;
   return { top: caja.y + VISOR_SUPERIOR * escala, bottom: caja.y + VISOR_INFERIOR * escala };
 }
-function yNivel(valor, caja, visor = null) {
-  const v = visor || limites(caja);
+function yNivel(valor, caja) {
+  const v = limites(caja);
   return v.bottom - (v.bottom - v.top) * limitar(valor) / 3;
 }
-function vidrio(caja, conSprites, medido = null) {
-  if (medido) {
-    const x = caja.x + medido.x * caja.w, top = caja.y + medido.y * caja.h;
-    const w = (medido.ancho ?? medido.w) * caja.w, h = (medido.alto ?? medido.h) * caja.h;
-    return { x, w, top, bottom: top + h, y: top, h };
-  }
+function vidrio(caja, conSprites) {
   const v = limites(caja);
   return conSprites
     ? { x: caja.x + caja.w * .45, w: caja.w * .08, ...v }
@@ -41,9 +36,9 @@ export function dibujarTuberia(g, puntos, ancho = L.tuberia.ancho) {
   }
 }
 
-export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, overlay = null, tuberias = null, conSprites = false, conSpritesValvula = false, visores = null, cajas: cajasOverride = null } = {}) {
+export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, overlay = null, tuberias = null, conSprites = false, conSpritesValvula = false } = {}) {
   g.clear(); overlay?.clear();
-  const cajas = cajasOverride || obtenerCajasTanques(cantidad), capaMarcas = overlay || g, tubos = tuberias || g;
+  const cajas = obtenerCajasTanques(cantidad), capaMarcas = overlay || g, tubos = tuberias || g;
   if (tuberias) tuberias.clear();
   if (cantidad === 1) dibujarEntrada(tubos, cajas[0], L.valvula1Solo, conSpritesValvula);
   else {
@@ -69,26 +64,26 @@ export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, ref
   }
 
   cajas.forEach((caja, i) => {
-    const h = limitar(alturas[i]), visor = vidrio(caja, conSprites, visores?.[i]), controlado = i === tanqueControlado;
+    const h = limitar(alturas[i]), visor = vidrio(caja, conSprites), controlado = i === tanqueControlado;
     if (!conSprites) {
       g.fillStyle(0x34383b).fillRoundedRect(caja.x, caja.y, caja.w, caja.h, 18);
       g.fillStyle(0x171b1f).fillRoundedRect(visor.x, visor.top, visor.w, visor.bottom - visor.top, 7);
       g.lineStyle(2, 0xb85a24, 1).strokeRoundedRect(caja.x, caja.y, caja.w, caja.h, 18);
     }
-    const nivelY = yNivel(h, caja, visor);
+    const nivelY = yNivel(h, caja);
     g.fillStyle(controlado && dentroBanda ? 0x00e676 : 0x2ecc71, .98).fillRect(visor.x + 1, nivelY, visor.w - 2, Math.max(0, visor.bottom - nivelY));
     if (controlado && Number.isFinite(referencia)) {
-      const arriba = yNivel(referencia + tolerancia, caja, visor), abajo = yNivel(referencia - tolerancia, caja, visor);
+      const arriba = yNivel(referencia + tolerancia, caja), abajo = yNivel(referencia - tolerancia, caja);
       g.fillStyle(0xb7bdc2, .3).fillRect(visor.x, arriba, visor.w, abajo - arriba);
       for (const yy of [arriba, abajo]) capaMarcas.lineStyle(2, 0xe6e8ea, .95).lineBetween(visor.x - 1, yy, visor.x + visor.w + 1, yy);
-      capaMarcas.lineStyle(2, 0xc9a227, 1).lineBetween(visor.x, yNivel(referencia, caja, visor), visor.x + visor.w, yNivel(referencia, caja, visor));
+      capaMarcas.lineStyle(2, 0xc9a227, 1).lineBetween(visor.x, yNivel(referencia, caja), visor.x + visor.w, yNivel(referencia, caja));
     }
     for (const [hAlarma, color] of [[2.4, 0xffd700], [2.8, 0xff1744]]) {
-      const yy = yNivel(hAlarma, caja, visor);
-      capaMarcas.lineStyle(2, color, 1).lineBetween(visor.x + visor.w - 6, yy, visor.x + visor.w, yy);
+      const yy = yNivel(hAlarma, caja);
+      capaMarcas.lineStyle(2, color, 1).lineBetween(visor.x + visor.w, yy, visor.x + visor.w + 9, yy);
     }
     for (let metro = 0; metro <= 3; metro++) {
-      const yy = yNivel(metro, caja, visor);
+      const yy = yNivel(metro, caja);
       capaMarcas.lineStyle(1, 0xe6e8ea, .8).lineBetween(visor.x + visor.w, yy, visor.x + visor.w + (metro ? 7 : 10), yy);
     }
   });
@@ -96,9 +91,9 @@ export function dibujarTanques(g, alturas, cantidad, { tanqueControlado = 0, ref
 }
 
 // Geometría invariable: se dibuja una sola vez al crear la escena.
-export function dibujarTanquesFijos(base, marcas, tuberias, cantidad, { conSprites = false, conSpritesValvula = false, visores = null, cajas: cajasOverride = null } = {}) {
+export function dibujarTanquesFijos(base, marcas, tuberias, cantidad, { conSprites = false, conSpritesValvula = false } = {}) {
   base.clear(); marcas.clear(); tuberias.clear();
-  const cajas = cajasOverride || obtenerCajasTanques(cantidad);
+  const cajas = obtenerCajasTanques(cantidad);
   if (cantidad === 1) dibujarEntrada(tuberias, cajas[0], L.valvula1Solo, conSpritesValvula);
   else {
     dibujarEntrada(tuberias, cajas[0], L.valvula1Cascada, conSpritesValvula);
@@ -118,14 +113,18 @@ export function dibujarTanquesFijos(base, marcas, tuberias, cantidad, { conSprit
     linea(tuberias, valve.x + L.valvulaSprite.cuerpo / 2, valve.y, L.planta.x + L.planta.ancho, valve.y);
     if (!conSpritesValvula) dibujarValvulaFallback(tuberias, valve.x, valve.y, 1);
   }
-  cajas.forEach((caja, i) => {
+  cajas.forEach((caja) => {
     if (!conSprites) {
       base.fillStyle(0x34383b).fillRoundedRect(caja.x, caja.y, caja.w, caja.h, 18);
       base.lineStyle(2, 0xb85a24, 1).strokeRoundedRect(caja.x, caja.y, caja.w, caja.h, 18);
     }
-    const visor = vidrio(caja, conSprites, visores?.[i]);
+    const visor = vidrio(caja, conSprites);
+    for (const [altura, color] of [[2.4, 0xffd700], [2.8, 0xff1744]]) {
+      const yy = yNivel(altura, caja);
+      marcas.lineStyle(2, color, 1).lineBetween(visor.x + visor.w, yy, visor.x + visor.w + 9, yy);
+    }
     for (let metro = 0; metro <= 3; metro++) {
-      const yy = yNivel(metro, caja, visor);
+      const yy = yNivel(metro, caja);
       marcas.lineStyle(1, 0xe6e8ea, .8).lineBetween(visor.x + visor.w, yy, visor.x + visor.w + (metro ? 7 : 10), yy);
     }
   });
@@ -133,46 +132,40 @@ export function dibujarTanquesFijos(base, marcas, tuberias, cantidad, { conSprit
 }
 
 // Elementos variables del tanque: líquido y banda/referencia.
-export function dibujarNivelesTanques(g, overlay, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, conSprites = false, visores = null, cajas: cajasOverride = null } = {}) {
+export function dibujarNivelesTanques(g, overlay, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, conSprites = false } = {}) {
   g.clear(); overlay.clear();
-  const cajas = cajasOverride || obtenerCajasTanques(cantidad);
+  const cajas = obtenerCajasTanques(cantidad);
   cajas.forEach((caja, i) => {
-    const visor = vidrio(caja, conSprites, visores?.[i]), controlado = i === tanqueControlado;
-    const nivelY = yNivel(alturas[i], caja, visor);
+    const visor = vidrio(caja, conSprites), controlado = i === tanqueControlado;
+    const nivelY = yNivel(alturas[i], caja);
     g.fillStyle(controlado && dentroBanda ? 0x00e676 : 0x2ecc71, .98)
       .fillRect(visor.x + 1, nivelY, visor.w - 2, Math.max(0, visor.bottom - nivelY));
     if (controlado && Number.isFinite(referencia)) {
-      const arriba = yNivel(referencia + tolerancia, caja, visor), abajo = yNivel(referencia - tolerancia, caja, visor);
+      const arriba = yNivel(referencia + tolerancia, caja), abajo = yNivel(referencia - tolerancia, caja);
       overlay.fillStyle(0xb7bdc2, .3).fillRect(visor.x, arriba, visor.w, abajo - arriba);
       overlay.lineStyle(2, 0xe6e8ea, .95).lineBetween(visor.x - 1, arriba, visor.x + visor.w + 1, arriba);
       overlay.lineStyle(2, 0xe6e8ea, .95).lineBetween(visor.x - 1, abajo, visor.x + visor.w + 1, abajo);
-      overlay.lineStyle(2, 0xc9a227, 1).lineBetween(visor.x, yNivel(referencia, caja, visor), visor.x + visor.w, yNivel(referencia, caja, visor));
-    }
-    for (const [altura, color] of [[2.4, 0xffd700], [2.8, 0xff1744]]) {
-      const y = yNivel(altura, caja, visor);
-      overlay.lineStyle(2, color, 1).lineBetween(visor.x + visor.w - 6, y, visor.x + visor.w, y);
+      overlay.lineStyle(2, 0xc9a227, 1).lineBetween(visor.x, yNivel(referencia, caja), visor.x + visor.w, yNivel(referencia, caja));
     }
   });
 }
 
 export function convertirVisoresCascada(caja, metadatos) {
-  const puntos = metadatos?.puntos;
-  const visores = { superior: puntos?.visor1, inferior: puntos?.visor2 };
-  return Object.fromEntries(Object.entries(visores).filter(([, v]) => v).map(([nombre, v]) => [nombre, {
+  const visores = metadatos?.visores || {
+    superior: { x: .404, y: .160, ancho: .038, alto: .227 },
+    inferior: { x: .404, y: .638, ancho: .038, alto: .225 },
+  };
+  return Object.fromEntries(Object.entries(visores).map(([nombre, v]) => [nombre, {
     x: caja.x + v.x * caja.w,
     y: caja.y + v.y * caja.h,
-    w: v.w * caja.w,
-    h: v.h * caja.h,
+    w: v.ancho * caja.w,
+    h: v.alto * caja.h,
   }]));
 }
 
-export function convertirVisorSimple(caja, metadata) {
-  return caja && metadata?.puntos?.visor1 ? vidrio(caja, true, metadata.puntos.visor1) : null;
-}
-
-export function obtenerVisorTanque(indice, cantidad = 1, conSprites = true, visorMedido = null, cajaOverride = null) {
-  const caja = cajaOverride || obtenerCajasTanques(cantidad)[indice];
-  return caja ? vidrio(caja, conSprites, visorMedido) : null;
+export function obtenerVisorTanque(indice, cantidad = 1, conSprites = true) {
+  const caja = obtenerCajasTanques(cantidad)[indice];
+  return caja ? vidrio(caja, conSprites) : null;
 }
 
 export function dibujarLiquidosCascada(liquido, visores, alturas, referencia, tolerancia, dentroBanda) {
@@ -220,9 +213,9 @@ function dibujarValvulaFallback(g, x, y, apertura) {
   }
 }
 
-export function posicionEscalaTanque(indice, metro, cantidad = 1, visorMedido = null, cajaOverride = null) {
-  const caja = cajaOverride || obtenerCajasTanques(cantidad)[indice], visor = vidrio(caja, true, visorMedido);
-  return { x: visor.x + visor.w + 12, y: yNivel(metro, caja, visor) - 8 };
+export function posicionEscalaTanque(indice, metro, cantidad = 1) {
+  const caja = obtenerCajasTanques(cantidad)[indice], visor = vidrio(caja, true);
+  return { x: visor.x + visor.w + 12, y: yNivel(metro, caja) - 8 };
 }
 export function posicionSpriteTanque(indice, cantidad = 1) {
   const c = obtenerCajasTanques(cantidad)[indice];

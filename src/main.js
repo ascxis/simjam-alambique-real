@@ -3,7 +3,6 @@ import { Menu } from './juego/Menu.js';
 import { Calibracion } from './juego/Calibracion.js';
 import { Simulacion } from './juego/Simulacion.js';
 import { Fin } from './juego/Fin.js';
-import { Galeria } from './juego/Galeria.js';
 
 window.addEventListener('error', (event) => {
   console.error('[ERROR JUEGO]', event.message, event.error?.stack || '');
@@ -23,7 +22,7 @@ const config = {
   physics: { default: 'arcade', arcade: { debug: false } },
   fps: { target: 30, limit: 30 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Arranque, Menu, Calibracion, Simulacion, Fin, Galeria]
+  scene: [Arranque, Menu, Calibracion, Simulacion, Fin]
 };
 
 new Phaser.Game(config);
