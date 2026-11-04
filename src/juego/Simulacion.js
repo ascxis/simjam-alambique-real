@@ -46,6 +46,32 @@ function dibujarCanalConFlujo(g, puntos, caudal, tiempo, config, anchoTubo) {
   }
 }
 
+const PARAMETROS_NOMINALES = Object.freeze({ area: 1, coeficienteDescarga1: 0.2, coeficienteDescarga2: 0.2 });
+const OPCIONES_PARAMETROS = Object.freeze({
+  area: [0.8, 1, 1.2],
+  coeficienteDescarga1: [0.16, 0.2, 0.24],
+  coeficienteDescarga2: [0.16, 0.2, 0.24],
+});
+
+function normalizarParametros(valor = {}) {
+  const escoger = (clave) => {
+    const opciones = OPCIONES_PARAMETROS[clave], solicitado = Number(valor[clave]);
+    return opciones.includes(solicitado) ? solicitado : PARAMETROS_NOMINALES[clave];
+  };
+  return { area: escoger('area'), coeficienteDescarga1: escoger('coeficienteDescarga1'), coeficienteDescarga2: escoger('coeficienteDescarga2') };
+}
+
+function cargarParametrosGuardados() {
+  try { return normalizarParametros(JSON.parse(localStorage.getItem('alambique.parametros') || '{}')); }
+  catch { return { ...PARAMETROS_NOMINALES }; }
+}
+
+function guardarParametrosGuardados(parametros) {
+  try { localStorage.setItem('alambique.parametros', JSON.stringify(normalizarParametros(parametros))); } catch {}
+}
+
+function decimalParametro(valor) { return String(valor).replace('.', ','); }
+
 export class Simulacion extends EscenaBase {
   constructor() { super('Simulacion'); }
   create() {
@@ -74,17 +100,21 @@ export class Simulacion extends EscenaBase {
     this.izquierdaPresenteAnterior = false;
     this.ayudaPellizcoHasta = 0;
     this.nivel = cargarNiveles().find((n) => n.id === Number(contextoJuego.nivelElegido)) || cargarNiveles()[0];
+    this.parametrosEnUso = cargarParametrosGuardados();
+    this.parametrosEdicion = { ...this.parametrosEnUso };
     this.gestor = contextoJuego.gestor = new GestorEntrada({ fuente: contextoJuego.fuenteElegida || undefined });
     this.gestor.elegir(contextoJuego.fuenteElegida || this.gestor.fuente);
     this.modoVerificacionEscalon = this.gestor.fuente === 'escalon' && this.nivel.id === 1;
     if (this.modoVerificacionEscalon) {
-      this.nivel.estadoInicial = [1.5];
-      this.nivel.duracion = 80;
+      const alturaEquilibrio = (PARAMETROS_TANQUES.caudalEntradaMaximo * 0.612372 / this.parametrosEnUso.coeficienteDescarga1) ** 2;
+      this.nivel.estadoInicial = [alturaEquilibrio];
+      this.nivel.duracion = 120;
     }
     const h1 = this.nivel.estadoInicial[0];
-    this.actuador1 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(h1) / PARAMETROS_TANQUES.caudalEntradaMaximo });
+    this.actuador1 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: this.parametrosEnUso.coeficienteDescarga1 * Math.sqrt(h1) / PARAMETROS_TANQUES.caudalEntradaMaximo });
     this.actuador2 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: 1 });
     this.sistema = crearSistemaTanques(this.nivel);
+    Object.assign(this.sistema.p, this.parametrosEnUso);
     const encabezados = ['t', 'u_crudo', 'u', 'x1', 'x2', 'y', 'v2', 'q_d', 'h_sp'];
     this.registro = new Registro({ encabezados });
     this.muestras = []; this.muestrasVista = []; this.alarmas = []; this.pausado = false; this.pausaPorManos = false; this.debug = false;
@@ -94,6 +124,8 @@ export class Simulacion extends EscenaBase {
     const L = LAYOUT.simulacion;
     this.panel(L.barraSuperior, { radio: 0, profundidad: -850 });
     this.add.text(L.titulo.x, L.titulo.y, this.nivel.nombre, fuenteTitulo(27)).setDepth(5);
+    this.parametrosEstado = this.add.text(L.parametrosEstado.x, L.parametrosEstado.y, '', fuenteInterfaz(12, '#E6E8EA')).setDepth(5);
+    this.actualizarEtiquetaParametros();
     this.panel(L.hmi, { profundidad: -5 });
     this.panel(L.footer, { profundidad: -5 });
     this.hmiX = L.hmiInterior.x;
@@ -441,14 +473,15 @@ export class Simulacion extends EscenaBase {
 
   actualizarFlujoSalida() {
     if (!this.picoSalida || !this.superficiePocionCaldero) return;
+    const p = this.sistema.p;
     const caudal = this.esCascada
-      ? PARAMETROS_TANQUES.coeficienteDescarga2 * this.actuador2.salida() * Math.sqrt(Math.max(0, this.sistema.x[1] ?? 0))
-      : PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, this.sistema.x[0] ?? 0));
+      ? p.coeficienteDescarga2 * this.actuador2.salida() * Math.sqrt(Math.max(0, this.sistema.x[1] ?? 0))
+      : p.coeficienteDescarga1 * Math.sqrt(Math.max(0, this.sistema.x[0] ?? 0));
     if (!this.esCascada && this.recorridoSalida) dibujarCanalConFlujo(this.renderCanalSalida, this.recorridoSalida, caudal, this.tiempoJuego, LAYOUT.simulacion.entradaSolo.salidaAlambique.canal, LAYOUT.simulacion.tuberia.ancho);
     this.renderChorro.clear();
     if (caudal > 0) {
       const L = LAYOUT.simulacion;
-      const coeficiente = this.esCascada ? PARAMETROS_TANQUES.coeficienteDescarga2 : PARAMETROS_TANQUES.coeficienteDescarga1;
+      const coeficiente = this.esCascada ? p.coeficienteDescarga2 : p.coeficienteDescarga1;
       const maxCaudal = coeficiente * Math.sqrt(PARAMETROS_TANQUES.alturaMaxima);
       const grosor = Math.max(L.tuberia.chorroMinimo, Math.min(L.tuberia.chorroMaximo, caudal / maxCaudal * L.tuberia.chorroMaximo));
       this.renderChorro.lineStyle(grosor + 2, 0x168e4d, .48).lineBetween(this.picoSalida.x, this.picoSalida.y + 1, this.superficiePocionCaldero.x, this.superficiePocionCaldero.y);
@@ -562,10 +595,10 @@ export class Simulacion extends EscenaBase {
     if (this.esCascada) {
       dibujarLiquidosCascada(this.renderVisorLiquido, this.visoresCascada, hs, referencia, banda, dentroBanda);
       this.renderTuberiasExtra.clear();
-      const q12 = PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
+      const q12 = this.sistema.p.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
       if (q12 > 0) {
         const v = L.cascada.unionVidrio, m = v.margenInterior;
-        const alpha = Math.min(.9, q12 / (PARAMETROS_TANQUES.coeficienteDescarga1 * Math.sqrt(PARAMETROS_TANQUES.alturaMaxima)));
+        const alpha = Math.min(.9, q12 / (this.sistema.p.coeficienteDescarga1 * Math.sqrt(PARAMETROS_TANQUES.alturaMaxima)));
         this.renderTuberiasExtra.fillStyle(0x00e676, alpha).fillRect(this.cajaCascada.x + v.x * this.cajaCascada.w + m, this.cajaCascada.y + v.y * this.cajaCascada.h + m, v.ancho * this.cajaCascada.w - m * 2, v.alto * this.cajaCascada.h - m * 2);
       }
     } else dibujarNivelesTanques(this.render, this.renderOverlay, hs, this.nivel.tanques, {
@@ -592,7 +625,7 @@ export class Simulacion extends EscenaBase {
 
   dibujarMarcasEquilibrio() {
     if (!this.renderEquilibrio || !this.etiquetasEquilibrio) return;
-    const p = PARAMETROS_TANQUES, qd = obtenerPerturbacion(this.nivel, this.tiempoJuego);
+    const p = this.sistema.p, qd = obtenerPerturbacion(this.nivel, this.tiempoJuego);
     const v1 = this.actuador1.salida(), h1 = Math.max(0, this.sistema.x[0] ?? 0);
     const qd1 = this.nivel.tanques === 1 ? qd : 0;
     const alturas = [Math.max(0, Math.min(3, ((p.caudalEntradaMaximo * v1 - qd1) / p.coeficienteDescarga1) ** 2))];
@@ -670,6 +703,15 @@ export class Simulacion extends EscenaBase {
     if (!this.grafValvulas) this.grafValvulas = dibujarTendencia(this, opcionesValvulas); else this.grafValvulas.actualizar(opcionesValvulas);
   }
 
+  actualizarEtiquetaParametros() {
+    if (!this.parametrosEstado) return;
+    const p = this.parametrosEnUso, cambios = [];
+    if (p.area !== PARAMETROS_NOMINALES.area) cambios.push(`A ${decimalParametro(p.area)} m²`);
+    if (p.coeficienteDescarga1 !== PARAMETROS_NOMINALES.coeficienteDescarga1) cambios.push(`c1 ${decimalParametro(p.coeficienteDescarga1)} m²·⁵/s`);
+    if (p.coeficienteDescarga2 !== PARAMETROS_NOMINALES.coeficienteDescarga2) cambios.push(`c2 ${decimalParametro(p.coeficienteDescarga2)} m²·⁵/s`);
+    this.parametrosEstado.setText(cambios.length ? `Parámetros modificados: ${cambios.join(' · ')}` : '').setVisible(cambios.length > 0);
+  }
+
   registrarAlarmas(hs) {
     hs.forEach((h, i) => {
       const estado = h >= 2.8 ? 'HH' : h >= 2.4 ? 'H' : null;
@@ -679,13 +721,53 @@ export class Simulacion extends EscenaBase {
   }
 
   toggleParametros() {
-    if (this.paramPanel) { this.paramPanel.forEach((e) => e.destroy()); this.paramPanel = null; return; }
+    if (this.paramPanel) { this.destruirPanelParametros(); return; }
+    this.dibujarPanelParametros();
+  }
+
+  destruirPanelParametros() {
+    this.paramPanel?.forEach((elemento) => elemento.destroy());
+    this.paramPanel = null;
+  }
+
+  dibujarPanelParametros() {
+    const ui = LAYOUT.simulacion.parametros, p = this.sistema.p;
+    this.paramPanel = [];
+    const agregar = (elemento) => { this.paramPanel.push(elemento); return elemento; };
+    agregar(this.panel(ui.panel, { profundidad: 8 }));
     const h0 = this.nivel.tanques === 2 ? this.sistema.x[1] : this.sistema.x[0];
-    const tau = constanteTiempoTanque(h0), K = gananciaTanque(h0);
-    const ui = LAYOUT.simulacion.parametros;
-    const bg = this.panel(ui.panel, { profundidad: 8 });
-    const texto = this.add.text(ui.texto.x, ui.texto.y, `Linealización local del tanque ${this.nivel.tanques === 2 ? 2 : 1}\nA·dh/dt = qin − c√h\nh₀ = ${h0.toFixed(3)} m · τ = 2A√h₀/c = ${tau.toFixed(3)} s\nK = 2√h₀/c = ${K.toFixed(3)} · d(qsalida)/dh`, fuenteInterfaz(17, '#E6E8EA', { lineSpacing: 8 })).setDepth(9);
-    this.paramPanel = [bg, texto];
+    const tau = constanteTiempoTanque(h0, p.area, this.nivel.tanques === 2 ? p.coeficienteDescarga2 : p.coeficienteDescarga1);
+    const K = gananciaTanque(h0, this.nivel.tanques === 2 ? p.coeficienteDescarga2 : p.coeficienteDescarga1);
+    agregar(this.add.text(ui.texto.x, ui.texto.y, `Linealización local del tanque ${this.nivel.tanques === 2 ? 2 : 1}\nA·dh/dt = qin − c√h\nh₀ = ${h0.toFixed(3)} m · τ = 2A√h₀/c = ${tau.toFixed(3)} s\nK = 2√h₀/c = ${K.toFixed(3)} · d(qsalida)/dh`, fuenteInterfaz(16, '#E6E8EA', { lineSpacing: 4 })).setDepth(9));
+    const filas = [
+      { clave: 'area', etiqueta: 'Área del tanque A (m²)', valores: OPCIONES_PARAMETROS.area },
+      { clave: 'coeficienteDescarga1', etiqueta: 'Descarga c1 (m²·⁵/s)', valores: OPCIONES_PARAMETROS.coeficienteDescarga1 },
+      ...(this.nivel.id === 3 ? [{ clave: 'coeficienteDescarga2', etiqueta: 'Descarga c2 (m²·⁵/s)', valores: OPCIONES_PARAMETROS.coeficienteDescarga2 }] : []),
+    ];
+    for (const { clave, etiqueta, valores } of filas) {
+      const y = ui.filas[clave];
+      agregar(this.add.text(ui.etiquetaX, y + 8, etiqueta, fuenteInterfaz(13, '#E6E8EA')).setDepth(9));
+      valores.forEach((valor, indice) => {
+        const seleccionado = this.parametrosEdicion[clave] === valor;
+        const texto = `${seleccionado ? '✓ ' : ''}${decimalParametro(valor)}`;
+        const rect = { x: ui.opcionesX + indice * (ui.opcionAncho + ui.opcionGap), y, ancho: ui.opcionAncho, alto: ui.opcionAlto };
+        agregar(this.boton(rect, texto, () => {
+          this.parametrosEdicion[clave] = valor;
+          guardarParametrosGuardados(this.parametrosEdicion);
+          this.destruirPanelParametros();
+          this.dibujarPanelParametros();
+        }, { tamano: 12, fondo: seleccionado ? 0x8c4a26 : 0x3a3d40 })).setDepth(10);
+      });
+    }
+    agregar(this.boton(ui.aplicar, 'Aplicar y reiniciar', () => {
+      guardarParametrosGuardados(this.parametrosEdicion);
+      this.scene.restart();
+    }, { tamano: 14 })).setDepth(10);
+    agregar(this.boton(ui.nominales, 'Valores nominales', () => {
+      this.parametrosEdicion = { ...PARAMETROS_NOMINALES };
+      guardarParametrosGuardados(this.parametrosEdicion);
+      this.scene.restart();
+    }, { tamano: 14, fondo: 0x3a3d40 })).setDepth(10);
   }
   terminar(desborde) {
     if (this.terminado) { console.info('[DIAG] terminar ignorado: ya terminado'); return; }
@@ -701,7 +783,7 @@ export class Simulacion extends EscenaBase {
           superado: this.tiempoEnBandaSeguido >= this.nivel.criterio.segundos && !desborde,
         }
       : { ...evaluacion, superado: evaluacion.superado && evaluacionCompleta && !desborde };
-    const datosFin = { nivel: this.nivel, muestras: this.muestras, registro: this.registro, alarmas: this.alarmas, desborde, resultado, parametros: { ...this.sistema.p }, tauTeorico: constanteTiempoTanque(this.nivel.referencia), KTeorica: gananciaTanque(this.nivel.referencia) };
+    const datosFin = { nivel: this.nivel, muestras: this.muestras, registro: this.registro, alarmas: this.alarmas, desborde, resultado, parametros: { ...this.sistema.p }, modoVerificacionEscalon: this.modoVerificacionEscalon, tauTeorico: constanteTiempoTanque(this.nivel.referencia), KTeorica: gananciaTanque(this.nivel.referencia) };
     console.info('terminar: cambio de escena');
     this.scene.start('Fin', datosFin);
     setTimeout(() => {

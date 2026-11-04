@@ -53,7 +53,7 @@ export const LAYOUT = Object.freeze({
   },
   simulacion: {
     barraSuperior: { x: 0, y: 0, ancho: 1280, alto: 80 },
-    titulo: { x: 28, y: 19 }, estadoCamara: { x: 1000, y: 29, ancho: 250 },
+    titulo: { x: 28, y: 19 }, parametrosEstado: { x: 28, y: 52 }, estadoCamara: { x: 1000, y: 29, ancho: 250 },
     planta: { x: 20, y: 90, ancho: 620, alto: 560 },
     piso: { x: 20, y: 650, ancho: 620, alto: 0 },
     hmi: { x: 660, y: 90, ancho: 600, alto: 560, radio: 10 },
@@ -130,7 +130,12 @@ export const LAYOUT = Object.freeze({
     bordePedestal: { ancho: 4, voladizo: 16 },
     tuberiaQ12: { codoY: 410, margenTanque2: 5, margenSuperior: 30, etiqueta: { x: 368, y: 294, ancho: 82, alto: 24 } },
     pausa: { panel: { x: 390, y: 315, ancho: 500, alto: 70 }, centroX: 640, centroY: 350 },
-    parametros: { panel: { x: 390, y: 250, ancho: 500, alto: 190 }, texto: { x: 420, y: 278 } },
+    parametros: {
+      panel: { x: 340, y: 165, ancho: 600, alto: 390 }, texto: { x: 370, y: 190 },
+      filas: { area: 320, coeficienteDescarga1: 374, coeficienteDescarga2: 428 },
+      etiquetaX: 370, opcionesX: 555, opcionAncho: 82, opcionAlto: 34, opcionGap: 8,
+      aplicar: { x: 395, y: 496, ancho: 220, alto: 42 }, nominales: { x: 630, y: 496, ancho: 220, alto: 42 },
+    },
   },
   final: {
     marcoOriginal: { ancho: 483, alto: 559 },

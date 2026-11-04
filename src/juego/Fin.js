@@ -21,7 +21,24 @@ function metricasTanque(muestras, nivel) {
   return { iae, ise, tiempoEnBanda, nivelMaximo, valorFinal: muestras.at(-1)?.y ?? nivel.referencia };
 }
 
-function medirTauPrimerTramo(muestras) {
+function metricasEscalonVerificacion(muestras, parametros) {
+  const desdeEscalon = muestras.filter((muestra) => muestra.t >= 2 && Number.isFinite(muestra.x?.[0]));
+  if (!desdeEscalon.length) return null;
+  const antesDelEscalon = muestras.filter((muestra) => muestra.t <= 2 && Number.isFinite(muestra.x?.[0]));
+  const inicial = antesDelEscalon.at(-1)?.x[0] ?? desdeEscalon[0].x[0];
+  const c1 = parametros.coeficienteDescarga1, qin = parametros.caudalEntradaMaximo;
+  const equilibrio = (qin * 0.622372 / c1) ** 2;
+  const amplitud = Math.abs(equilibrio - inicial);
+  const maximo = Math.max(...desdeEscalon.map((muestra) => muestra.x[0]));
+  const Mp = amplitud > 0 ? Math.max(0, (maximo - equilibrio) / amplitud * 100) : 0;
+  const banda = Math.abs(equilibrio) * 0.02;
+  let ultimoFuera = -1;
+  for (let i = 0; i < desdeEscalon.length; i++) if (Math.abs(desdeEscalon[i].x[0] - equilibrio) > banda) ultimoFuera = i;
+  const ts = ultimoFuera + 1 < desdeEscalon.length ? Math.max(0, desdeEscalon[ultimoFuera + 1].t - 2) : null;
+  return { hFinal: desdeEscalon.at(-1).x[0], Mp, ts };
+}
+
+function medirTauPrimerTramo(muestras, parametros = PARAMETROS_TANQUES) {
   for (let i = 1; i < muestras.length; i++) {
     const inicio = muestras[i].t;
     let j = i, minimo = Infinity, maximo = -Infinity;
@@ -38,7 +55,7 @@ function medirTauPrimerTramo(muestras) {
       if (Math.abs(muestras[k].u - v1) > .02) { huboCambio = true; break; }
     }
     if (!huboCambio) continue;
-    const hInicial = muestras[i].x?.[0], equilibrio = (PARAMETROS_TANQUES.caudalEntradaMaximo * v1 / PARAMETROS_TANQUES.coeficienteDescarga1) ** 2;
+    const hInicial = muestras[i].x?.[0], equilibrio = (parametros.caudalEntradaMaximo * v1 / parametros.coeficienteDescarga1) ** 2;
     if (!Number.isFinite(hInicial) || equilibrio <= 0 || Math.abs(equilibrio - hInicial) < 1e-9) continue;
     const objetivo = hInicial + .632 * (equilibrio - hInicial);
     for (let k = i + 1; k < muestras.length; k++) {
@@ -47,7 +64,7 @@ function medirTauPrimerTramo(muestras) {
       if (!cruzo) continue;
       const fraccion = (objetivo - a) / (b - a);
       const cruce = anterior.t + fraccion * (actual.t - anterior.t);
-      return { tau: cruce - inicio, teorico: 2 * PARAMETROS_TANQUES.area * Math.sqrt(equilibrio) / PARAMETROS_TANQUES.coeficienteDescarga1, equilibrio, v1 };
+      return { tau: cruce - inicio, teorico: 2 * parametros.area * Math.sqrt(equilibrio) / parametros.coeficienteDescarga1, equilibrio, v1 };
     }
     i = j - 1;
   }
@@ -87,19 +104,24 @@ export class Fin extends EscenaBase {
     const nivel = data.nivel || { nombre: 'Nivel', tanques: 1, referencia: 1 };
     const muestras = data.muestras || [], resultado = data.resultado || evaluarNivel(nivel, muestras, data.alarmas || []);
     const metricas = metricasTanque(muestras, nivel);
-    const tau = medirTauPrimerTramo(muestras);
+    const parametros = { ...PARAMETROS_TANQUES, ...(data.parametros || {}) };
+    const tau = medirTauPrimerTramo(muestras, parametros);
     const estado = data.desborde ? 'DESBORDE · PARTIDA TERMINADA' : resultado.superado ? 'NIVEL SUPERADO' : 'NO SUPERADO';
     this.add.text(F.titulo.x, F.titulo.y, 'Lo que pasó en el modelo', fuenteTitulo(22)).setOrigin(.5);
     this.add.text(F.resultado.x, F.resultado.y, `${estado} · ${resultado.texto || ''}`, fuenteInterfaz(18, resultado.superado && !data.desborde ? '#2ECC71' : '#FF1744', { fontStyle: 'bold' })).setWordWrapWidth(F.resultado.ancho);
     this.add.text(F.metricasHeading.x, F.metricasHeading.y, 'Métricas de la partida', fuenteInterfaz(16, '#F2E6C9', { fontStyle: 'bold' }));
-    this.add.text(F.metricas.x, F.metricas.y, `Nivel final: ${metricas.valorFinal.toFixed(3)} m\nMáximo: ${metricas.nivelMaximo.toFixed(3)} m\nTiempo en banda: ${metricas.tiempoEnBanda.toFixed(1)} s\nIAE: ${metricas.iae.toFixed(3)} m·s · ISE: ${metricas.ise.toFixed(3)} m²·s`, fuenteInterfaz(16)).setLineSpacing(5);
+    const escalon = data.modoVerificacionEscalon ? metricasEscalonVerificacion(muestras, parametros) : null;
+    const metricasEscalon = escalon ? `\nEscalón · h1 final: ${escalon.hFinal.toFixed(4)} m · Mp: ${escalon.Mp.toFixed(2)} % · ts (2 %): ${escalon.ts === null ? 'no alcanzado' : `${escalon.ts.toFixed(2)} s desde t=2 s`}` : '';
+    this.add.text(F.metricas.x, F.metricas.y, `Nivel final: ${metricas.valorFinal.toFixed(3)} m\nMáximo: ${metricas.nivelMaximo.toFixed(3)} m\nTiempo en banda: ${metricas.tiempoEnBanda.toFixed(1)} s\nIAE: ${metricas.iae.toFixed(3)} m·s · ISE: ${metricas.ise.toFixed(3)} m²·s${metricasEscalon}`, fuenteInterfaz(16)).setLineSpacing(5);
     const alturas = muestras.map((m) => ({ ...m, h: m.y }));
     dibujarTendencia(this, { ...F.graficaH, muestras: alturas, clave: 'h', min: 0, max: 3, unidad: 'm', titulo: 'h(t)', series: [{ clave: 'h', nombre: `h${nivel.tanques}`, color: 0xe6e8ea }, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', tiempoCompleto: true, ejeTiempo: true, fondoTransparente: true, rejillaPanel: true });
     dibujarTendencia(this, { ...F.graficaV, muestras, clave: 'u', min: 0, max: 1, unidad: '', titulo: 'v(t)', tituloEjeY: 'apertura', formatoTickY: (v) => Number(v.toFixed(2)).toString(), series: [{ clave: 'u', nombre: 'v1', color: 0xe6e8ea }, ...(nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x2ecc71 }] : [])], tiempoCompleto: true, ejeTiempo: true, fondoTransparente: true, rejillaPanel: true });
     const alarmasTexto = (data.alarmas || []).length ? data.alarmas.map((a) => `${a.tipo}${a.tanque} @ ${a.t.toFixed(1)} s (${a.altura.toFixed(2)} m)`).join(' · ') : 'sin alarmas H / HH';
     const comparacionTau = tau ? `${tau.tau.toFixed(2)} s frente a ${tau.teorico.toFixed(2)} s (v₁=${tau.v1.toFixed(2)}, h_eq=${tau.equilibrio.toFixed(2)} m)` : 'no disponible';
     this.add.text(F.rightTitle.x, F.rightTitle.y, 'Modelo, parámetros y análisis', fuenteTitulo(25));
-    this.add.text(F.modelo.x, F.modelo.y, `A·dh₁/dt = 0.4v₁ − 0.2√h₁\nA·dh₂/dt = 0.2√h₁ − 0.2v₂√h₂ − qd\nParámetros: A=${data.parametros?.area ?? 1} m² · c₁=c₂=0.2 m²·⁵/s\nqin,max=0.4 m³/s · slew=0.25 s⁻¹\nAlarmas: ${alarmasTexto}\nτ medido / teórico: ${comparacionTau}`, fuenteInterfaz(14, '#E6E8EA', { lineSpacing: 3 })).setWordWrapWidth(F.modelo.ancho);
+    const ecuacionH1 = `A·dh₁/dt = ${parametros.caudalEntradaMaximo}v₁ − ${parametros.coeficienteDescarga1}√h₁${nivel.tanques === 1 ? ' − qd' : ''}`;
+    const ecuacionH2 = nivel.tanques === 2 ? `\nA·dh₂/dt = ${parametros.coeficienteDescarga1}√h₁ − ${parametros.coeficienteDescarga2}v₂√h₂ − qd` : '';
+    this.add.text(F.modelo.x, F.modelo.y, `${ecuacionH1}${ecuacionH2}\nParámetros: A=${parametros.area} m² · c₁=${parametros.coeficienteDescarga1} · c₂=${parametros.coeficienteDescarga2} m²·⁵/s\nqin,max=${parametros.caudalEntradaMaximo} m³/s · slew=0.25 s⁻¹\nAlarmas: ${alarmasTexto}\nτ medido / teórico: ${comparacionTau}`, fuenteInterfaz(14, '#E6E8EA', { lineSpacing: 3 })).setWordWrapWidth(F.modelo.ancho);
     this.add.text(F.explicacion.x, F.explicacion.y, 'El caudal de salida depende de √h, por eso el tanque es no lineal.\nCerca de una altura de operación se aproxima con un modelo lineal y valores locales de τ y K.\nLa válvula limita la rapidez del caudal; qd modifica el equilibrio.\nCada apertura de la válvula lleva el nivel a un equilibrio distinto, h_eq = (0,4·v1/c)², y el tanque tarda unas 4τ en llegar a él.\nLas tendencias comparan la respuesta con la referencia y su banda.', fuenteInterfaz(16, '#E6E8EA', { lineSpacing: 8 })).setWordWrapWidth(F.explicacion.ancho);
     this.boton(F.descarga, 'Descargar CSV', () => data.registro?.descargar(`nivel-${nivel.id}-partida.csv`), { tamano: 11 });
     this.add.text(F.encabezadosCsv.x, F.encabezadosCsv.y, 'CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp', fuenteInterfaz(13)).setDepth(5);

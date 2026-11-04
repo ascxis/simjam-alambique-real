@@ -65,6 +65,8 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 58 | 5.9 b) | Codex | Ajuste de la medición del retraso del filtro | Funcionó |
 | 59 | 5.9 b) | Codex | α = 0,5 por defecto | Funcionó |
 | 60 | 5.9 d) | Codex | Correcciones del playtest: ayuda del pellizco y marca de equilibrio | Funcionó |
+| 61 | 5.10 | Codex | Primera fila del CSV con u_crudo correcto | Funcionó |
+| 62 | 5.10 d) | Codex | Panel P para el análisis de sensibilidad (A y c1 ±20 %) | Funcionó |
 
 ---
 
@@ -1313,6 +1315,37 @@ No modifiques docs/, vensim/, PROMPTS.md, index.html ni vite.config.js. No contr
 ```
 
 - **Resultado:** en los tres niveles, el visor muestra la marca "equilibrio" en el nivel al que llegará el líquido con la apertura actual. Por ejemplo, en el nivel 1, con v1 = 58 %, la marca queda cerca de 1,35 m mientras h1 todavía va en 0,68 m. En el nivel 3 aparece la ayuda "Pellizco izquierdo: abrir = v2 abierta" junto a la barra de v2.
+
+---
+
+## 61. Primera fila del CSV con u_crudo correcto (5.10)
+
+- **Problema detectado en la identificación:** con u_crudo, el script de la guía daba R² negativos (−0,86 en identificación y −4,15 en validación). La causa es la primera fila del CSV: u_crudo = 0,5 por defecto. Al quitar esa fila, R² sube a 0,995 y 0,994. Ver docs/identificacion.md.
+
+```
+Registro de la partida (5.10): en el CSV, la primera fila (t = 0) trae u_crudo = 0.5, el valor por defecto antes de leer la mano o el teclado, aunque u = 0.3536; desde la segunda fila u_crudo ya vale el mando real. Como analisis/identificar.py toma el primer valor de cada señal como punto de operación, esa fila mete un corrimiento falso en todo el ensayo.
+Corrige el registro para que en la primera fila u_crudo sea igual al mando con que arranca el actuador (el valor inicial de v1) cuando todavía no hay lectura de la mano, en las cuatro fuentes de control. Agrega una prueba en test/modelo.test.js que compruebe que la primera fila del CSV tiene u_crudo igual a u.
+No cambies nada más. No modifiques docs/, vensim/, analisis/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** los CSV nuevos ya traen en la primera fila u_crudo = u (por ejemplo, 0,612372 en los escalones de sensibilidad).
+
+---
+
+## 62. Panel de parámetros para el análisis de sensibilidad (5.10 d)
+
+- **Motivo:** la parte d) de la 5.10 pide variar un parámetro en ±20 % desde el panel P y medir el valor final, Mp y ts, pero el panel P del juego solo mostraba la linealización.
+
+```
+Análisis de sensibilidad (5.10 d). La guía pide variar un parámetro clave del modelo en −20 %, 0 % y +20 % con el panel de parámetros (tecla P) y la entrada ?control=escalon, y registrar la respuesta. Hoy el panel P solo muestra la linealización. Cambia solo el panel P, el escalón y la pantalla final; no cambies las ecuaciones del modelo ni el formato del CSV.
+1. En el panel P agrega selectores para el área A y el coeficiente de descarga c1 (y c2 en el nivel 3), con tres opciones cada uno: −20 %, nominal y +20 % (A: 0,8 · 1 · 1,2 m²; c1: 0,16 · 0,2 · 0,24 m^2,5/s). Agrega un botón "Aplicar y reiniciar" que reinicie la partida actual con esos parámetros en el SistemaContinuo. Guarda la elección en localStorage para que siga al reiniciar, y agrega un botón "Valores nominales". Muestra en la HMI una etiqueta visible "Parámetros modificados: …" cuando alguno no sea el nominal.
+2. Escalón de verificación con parámetros modificados: el alambique debe arrancar en el equilibrio que corresponde a esos parámetros con v1 = 0.612372, es decir, h1(0) = (0.4·0.612372 / c1)²; a los 2 s el mando sube a 0.622372, como ahora. Sube la duración del escalón de 80 s a 120 s, para que con c1 −20 % (τ ≈ 19 s) el nivel alcance a estabilizarse.
+3. En la pantalla final muestra los parámetros usados (A, c1, c2) y, para el escalón, el valor final de h1, el sobreimpulso Mp (%) y el tiempo de establecimiento ts (2 %) medido desde t = 2 s.
+4. Agrega a test/modelo.test.js una prueba que simule el escalón con c1 = 0.16 y 0.24 y compruebe que el valor final se acerca a (0.4·0.622372/c1)² con menos del 1 % de error.
+No modifiques docs/, vensim/, analisis/, PROMPTS.md, index.html ni vite.config.js. No controles el computador ni el navegador. Al terminar ejecuta npm test y npm run build.
+```
+
+- **Resultado:** el panel P permite elegir A y c1 en −20 %, nominal y +20 %, con "Aplicar y reiniciar" y "Valores nominales". El escalón arranca en el equilibrio de cada juego de parámetros y dura 120 s. Las 5 corridas y la tabla de sensibilidad están en docs/identificacion.md.
 
 ---
 
