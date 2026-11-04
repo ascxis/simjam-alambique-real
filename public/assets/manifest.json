@@ -2,27 +2,9 @@
   "version": 2,
   "resources": [
     {
-      "key": "alambique",
-      "type": "image",
-      "path": "sprites/alambique_cuerpo_vacio.png",
-      "available": true
-    },
-    {
       "key": "liquido-referencia",
       "type": "image",
       "path": "sprites/columna_liquido.png",
-      "available": true
-    },
-    {
-      "key": "alambique-cascada",
-      "type": "image",
-      "path": "sprites/alambique_cascada.png",
-      "available": true
-    },
-    {
-      "key": "alambique-cascada-visores",
-      "type": "json",
-      "path": "sprites/alambique_cascada.json",
       "available": true
     },
     {
@@ -105,152 +87,116 @@
       "key": "alambique-simple-reposo",
       "type": "spritesheet",
       "path": "sprites/alambique_simple_reposo.png",
-      "width": 256,
-      "height": 640,
-      "frameWidth": 256,
-      "frameHeight": 640,
+      "width": 320,
+      "height": 680,
+      "frameWidth": 320,
+      "frameHeight": 680,
       "frameCount": 1,
       "columns": 1,
       "rows": 1,
-      "available": true
-    },
-    {
-      "key": "alambique-simple-reposo-meta",
-      "type": "json",
-      "path": "sprites/alambique_simple_reposo.json",
       "available": true
     },
     {
       "key": "alambique-simple-funcionando",
       "type": "spritesheet",
       "path": "sprites/alambique_simple_funcionando.png",
-      "width": 1024,
-      "height": 640,
-      "frameWidth": 256,
-      "frameHeight": 640,
+      "width": 1280,
+      "height": 680,
+      "frameWidth": 320,
+      "frameHeight": 680,
       "frameCount": 4,
       "columns": 4,
       "rows": 1,
-      "available": true
-    },
-    {
-      "key": "alambique-simple-funcionando-meta",
-      "type": "json",
-      "path": "sprites/alambique_simple_funcionando.json",
-      "available": true
-    },
-    {
-      "key": "alambique-simple-falla",
-      "type": "spritesheet",
-      "path": "sprites/alambique_simple_falla.png",
-      "width": 1024,
-      "height": 640,
-      "frameWidth": 256,
-      "frameHeight": 640,
-      "frameCount": 4,
-      "columns": 4,
-      "rows": 1,
-      "available": true
-    },
-    {
-      "key": "alambique-simple-falla-meta",
-      "type": "json",
-      "path": "sprites/alambique_simple_falla.json",
       "available": true
     },
     {
       "key": "alambique-simple-alarma",
       "type": "spritesheet",
       "path": "sprites/alambique_simple_alarma.png",
-      "width": 512,
-      "height": 640,
-      "frameWidth": 256,
-      "frameHeight": 640,
+      "width": 640,
+      "height": 680,
+      "frameWidth": 320,
+      "frameHeight": 680,
       "frameCount": 2,
       "columns": 2,
       "rows": 1,
       "available": true
     },
     {
-      "key": "alambique-simple-alarma-meta",
+      "key": "alambique-simple-falla",
+      "type": "spritesheet",
+      "path": "sprites/alambique_simple_falla.png",
+      "width": 1280,
+      "height": 680,
+      "frameWidth": 320,
+      "frameHeight": 680,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-simple-meta",
       "type": "json",
-      "path": "sprites/alambique_simple_alarma.json",
+      "path": "sprites/alambique_simple.json",
       "available": true
     },
     {
       "key": "alambique-cascada-reposo",
       "type": "spritesheet",
       "path": "sprites/alambique_cascada_reposo.png",
-      "width": 256,
-      "height": 768,
-      "frameWidth": 256,
-      "frameHeight": 768,
+      "width": 320,
+      "height": 800,
+      "frameWidth": 320,
+      "frameHeight": 800,
       "frameCount": 1,
       "columns": 1,
       "rows": 1,
       "available": true
     },
     {
-      "key": "alambique-cascada-reposo-meta",
-      "type": "json",
-      "path": "sprites/alambique_cascada_reposo.json",
-      "available": true
-    },
-    {
       "key": "alambique-cascada-funcionando",
       "type": "spritesheet",
       "path": "sprites/alambique_cascada_funcionando.png",
-      "width": 1024,
-      "height": 768,
-      "frameWidth": 256,
-      "frameHeight": 768,
+      "width": 1280,
+      "height": 800,
+      "frameWidth": 320,
+      "frameHeight": 800,
       "frameCount": 4,
       "columns": 4,
       "rows": 1,
-      "available": true
-    },
-    {
-      "key": "alambique-cascada-funcionando-meta",
-      "type": "json",
-      "path": "sprites/alambique_cascada_funcionando.json",
-      "available": true
-    },
-    {
-      "key": "alambique-cascada-falla",
-      "type": "spritesheet",
-      "path": "sprites/alambique_cascada_falla.png",
-      "width": 1024,
-      "height": 768,
-      "frameWidth": 256,
-      "frameHeight": 768,
-      "frameCount": 4,
-      "columns": 4,
-      "rows": 1,
-      "available": true
-    },
-    {
-      "key": "alambique-cascada-falla-meta",
-      "type": "json",
-      "path": "sprites/alambique_cascada_falla.json",
       "available": true
     },
     {
       "key": "alambique-cascada-alarma",
       "type": "spritesheet",
       "path": "sprites/alambique_cascada_alarma.png",
-      "width": 512,
-      "height": 768,
-      "frameWidth": 256,
-      "frameHeight": 768,
+      "width": 640,
+      "height": 800,
+      "frameWidth": 320,
+      "frameHeight": 800,
       "frameCount": 2,
       "columns": 2,
       "rows": 1,
       "available": true
     },
     {
-      "key": "alambique-cascada-alarma-meta",
+      "key": "alambique-cascada-falla",
+      "type": "spritesheet",
+      "path": "sprites/alambique_cascada_falla.png",
+      "width": 1280,
+      "height": 800,
+      "frameWidth": 320,
+      "frameHeight": 800,
+      "frameCount": 4,
+      "columns": 4,
+      "rows": 1,
+      "available": true
+    },
+    {
+      "key": "alambique-cascada-meta",
       "type": "json",
-      "path": "sprites/alambique_cascada_alarma.json",
+      "path": "sprites/alambique_cascada.json",
       "available": true
     },
     {

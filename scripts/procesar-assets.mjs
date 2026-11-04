@@ -13,9 +13,6 @@ const salidaAssets = path.join(raiz, 'public/assets');
 // Medidas y distribución tomadas de docs/recursos.md.
 const recursos = [
   { archivo: 'alambique_cuerpo_vacio.png', destino: 'sprites/alambique_cuerpo_vacio.png', ancho: 215, alto: 300 },
-  { archivo: 'alambique_columna_liquido.jpg', destino: 'sprites/alambique_cascada.png', recorteFraccion: [.063, .115, .433, .972], altoObjetivo: 510, visores: {
-    superior: [.213, .253, .227, .447], inferior: [.213, .661, .227, .853],
-  } },
   { archivo: 'alambique_columna_liquido.jpg', destino: 'sprites/columna_liquido.png', recorteFraccion: [.693, .087, .773, .913], altoMaximo: 300 },
   { archivo: 'mesa_laboratorio.jpg', destino: 'sprites/mesa_laboratorio.png', anchoObjetivo: 390 },
   { archivo: 'caldero_real.jpg', destino: 'sprites/caldero_real.png', anchoObjetivo: 110 },
@@ -220,20 +217,13 @@ for (const recurso of recursos) {
 
 // Recursos del día 2. Las celdas se detectan usando la separación magenta;
 // los tamaños indicados son el tamaño FINAL de cada cuadro, no el del original.
-const familias = [
-  { familia: 'alambique_simple', ancho: 256, alto: 640, cortarGrifo: .175, visores: 1, rangoVisores: [.2, .78], hojas: [
-    { archivo: 'alambique_reposo.jpg', cuadros: 1, estado: 'reposo' },
-    { archivo: 'alambique_funcionando.jpg', cuadros: 4, estado: 'funcionando' },
-    { archivo: 'alambique_falla.jpg', cuadros: 4, estado: 'falla' },
-    { archivo: 'alambique_alarma.jpg', cuadros: 2, estado: 'alarma' },
-  ] },
-  { familia: 'alambique_cascada', ancho: 256, alto: 768, cortarGrifo: .12, visores: 2, rangoVisores: [.12, .9], hojas: [
-    { archivo: 'cascada_reposo.jpg', cuadros: 1, estado: 'reposo' },
-    { archivo: 'cascada_funcionando.jpg', cuadros: 4, estado: 'funcionando' },
-    { archivo: 'cascada_falla.jpg', cuadros: 4, estado: 'falla' },
-    { archivo: 'cascada_alarma.jpg', cuadros: 2, estado: 'alarma' },
-  ] },
+// Las hojas del equipo se mantienen como arte fuente de la pareja: este script
+// solo las registra en el manifiesto, nunca las procesa ni las sobrescribe.
+const familiasEquipo = [
+  { familia: 'alambique_simple', key: 'alambique-simple', archivo: 'sprites/alambique_simple.json' },
+  { familia: 'alambique_cascada', key: 'alambique-cascada', archivo: 'sprites/alambique_cascada.json' },
 ];
+const familias = [];
 
 const entradasManifiesto = [];
 function agregarEntrada({ key, pathRel, type = 'image', width, height, frameWidth, frameHeight, frameCount, columns, rows, files, available }) {
@@ -245,10 +235,7 @@ function registrarAusente(key, pathRel, type = 'image', extra = {}) {
 
 function registroLegacy() {
   const entradas = [
-    ['alambique', 'sprites/alambique_cuerpo_vacio.png', 'image'],
     ['liquido-referencia', 'sprites/columna_liquido.png', 'image'],
-    ['alambique-cascada', 'sprites/alambique_cascada.png', 'image'],
-    ['alambique-cascada-visores', 'sprites/alambique_cascada.json', 'json'],
     ['mesa-laboratorio', 'sprites/mesa_laboratorio.png', 'image'],
     ['caldero-real', 'sprites/caldero_real.png', 'image'],
     ['valvula-cuerpo', 'sprites/valvula_cuerpo_estatico.png', 'image'],
@@ -562,6 +549,28 @@ function registrarLegacy() {
   registroLegacy();
 }
 
+async function registrarHojasEquipo() {
+  for (const familia of familiasEquipo) {
+    const metadataPath = path.join(salidaAssets, familia.archivo);
+    try {
+      const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
+      for (const [estado, cuadros] of Object.entries(metadata.cuadros || {})) {
+        const hoja = `sprites/${familia.familia}_${estado}.png`;
+        agregarEntrada({
+          key: `${familia.key}-${estado}`, pathRel: hoja, type: 'spritesheet',
+          width: metadata.frameWidth * cuadros, height: metadata.frameHeight,
+          frameWidth: metadata.frameWidth, frameHeight: metadata.frameHeight,
+          frameCount: cuadros, columns: cuadros, rows: 1,
+        });
+      }
+      agregarEntrada({ key: `${familia.key}-meta`, pathRel: familia.archivo, type: 'json' });
+    } catch (error) {
+      console.warn(`[assets] No se pudo registrar ${familia.archivo}: ${error.message}`);
+      registrarAusente(`${familia.key}-meta`, familia.archivo, 'json');
+    }
+  }
+}
+
 async function escribirManifiesto() {
   const audio = [
     'musica_menu', 'musica_operacion', 'musica_perturbacion', 'musica_superado', 'musica_fallido',
@@ -586,6 +595,7 @@ async function escribirManifiesto() {
 
 await Promise.all([fs.mkdir(salidaSprites, { recursive: true }), fs.mkdir(salidaFondos, { recursive: true }), fs.mkdir(salidaEfectos, { recursive: true }), fs.mkdir(salidaTiles, { recursive: true })]);
 registrarLegacy();
+await registrarHojasEquipo();
 await procesarFamiliasDia2();
 await procesarHojaDia2({ archivo: 'valvula_tira.jpg', salida: 'sprites/valvula_tira.png', key: 'valvula-tira', cuadros: 5, tamano: 64 });
 await procesarPiezasAlambique();
@@ -609,14 +619,5 @@ for (const spec of [
 await procesarMarcasEIndicadores();
 await procesarFondosDia2();
 await procesarTilesDia2();
-
-// Añade la medición de la hoja nueva al JSON conservado por la escena actual.
-const jsonCascadaLegacy = path.join(salidaSprites, 'alambique_cascada.json');
-try {
-  const hojaNueva = JSON.parse(await fs.readFile(path.join(salidaSprites, 'alambique_cascada_reposo.json'), 'utf8'));
-  const legacy = JSON.parse(await fs.readFile(jsonCascadaLegacy, 'utf8'));
-  legacy.dia2 = { frameWidth: hojaNueva.frameWidth, frameHeight: hojaNueva.frameHeight, frameCount: hojaNueva.frameCount, visores: hojaNueva.visores, visoresPorCuadro: hojaNueva.visoresPorCuadro };
-  await fs.writeFile(jsonCascadaLegacy, `${JSON.stringify(legacy, null, 2)}\n`);
-} catch (error) { console.warn(`[assets] No se pudo agregar metadata de visor de cascada día 2: ${error.message}`); }
 
 await escribirManifiesto();

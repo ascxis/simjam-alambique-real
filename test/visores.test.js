@@ -1,40 +1,52 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 import { convertirVisorSimple, convertirVisoresCascada } from '../src/hmi/tanques.js';
 
 const json = async (nombre) => JSON.parse(await readFile(new URL(`../public/assets/sprites/${nombre}`, import.meta.url), 'utf8'));
+const rectValido = (r) => r && r.x >= 0 && r.y >= 0 && r.w > 0 && r.h > 0 && r.x + r.w <= 1 && r.y + r.h <= 1;
+const puntoValido = (p) => Array.isArray(p) && p.length === 2 && p.every((n) => Number.isFinite(n) && n >= 0 && n <= 1);
 
-test('metadata de visor existe para alambique simple y cascada', async () => {
-  const simple = await json('alambique_simple_reposo.json');
-  const cascada = await json('alambique_cascada_reposo.json');
-  assert.ok(simple.visores?.principal, 'el alambique simple debe incluir las fracciones del visor');
-  assert.ok(cascada.visores?.superior && cascada.visores?.inferior, 'la cascada debe incluir ambos visores');
-
-  const cajaSimple = { x: 100, y: 80, w: 215, h: 300 };
-  const visorSimple = convertirVisorSimple(cajaSimple, simple.visores.principal);
-  assert.ok(visorSimple.x >= cajaSimple.x && visorSimple.x + visorSimple.w <= cajaSimple.x + cajaSimple.w);
-  assert.ok(visorSimple.y >= cajaSimple.y && visorSimple.y + visorSimple.h <= cajaSimple.y + cajaSimple.h);
-  assert.equal(visorSimple.y, cajaSimple.y + simple.visores.principal.y * cajaSimple.h);
-
-  const cajaCascada = { x: 120, y: 40, w: 300, h: 510 };
-  const visoresCascada = convertirVisoresCascada(cajaCascada, cascada);
-  for (const key of ['superior', 'inferior']) {
-    const visor = visoresCascada[key], relativo = cascada.visores[key];
-    assert.ok(visor.x >= cajaCascada.x && visor.x + visor.w <= cajaCascada.x + cajaCascada.w);
-    assert.ok(visor.y >= cajaCascada.y && visor.y + visor.h <= cajaCascada.y + cajaCascada.h);
-    assert.equal(visor.y, cajaCascada.y + relativo.y * cajaCascada.h);
-  }
-
-  for (const [familia, visores] of [['alambique_simple', ['principal']], ['alambique_cascada', ['superior', 'inferior']]]) {
-    for (const estado of ['reposo', 'funcionando', 'falla', 'alarma']) {
-      const hoja = await json(`${familia}_${estado}.json`);
-      for (const visor of visores) {
-        const fraccion = hoja.visores?.[visor];
-        assert.ok(fraccion, `${familia} ${estado} incluye metadata de ${visor}`);
-        assert.ok(fraccion.x >= 0 && fraccion.y >= 0 && fraccion.ancho > 0 && fraccion.alto > 0);
-        assert.ok(fraccion.x + fraccion.ancho <= 1 && fraccion.y + fraccion.alto <= 1);
-      }
+test('los metadatos nuevos ubican puntos y visores dentro de los cuadros del equipo', async () => {
+  const simple = await json('alambique_simple.json');
+  const cascada = await json('alambique_cascada.json');
+  const manifiesto = await json('../manifest.json').catch(() => null);
+  assert.ok(manifiesto?.resources);
+  for (const [nombre, meta, estadoNecesario] of [
+    ['alambique_simple', simple, ['reposo', 'funcionando', 'alarma', 'falla']],
+    ['alambique_cascada', cascada, ['reposo', 'funcionando', 'alarma', 'falla']],
+  ]) {
+    assert.ok(meta.frameWidth > 0 && meta.frameHeight > 0);
+    assert.ok(meta.puntos && puntoValido(meta.puntos.entrada) && puntoValido(meta.puntos.salida) && puntoValido(meta.puntos.base));
+    assert.ok(rectValido(meta.puntos.visor1));
+    if (nombre === 'alambique_cascada') {
+      assert.ok(rectValido(meta.puntos.visor2));
+      assert.ok(rectValido(meta.puntos.q12));
+    }
+    for (const estado of estadoNecesario) {
+      const cuenta = meta.cuadros[estado];
+      assert.ok(Number.isInteger(cuenta) && cuenta > 0, `cuadros.${estado} debe ser entero positivo`);
+      const clave = `${nombre.replace('_', '-')}-${estado}`;
+      const recurso = manifiesto.resources.find((r) => r.key === clave);
+      assert.ok(recurso?.available, `el manifiesto debe cargar ${clave}`);
+      assert.equal(recurso.frameWidth, meta.frameWidth);
+      assert.equal(recurso.frameHeight, meta.frameHeight);
+      assert.equal(recurso.frameCount, cuenta);
+      const archivo = fileURLToPath(new URL(`../public/assets/sprites/${nombre}_${estado}.png`, import.meta.url));
+      const info = await sharp(archivo).metadata();
+      assert.equal(info.width, meta.frameWidth * cuenta);
+      assert.equal(info.height, meta.frameHeight);
     }
   }
+
+  const cajaSimple = { x: 100, y: 80, w: 150, h: 300 };
+  const visorSimple = convertirVisorSimple(cajaSimple, simple);
+  assert.equal(visorSimple.x, cajaSimple.x + simple.puntos.visor1.x * cajaSimple.w);
+  assert.equal(visorSimple.y, cajaSimple.y + simple.puntos.visor1.y * cajaSimple.h);
+  const cajaCascada = { x: 120, y: 40, w: 190, h: 475 };
+  const visores = convertirVisoresCascada(cajaCascada, cascada);
+  assert.equal(visores.superior.x, cajaCascada.x + cascada.puntos.visor1.x * cajaCascada.w);
+  assert.equal(visores.inferior.y, cajaCascada.y + cascada.puntos.visor2.y * cajaCascada.h);
 });

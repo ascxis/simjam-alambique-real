@@ -1,0 +1,30 @@
+{
+  "frameWidth": 320,
+  "frameHeight": 680,
+  "cuadros": {
+    "reposo": 1,
+    "funcionando": 4,
+    "alarma": 2,
+    "falla": 4
+  },
+  "puntos": {
+    "entrada": [
+      0.4825,
+      0.0588
+    ],
+    "salida": [
+      0.942,
+      0.7318
+    ],
+    "base": [
+      0.4714,
+      0.9706
+    ],
+    "visor1": {
+      "x": 0.4327,
+      "y": 0.2455,
+      "w": 0.0978,
+      "h": 0.3317
+    }
+  }
+}

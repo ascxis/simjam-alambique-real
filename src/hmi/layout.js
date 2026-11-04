@@ -4,22 +4,16 @@ const MESA_ANCHO = 390;
 const MESA_ALTO = 182;
 const SUPERFICIE_MESA_Y = MESA_PISO_Y - MESA_ALTO + MESA_ALTO * .28;
 const TANQUE_SOLO_ALTO = 300;
-const TANQUE_SOLO_ANCHO = 215;
 const TANQUE_SOLO_CIMA_Y = SUPERFICIE_MESA_Y - TANQUE_SOLO_ALTO;
 const EJE_ENTRADA_Y = TANQUE_SOLO_CIMA_Y - 33;
 const DESFASE_EJE_VALVULA_Y = 15;
-// Borde derecho medido en la última fila vertical del cilindro, justo sobre el aro inferior.
-const SALIDA_ALAMBIQUE = { xRel: 189 / TANQUE_SOLO_ANCHO, yRel: 206 / TANQUE_SOLO_ALTO };
-// Fracciones medidas sobre el recorte alfa del sprite procesado (1015 × 1311).
-const ANCLA_Q12 = {
-  x: (0.089 * 2752 - 173 - 3) / 1015,
-  y: (0.510 * 1536 - 176 - 3) / 1311,
-  ancho: ((0.109 - 0.089) * 2752) / 1015,
-  alto: ((0.650 - 0.510) * 1536) / 1311,
-};
-const ANCLA_SALIDA_CASCADA_X = (0.423 * 2752 - 173 - 3) / 1015;
-const ANCLA_BASE_CASCADA_Y = (0.911 * 1536 - 176 - 3) / 1311;
-const ANCLA_SALIDA_CASCADA_Y = (0.972 * 1536 - 176 - 3) / 1311;
+const CASCADA_REFERENCIA = Object.freeze({
+  ancho: 1015,
+  alto: 1311,
+  salidaX: (0.423 * 2752 - 173 - 3) / 1015,
+  cuerpoX0: (0.139 * 2752 - 173 - 3) / 1015,
+  cuerpoX1: (0.308 * 2752 - 173 - 3) / 1015,
+});
 
 export const LAYOUT = Object.freeze({
   canvas: { ancho: 1280, alto: 720 },
@@ -65,7 +59,8 @@ export const LAYOUT = Object.freeze({
     barraV2: { x: 970, y: 538, ancho: 250, alto: 36 },
     ayudaValvulas: { x: 690, y: 574, ancho: 260, alto: 14 },
     ayudaPellizco: { iconoX: 978, iconoY: 560, textoX: 1008, textoY: 560, textoAncho: 230 },
-    equilibrio: { etiquetaOffsetX: 24, etiquetaAncho: 76, etiquetaAlto: 17, dash: 5, espacio: 4 },
+    equilibrio: { etiquetaOffsetX: 36, etiquetaAncho: 76, etiquetaAlto: 17, dash: 5, espacio: 4 },
+    reglaVisor: { panelOffsetX: 8, panelAncho: 22, numeroOffsetX: 4, tickAlto: 5 },
     criterio: { x: 680, y: 586, ancho: 560, alto: 64, progresoOffsetY: 33 },
     footer: { x: 20, y: 660, ancho: 1240, alto: 52, radio: 10 },
     ayuda: { x: 38, y: 670, ancho: 500, alto: 34 },
@@ -79,16 +74,15 @@ export const LAYOUT = Object.freeze({
     tanque2Cascada: { centroX: 450, baseY: 600, alto: 240 },
     cascada: {
       alto: SUPERFICIE_MESA_Y - 95, topMinimo: 95,
-      baseTanque2Y: ANCLA_BASE_CASCADA_Y, salida: { x: ANCLA_SALIDA_CASCADA_X, y: Math.min(1, ANCLA_SALIDA_CASCADA_Y) }, salidaFueraMesa: 15,
-      unionVidrio: { ...ANCLA_Q12, margenInterior: 2 },
-      cuerpoTanques: { x0: (0.139 * 2752 - 173 - 3) / 1015, x1: (0.308 * 2752 - 173 - 3) / 1015, baseTanque2Y: ANCLA_BASE_CASCADA_Y },
+      salidaFueraMesa: 15,
+      referencia: CASCADA_REFERENCIA,
       visorSuperior: 'superior', visorInferior: 'inferior',
+      etiquetasValvula: { separacion: 5, ancho: 84, alto: 26 },
       ruedas: { v1: { x: .758, y: .183 }, v2: { x: .758, y: .747 }, tamano: 38 },
-      etiquetasValvula: { separacion: 5, ancho: 74, alto: 26 },
-      etiquetaQ12: { x: 108, y: 337, ancho: 116, alto: 38 },
+      etiquetaQ12: { separacion: 8, ancho: 174, alto: 30 },
       etiquetasTanque: [
-        { x: 95, ancho: 116, alto: 36, placa: 32 },
-        { x: 95, ancho: 116, alto: 36, placa: 32 },
+        { x: 95, ancho: 116, alto: 36, placa: 32, desfaseY: 30 },
+        { x: 95, ancho: 116, alto: 36, placa: 32, desfaseY: 0 },
       ],
       escala: { ancho: 26, alto: 22 },
     },
@@ -110,7 +104,7 @@ export const LAYOUT = Object.freeze({
       soportesX: [180, 280],
       valvula: { x: 69, tuboSemiancho: 25, ejeDesfaseY: DESFASE_EJE_VALVULA_Y },
       dome: { xRel: .5 }, salidaAlambique: {
-        ...SALIDA_ALAMBIQUE, inicioDentro: 8, boquillaLongitud: 12, boquillaAncho: 10,
+        inicioDentro: 8, boquillaLongitud: 12, boquillaAncho: 10,
         brida: { radio: 13, anchoBorde: 3, remacheRadio: 1.5, remacheOffset: 6 },
         canal: { anchoRelativo: .5, largoTrazo: 12, separacionTrazos: 68, pixelesPorCaudal: 320 },
       },
