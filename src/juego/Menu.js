@@ -7,12 +7,17 @@ import { GestorEntrada } from '../entrada/gestorEntrada.js';
 import { cargarNiveles } from '../modelo/niveles.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz } from '../hmi/estilo.js';
+import { GestorAudio, VOLUMENES_AUDIO_INICIALES } from './audio.js';
 
 const selectCss = 'box-sizing:border-box;background:#1C2026;color:#E6E8EA;border:1px solid #B85A24;border-radius:8px;padding:7px 10px;font:15px Segoe UI,Arial,sans-serif;';
 
 export class Menu extends EscenaBase {
   constructor() { super('Menu'); }
   create() {
+    this.audio = this.registry.get('gestorAudio') || new GestorAudio(this);
+    this.registry.set('gestorAudio', this.audio);
+    this.audio.vincular(this);
+    this.audio.setMusic('musica_menu');
     document.getElementById('camera-debug-info')?.remove();
     this.crearFondo();
     const M = LAYOUT.menu;
@@ -54,6 +59,48 @@ export class Menu extends EscenaBase {
       guardarPreferencia('alambique.intercambiarEtiquetas', String(ev.target.checked));
       if (contextoJuego.camara) contextoJuego.camara.intercambiar = ev.target.checked;
     });
+    const reducir = document.createElement('label');
+    reducir.style.cssText = `display:flex;align-items:center;gap:7px;width:${M.derecha.ancho}px;height:22px;color:#E6E8EA;font:13px Segoe UI,Arial,sans-serif`;
+    reducir.innerHTML = '<input type="checkbox" style="accent-color:#B85A24"> Reducir efectos';
+    reducir.querySelector('input').checked = leerPreferencia('alambique.reducirEfectos', 'false') === 'true';
+    contextoJuego.reducirEfectos = reducir.querySelector('input').checked;
+    const reducirDom = this.add.dom(M.derecha.x + M.derecha.ancho / 2, M.reducirY + 11, reducir);
+    reducir.querySelector('input').addEventListener('change', (ev) => {
+      contextoJuego.reducirEfectos = ev.target.checked;
+      guardarPreferencia('alambique.reducirEfectos', String(ev.target.checked));
+    });
+    const indicadores = document.createElement('label');
+    indicadores.style.cssText = `display:flex;align-items:center;gap:7px;width:${M.derecha.ancho}px;height:22px;color:#E6E8EA;font:13px Segoe UI,Arial,sans-serif`;
+    indicadores.innerHTML = '<input type="checkbox" style="accent-color:#B85A24"> Indicadores visuales de sonido';
+    indicadores.querySelector('input').checked = leerPreferencia('alambique.indicadoresSonido', 'true') === 'true';
+    contextoJuego.indicadoresSonido = indicadores.querySelector('input').checked;
+    const indicadoresDom = this.add.dom(M.derecha.x + M.derecha.ancho / 2, M.indicadoresY + 11, indicadores);
+    indicadores.querySelector('input').addEventListener('change', (ev) => {
+      contextoJuego.indicadoresSonido = ev.target.checked;
+      guardarPreferencia('alambique.indicadoresSonido', String(ev.target.checked));
+    });
+
+    const slidersAudio = [];
+    const etiquetasCanal = { musica: 'Música', efectos: 'Efectos', interfaz: 'Interfaz', sonificacion: 'Sonificación' };
+    const audioFilas = [
+      ['musica', M.audio.izquierdaX, M.audio.fila1Y], ['efectos', M.audio.derechaX, M.audio.fila1Y],
+      ['interfaz', M.audio.izquierdaX, M.audio.fila2Y], ['sonificacion', M.audio.derechaX, M.audio.fila2Y],
+    ];
+    for (const [canal, centroX, y] of audioFilas) {
+      const control = document.createElement('label');
+      control.style.cssText = `display:flex;align-items:center;justify-content:space-between;gap:8px;width:${M.audio.ancho}px;height:${M.audio.alto}px;color:#E6E8EA;font:12px Segoe UI,Arial,sans-serif`;
+      control.innerHTML = `<span>${etiquetasCanal[canal]}</span><input type="range" min="0" max="1" step="0.05" style="accent-color:#B85A24;width:170px"><span></span>`;
+      const slider = control.querySelector('input');
+      const valor = control.querySelector('span:last-child');
+      slider.value = String(this.audio.volumenes[canal] ?? VOLUMENES_AUDIO_INICIALES[canal]);
+      valor.textContent = Number(slider.value).toFixed(2);
+      slider.addEventListener('input', () => { valor.textContent = Number(slider.value).toFixed(2); this.audio.setVolumen(canal, slider.value); });
+      control.addEventListener('pointerdown', () => this.audio.desbloquear(), { once: true });
+      slidersAudio.push(this.add.dom(centroX, y, control));
+    }
+    const audioPrompt = this.add.text(M.audioPrompt.x, M.audioPrompt.y, 'Toca o haz un gesto para activar el sonido', fuenteInterfaz(12, '#F2E6C9')).setOrigin(.5);
+    this.audio.instalarDesbloqueo(this, audioPrompt);
+    audioPrompt.setVisible(!this.audio.desbloqueado);
 
     const poblarCamaras = async () => {
       const cams = await listarCamaras();
@@ -68,7 +115,7 @@ export class Menu extends EscenaBase {
       const camara = contextoJuego.camara;
       if (camara?.activo) { try { await camara.iniciar(obtenerVideoPreview(), camSelect.value || undefined); } catch (e) { alert(`No se pudo abrir esa cámara: ${e.message}`); } }
     });
-    this.events.once('shutdown', () => [fuenteDom, nivelDom, cameraSelectDom, invertirDom].forEach((dom) => dom.destroy()));
+    this.events.once('shutdown', () => [fuenteDom, nivelDom, cameraSelectDom, invertirDom, reducirDom, indicadoresDom, ...slidersAudio].forEach((dom) => dom.destroy()));
     poblarCamaras().catch(() => {});
 
     const activarCamara = async () => {
@@ -105,7 +152,9 @@ export class Menu extends EscenaBase {
       if (cams?.length) alert(`Cámara activa. ${cams.length} dispositivo(s) disponible(s).`);
     });
     this.add.text(M.controles.x + M.controles.ancho / 2, M.controles.y + M.controles.alto / 2,
-      'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar',
+      'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar · M / Select silencio',
       fuenteInterfaz(14, '#E6E8EA', { align: 'center', lineSpacing: 4 })).setOrigin(.5).setWordWrapWidth(M.controles.ancho - M.margenControl.horizontal).setAlpha(1);
   }
+
+  update() { this.audio?.actualizarDesbloqueo(); }
 }

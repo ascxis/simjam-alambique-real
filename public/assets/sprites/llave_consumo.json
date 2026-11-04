@@ -1,0 +1,20 @@
+{
+  "frameWidth": 144,
+  "frameHeight": 180,
+  "cuadros": {
+    "cerrada": 1,
+    "aviso": 3,
+    "abierta": 1
+  },
+  "puntos": {
+    "union": [
+      0.9375,
+      0.1667
+    ],
+    "boca": [
+      0.5833,
+      0.95
+    ]
+  },
+  "nota": "union = extremo del tubo horizontal que entra en el costado izquierdo del alambique; boca = salida del chorro (abajo)."
+}
