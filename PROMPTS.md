@@ -77,6 +77,7 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 70 | Día 2, 5.3 | Gemini | Escenario: capas, baldosas y decoraciones animadas | Funcionó parcialmente (retoques) |
 | 71 | Día 2, 5.3 | Gemini | Efectos visuales: salpicadura, vapor, chispa, polvo, aparición y desborde | Funcionó parcialmente (retoques) |
 | 72 | Día 2, 5.4 a) | Gemini | Diseño de audio (docs/audio.md) | Funcionó, con ajustes de la pareja |
+| 73 | Día 2, 5.4 b) | Gemini (Música, Lyria 3) | Cinco pistas de música por situación | Funcionó; recortadas en bucle por la pareja |
 
 ---
 
@@ -1583,4 +1584,22 @@ sfx_<evento> y musica_<situacion> para cada sonido.
 
 - **Resultado:** docs/audio.md con música por situación, efectos, eventos del modelo, sonificación y mezcla.
 - **Errores de la IA detectados y corregidos por la pareja:** incluyó eventos que no existen en el modelo de tanques (choque entre alambiques y piezas dañadas, tomados de los ejemplos del prompt); repitió "entrada en banda" con dos archivos; usó un ducking de −12 dB en 0,1 s distinto del de la guía (−40 % con τ = 0,05 s y recuperación a los 300 ms); y creó un quinto canal de alarmas cuando la guía pide cuatro. Los ajustes quedaron anotados al final de docs/audio.md.
+
+---
+
+## 73. Música por situación (5.4 b)
+
+Herramienta Música de Gemini, opción instrumental. Un mensaje por pista; ejemplo (operación normal):
+
+```
+Crea una pista instrumental, sin voz ni letra, para un simulador 2D de una planta de destilación de alquimia (alambiques de cobre en un laboratorio medieval).
+Situación: operación normal. Estilo: ambient steampunk, minimalismo armónico. Tempo: 88 BPM. Emoción: concentración, orden, equilibrio. Ambiente de planta: clavecín punteado, violonchelo en pizzicato, pads cálidos y un burbujeo suave de fondo con pulsos regulares como un oscilador. Debe ser discreta, sin picos de volumen, y poder repetirse en bucle sin un final marcado.
+```
+
+Las otras cuatro cambian la situación, el estilo, el tempo y el ambiente según la tabla de docs/audio.md (menú 72 BPM, perturbación 104, superado 110, fallido 60).
+
+- **Resultado:** cinco pistas de 46 s a 3 min.
+- **Problemas detectados:** pese a pedir "sin un final marcado", todas traían un final y unos 2 s de silencio, y juntas pesaban 18 MB (límite de la carpeta de audio: 8 MB). Se recortaron a bucles de 36 a 60 s con un fundido cruzado de 2 s (ver docs/audio.md).
+
+Los efectos sonoros (5.4 c) no se hicieron con IA: se sintetizaron con scripts/sintetizar_sfx.py.
 
