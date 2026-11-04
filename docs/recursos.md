@@ -82,7 +82,7 @@ Todas las hojas de un mismo elemento usan el mismo tamaño de cuadro, una sola f
 
 | Elemento | Tamaño del cuadro | Estados y número de cuadros | Velocidad sugerida |
 |---|---|---|---|
-| Equipo principal: alambique de cobre (simple y cascada) | 192x192 px | Reposo 1, funcionando 4 (brillo del cobre y vapor en la boca), falla 4 (desborde: líquido que se derrama por la tapa), alarma 2 (runa y remaches en rojo) | Funcionando: timeScale proporcional a q_in (0,5 a 2) |
+| Equipo principal: alambique de cobre (simple y cascada) | Simple 256x640 px y cascada 256x768 px (verticales; la guía sugiere 128x128 o 192x192, pero el alambique es un tanque alto y un cuadro cuadrado lo haría muy pequeño) | Reposo 1, funcionando 4 (brillo del cobre y vapor en la boca), falla 4 (desborde: líquido que se derrama por la tapa), alarma 2 (runa y remaches en rojo) | Funcionando: timeScale proporcional a q_in (0,5 a 2) |
 | Actuadores: válvula de entrada v₁ y válvula de salida v₂ (nivel 3) | 64x64 px | Cuerpo fijo + volante móvil; marca semitransparente del mando; variante de falla en rojo | Sin animación fija: el volante gira según la salida del Actuador |
 | Piezas que se deforman | Según el elemento | Líquido del visor, chorro de entrada, flujo de la tubería de salida, superficie del líquido | Se dibujan desde x(t) en cada cuadro |
 | Perturbación: consumo del caldero real (nivel 2, escalón de +0,08 m³/s) | 64x64 px | Aviso 3 (el cucharón se levanta y brilla), activa 4 (cucharón que extrae poción), fin 3 | 8 fps |
@@ -107,3 +107,24 @@ Rangos del modelo: h de 0 a 3 m (desborde a 3,0 m), v de 0 a 1, q_in = 0,4·v₁
 | h frente a H y HH | Umbrales | Runa normal, H (ámbar) o HH (roja, parpadeo de 2 Hz); franja de color en el visor | Umbral con histéresis: H entra en 2,4 m y sale en 2,3 m; HH entra en 2,8 m y sale en 2,7 m | Alarma H y alarma HH, distintas; la HH baja la música (ducking) |
 | h ≥ 3,0 m | Evento | Estado "falla" del alambique y efecto de desborde | Umbral | Sonido propio de desborde |
 | Error h − h_sp dentro de la banda (±tolerancia) | Evento | Brillo verde suave del nivel en la HMI | Umbral con histéresis | Sonido corto de confirmación al entrar en la banda |
+
+## Día 2: retoques hechos a mano sobre los originales de Gemini
+
+| Archivo | Retoque | Motivo |
+|---|---|---|
+| `perturbacion_cucharon_activa.png` | En el cuadro 2 se recortó el charco verde en forma de elipse con contorno oscuro y se limpiaron los restos de líneas | Gemini lo entregó como un rectángulo cortado contra el borde de la imagen, y al pedir otra versión cambió el diseño del cucharón |
+| `perturbacion_cucharon_fin.png` | Se armó con el cuadro 1 de la hoja de fin de Gemini (cucharón vacío limpio): tres cuadros con escala 100 %, 85 % y 70 % que suben | Gemini hizo la transparencia mezclando el cucharón con el magenta, lo que dejaba un tinte morado al quitar el fondo. La desaparición se aplica en el juego con setAlpha |
+| `perturbacion_sifon_activa.png` | Las partes vacías del vidrio se pasaron de rosado a gris neutro | Gemini dibujó el vidrio transparente dejando ver el magenta del fondo; al quitar el fondo, el sifón habría quedado rosado |
+| `perturbacion_sifon_aviso.png` | Se armó con el sifón vacío de la hoja de fin y un halo ámbar opaco que crece en los 3 cuadros (10, 22 y 34 px) | El aviso de Gemini era otro sifón (con un bulbo y en otra orientación) y su halo semitransparente se mezclaba con el magenta |
+| `perturbacion_sifon_fin.png` | Sin cambios: los 3 cuadros del sifón vacío; la desaparición se aplica en el juego con setAlpha | — |
+| `deco_vela.png` | Se quitó el halo rosado alrededor de las llamas | El brillo semitransparente de Gemini se mezcló con el magenta |
+| `fondo_cercano.png` | Se quitaron los halos rosados de las velas y las cadenas del fondo, que salieron moradas, se pasaron a marrón oscuro | Mismo motivo: transparencias mezcladas con el magenta |
+| `laboratorio_tiles.png` | Se armó la hoja de 8x4 baldosas de 32x32 px con piezas de la hoja de Gemini: fila 1 pisos, fila 2 muros de ladrillo (recorte central para que encajen), fila 3 tuberías de cobre (rectas, codos, T, cruz y manómetro) y fila 4 pasarelas | Gemini entregó piezas de tamaños distintos (no una cuadrícula 8x4) y los muros con bordes irregulares. Su estilo es pixel art, pero a 32 px no se distingue del resto |
+| `fondo_lejano.png`, `fondo_medio.png` | Sin cambios | — |
+| `deco_engranaje.png` | Se tomó el cuadro 1 (limpio), se borraron las líneas de cuadrícula y los números que Gemini dibujó encima, y los 4 cuadros se generaron rotándolo 0°, 22,5°, 45° y 67,5° | La hoja traía una cuadrícula y números superpuestos, manchas entre cuadros y dos cuadros casi iguales |
+| `deco_frasco.png` | Se quitaron las copias borrosas ("fantasmas") a la izquierda de los cuadros 2 y 4, y el cuadro 4 se reemplazó por el cuadro 2 reflejado | El cuadro 4 traía burbujas borrosas dentro del frasco |
+| `efecto_vapor.png`, `efecto_polvo.png` | Se quitaron las líneas negras que separaban los cuadros y el tinte rosado del polvo; cada cuadro se centró en una celda cuadrada | Gemini dibujó marcos alrededor de los cuadros |
+| `efecto_aparicion.png` | Se quitaron las franjas moradas entre cuadros y se recortó cada cuadro por su celda real | Los cuadros eran de anchos distintos y el anillo grande invadía la celda vecina |
+| `efecto_chispa.png` | Se quitaron los marcos y los números; el cuadro 4 (dos estrellas borrosas) se reemplazó por la estrella del cuadro 2 al 55 % | Copia fantasma en el cuadro 4 |
+| `efecto_salpicadura.png` | Solo se centraron los cuadros | — |
+| `efecto_desborde.png` | Se extrajo solo el líquido que rebosa (sin la olla de la imagen de Gemini) y se aclaró el verde para que coincida con el visor del alambique | La olla no es el alambique; así el efecto se dibuja sobre la cúpula del alambique en el juego |
