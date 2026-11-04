@@ -132,14 +132,23 @@ export function dibujarTanquesFijos(base, marcas, tuberias, cantidad, { conSprit
 }
 
 // Elementos variables del tanque: líquido y banda/referencia.
-export function dibujarNivelesTanques(g, overlay, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, conSprites = false } = {}) {
+export function dibujarNivelesTanques(g, overlay, alturas, cantidad, { tanqueControlado = 0, referencia = null, tolerancia = 0, dentroBanda = false, conSprites = false, oleaje = [] } = {}) {
   g.clear(); overlay.clear();
   const cajas = obtenerCajasTanques(cantidad);
   cajas.forEach((caja, i) => {
     const visor = vidrio(caja, conSprites), controlado = i === tanqueControlado;
-    const nivelY = yNivel(alturas[i], caja);
+    const nivelY = Math.max(visor.top, Math.min(visor.bottom, yNivel(alturas[i], caja) + (oleaje[i] || 0)));
     g.fillStyle(controlado && dentroBanda ? 0x00e676 : 0x2ecc71, .98)
       .fillRect(visor.x + 1, nivelY, visor.w - 2, Math.max(0, visor.bottom - nivelY));
+    if (Math.abs(oleaje[i] || 0) > .08) {
+      const amplitud = Math.min(3, Math.abs(oleaje[i]) * .45);
+      g.lineStyle(1.5, 0x8affba, .9);
+      for (let segmento = 1; segmento <= 5; segmento++) {
+        const x0 = (visor.w - 2) * (segmento - 1) / 5, x1 = (visor.w - 2) * segmento / 5;
+        const y0 = nivelY + Math.sin((segmento - 1) * Math.PI / 2) * amplitud, y1 = nivelY + Math.sin(segmento * Math.PI / 2) * amplitud;
+        g.lineBetween(visor.x + 1 + x0, y0, visor.x + 1 + x1, y1);
+      }
+    }
     if (controlado && Number.isFinite(referencia)) {
       const arriba = yNivel(referencia + tolerancia, caja), abajo = yNivel(referencia - tolerancia, caja);
       overlay.fillStyle(0xb7bdc2, .3).fillRect(visor.x, arriba, visor.w, abajo - arriba);
@@ -168,14 +177,23 @@ export function obtenerVisorTanque(indice, cantidad = 1, conSprites = true) {
   return caja ? vidrio(caja, conSprites) : null;
 }
 
-export function dibujarLiquidosCascada(liquido, visores, alturas, referencia, tolerancia, dentroBanda) {
+export function dibujarLiquidosCascada(liquido, visores, alturas, referencia, tolerancia, dentroBanda, oleaje = []) {
   liquido.clear();
   if (!visores?.superior || !visores?.inferior) return;
   const nivel = (visor, h) => visor.y + visor.h * (1 - limitar(h) / 3);
   for (const [clave, indice] of [['superior', 0], ['inferior', 1]]) {
-    const v = visores[clave], y = nivel(v, alturas[indice] ?? 0);
+    const v = visores[clave], y = Math.max(v.y, Math.min(v.y + v.h, nivel(v, alturas[indice] ?? 0) + (oleaje[indice] || 0)));
     liquido.fillStyle(indice === 1 && dentroBanda ? 0x00e676 : 0x2ecc71, .98)
       .fillRect(v.x + 1, y, Math.max(1, v.w - 2), Math.max(0, v.y + v.h - y));
+    if (Math.abs(oleaje[indice] || 0) > .08) {
+      const amplitud = Math.min(3, Math.abs(oleaje[indice]) * .45);
+      liquido.lineStyle(1, 0x8affba, .95);
+      for (let segmento = 1; segmento <= 5; segmento++) {
+        const x0 = (v.w - 2) * (segmento - 1) / 5, x1 = (v.w - 2) * segmento / 5;
+        const y0 = y + Math.sin((segmento - 1) * Math.PI / 2) * amplitud, y1 = y + Math.sin(segmento * Math.PI / 2) * amplitud;
+        liquido.lineBetween(v.x + 1 + x0, y0, v.x + 1 + x1, y1);
+      }
+    }
     if (clave === 'inferior' && Number.isFinite(referencia)) {
       const superior = nivel(v, referencia + tolerancia), inferior = nivel(v, referencia - tolerancia);
       liquido.fillStyle(0xb7bdc2, .32).fillRect(v.x + 1, superior, Math.max(1, v.w - 2), inferior - superior);

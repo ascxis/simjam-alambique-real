@@ -23,6 +23,7 @@ export function dibujarTendencia(scene, opcionesIniciales) {
   const etiquetas = (opciones.series || [{ nombre: '' }]).map(() => scene.add.text(0, 0, '', fuenteInterfaz(10)));
   const muestrasLeyenda = (opciones.series || [{ nombre: '' }]).map(() => scene.add.graphics());
   const etiquetaEjeY = scene.add.text(0, 0, '', fuenteInterfaz(10)).setOrigin(.5).setRotation(-Math.PI / 2);
+  const etiquetasMarcador = [];
 
   function actualizar(nuevas = {}) {
     opciones = { ...opciones, ...nuevas };
@@ -57,6 +58,14 @@ export function dibujarTendencia(scene, opcionesIniciales) {
     }
     const finalMuestra = puntos.at(-1)?.t ?? 0, inicioT = tiempoCompleto ? 0 : Math.max(0, finalMuestra - 30), duracion = Math.max(finalMuestra - inicioT, 1e-9);
     const mapX = (t) => plotX + Math.max(0, Math.min(1, (t - inicioT) / duracion)) * plotW;
+    const marcadores = (opciones.marcadoresTiempo || []).filter((t) => Number.isFinite(t) && t >= inicioT && t <= ultimaMuestra);
+    marcadores.forEach((t, index) => {
+      const xx = mapX(t);
+      g.lineStyle(1, 0xb85a24, .8).lineBetween(xx, plotY, xx, plotY + plotH);
+      if (!etiquetasMarcador[index]) etiquetasMarcador[index] = scene.add.text(0, 0, 'consumo', fuenteInterfaz(8, '#F2E6C9', { backgroundColor: 'rgba(28,32,38,.8)', padding: { x: 2, y: 1 } }));
+      etiquetasMarcador[index].setPosition(Math.min(x + ancho - 43, Math.max(x + 2, xx + 2)), plotY + 1).setVisible(true);
+    });
+    for (let i = marcadores.length; i < etiquetasMarcador.length; i++) etiquetasMarcador[i].setVisible(false);
     if (bandaInferiorClave && bandaSuperiorClave) {
       for (let i = 1; i < serie.length; i++) {
         const a = serie[i - 1], b = serie[i];
@@ -93,5 +102,5 @@ export function dibujarTendencia(scene, opcionesIniciales) {
   }
 
   actualizar();
-  return { actualizar, destruir: () => { g.destroy(); ejesY.forEach((t) => t.destroy()); ejesX.forEach((t) => t.destroy()); unidadTiempo.destroy(); titulo.destroy(); actual.destroy(); etiquetas.forEach((t) => t.destroy()); muestrasLeyenda.forEach((s) => s.destroy()); etiquetaEjeY.destroy(); } };
+  return { actualizar, destruir: () => { g.destroy(); ejesY.forEach((t) => t.destroy()); ejesX.forEach((t) => t.destroy()); unidadTiempo.destroy(); titulo.destroy(); actual.destroy(); etiquetas.forEach((t) => t.destroy()); muestrasLeyenda.forEach((s) => s.destroy()); etiquetaEjeY.destroy(); etiquetasMarcador.forEach((t) => t.destroy()); } };
 }

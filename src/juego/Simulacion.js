@@ -15,6 +15,9 @@ import { MAPA_CONTROL, leerSenalSiPresente } from './mapaControl.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
 import { dibujarProgreso } from '../hmi/actuadores.js';
+import { faseVisualPerturbacion, instantesInicioPerturbacion } from './perturbaciones.js';
+import { ResorteVisual } from './efectos/resorteVisual.js';
+import { obtenerGestorAudio } from './audio.js';
 
 function dibujarCanalConFlujo(g, puntos, caudal, tiempo, config, anchoTubo) {
   g.clear();
@@ -76,6 +79,25 @@ export class Simulacion extends EscenaBase {
   constructor() { super('Simulacion'); }
   create() {
     this.terminado = false;
+    this.audio = obtenerGestorAudio(this);
+    this.audio?.vincular(this);
+    this.audio?.setMusic('musica_operacion');
+    this.audioAlarma = [];
+    this.audioReferencia = null;
+    this.audioFasePerturbacion = null;
+    this.faseLlave = null;
+    this.reducirEfectos = contextoJuego.reducirEfectos ?? leerPreferencia('alambique.reducirEfectos', 'false') === 'true';
+    this.resorteCamaraX = new ResorteVisual({ zeta: .3, frecuenciaHz: 12 });
+    this.resorteCamaraY = new ResorteVisual({ zeta: .3, frecuenciaHz: 12 });
+    this.resortesOleaje = Array.from({ length: 2 }, () => new ResorteVisual({ zeta: .2, frecuenciaHz: 2 }));
+    this.historialActuadores = { v1: [], v2: [] };
+    this.oleajeArmado = { v1: true, v2: true };
+    this.oleajeActual = [0, 0];
+    this.dentroBandaAnterior = false;
+    this.brilloBandaHasta = 0;
+    this.destelloHasta = 0;
+    this.flashTanque = 0;
+    this.avisoErrorEfectos = false;
     this.ultimoVista = 0;
     this.tiempoAnteriorRegistro = 0;
     this.noManosDesde = null;
@@ -113,6 +135,8 @@ export class Simulacion extends EscenaBase {
     const h1 = this.nivel.estadoInicial[0];
     this.actuador1 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: this.parametrosEnUso.coeficienteDescarga1 * Math.sqrt(h1) / PARAMETROS_TANQUES.caudalEntradaMaximo });
     this.actuador2 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: 1 });
+    this.audioUltimoMando = { v1: this.actuador1.salida(), v2: this.actuador2.salida() };
+    this.audioUltimoTope = { v1: this.actuador1.salida() <= .001 ? 0 : this.actuador1.salida() >= .999 ? 1 : null, v2: 1 };
     this.sistema = crearSistemaTanques(this.nivel);
     Object.assign(this.sistema.p, this.parametrosEnUso);
     const encabezados = ['t', 'u_crudo', 'u', 'x1', 'x2', 'y', 'v2', 'q_d', 'h_sp'];
@@ -124,6 +148,10 @@ export class Simulacion extends EscenaBase {
     const L = LAYOUT.simulacion;
     this.panel(L.barraSuperior, { radio: 0, profundidad: -850 });
     this.add.text(L.titulo.x, L.titulo.y, this.nivel.nombre, fuenteTitulo(27)).setDepth(5);
+    this.promptAudio = this.add.text(L.audioPrompt.x, L.audioPrompt.y, 'Toca o haz un gesto para activar el sonido', fuenteInterfaz(10, '#F2E6C9')).setDepth(5);
+    this.audio?.instalarDesbloqueo(this, this.promptAudio);
+    this.promptAudio?.setVisible(!this.audio?.desbloqueado);
+    this.audio?.setMusic('musica_operacion');
     this.parametrosEstado = this.add.text(L.parametrosEstado.x, L.parametrosEstado.y, '', fuenteInterfaz(12, '#E6E8EA')).setDepth(5);
     this.actualizarEtiquetaParametros();
     this.panel(L.hmi, { profundidad: -5 });
@@ -140,11 +168,17 @@ export class Simulacion extends EscenaBase {
     this.renderCanalSalida = this.add.graphics().setDepth(.35);
     this.renderTuberiasExtra = this.add.graphics().setDepth(0);
     this.renderTuberiaCascada = this.add.graphics().setDepth(.15);
+    this.renderIntercambioFijo = this.add.graphics().setDepth(.2);
+    this.renderIntercambioFlujo = this.add.graphics().setDepth(.25);
+    this.renderIntercambioAviso = this.add.graphics().setDepth(.3);
+    this.renderLlaveChorro = this.add.graphics().setDepth(3.2);
     this.renderEntradaFixtures = this.add.graphics().setDepth(-.4);
     this.renderVisorLiquido = this.add.graphics().setDepth(1.5);
     this.renderVisorOverlay = this.add.graphics().setDepth(2);
     this.renderEquilibrio = this.add.graphics().setDepth(2.5);
     this.renderChorro = this.add.graphics().setDepth(4);
+    this.renderDestello = this.add.graphics().setDepth(4.6);
+    this.renderBrilloBanda = this.add.graphics().setDepth(4.7);
     this.conSprites = this.textures.exists('alambique');
     this.spritesTanques = [];
     this.spritesValvulas = [];
@@ -321,10 +355,6 @@ export class Simulacion extends EscenaBase {
       const tuboUnion = L.cascada.unionVidrio;
       this.renderVisorOverlay.lineStyle(1, 0xb85a24, .8).lineBetween(q.x + q.ancho, q.y + q.alto / 2, this.cajaCascada.x + this.cajaCascada.w * tuboUnion.x, q.y + q.alto / 2);
       this.add.text(q.x + 5, q.y + 4, 'q12 = c1·√h1\n(llave abierta)', fuenteInterfaz(10, '#E6E8EA', { fontStyle: 'bold', lineSpacing: 1 })).setDepth(5);
-    } else if (this.nivel.id === 2) {
-      const q = L.salidaConsumo.etiqueta;
-      this.panel(q, { profundidad: 1, radio: 5 });
-      this.add.text(q.x + 5, q.y + 4, 'consumo qd →\ncaldero', fuenteInterfaz(9, '#E6E8EA', { fontStyle: 'bold', lineSpacing: 1 })).setDepth(5);
     }
     if (this.nivel.tanques === 2 && !this.esCascada) {
       this.ayudaCascada = null;
@@ -374,6 +404,7 @@ export class Simulacion extends EscenaBase {
       limpiar(() => document.removeEventListener('keydown', this.documentKeyDown, true));
       limpiar(() => document.removeEventListener('keyup', this.documentKeyUp, true));
       limpiar(() => this.panelDepuracion.destruir());
+      limpiar(() => this.audio?.detenerSonificacion());
       limpiar(() => mostrarVistaCamaraDepuracion(false));
       limpiar(() => { contextoJuego.vistaDepuracionActiva = false; });
       limpiar(() => this.graf?.destruir());
@@ -388,6 +419,16 @@ export class Simulacion extends EscenaBase {
       limpiar(() => this.renderBridaSalida.destroy());
       limpiar(() => this.renderCanalSalida.destroy());
       limpiar(() => this.renderTuberiaCascada.destroy());
+      limpiar(() => this.renderDestello.destroy());
+      limpiar(() => this.renderBrilloBanda.destroy());
+      limpiar(() => this.renderDesbordeFallback?.destroy());
+      this.emisoresEfectos?.forEach((emisor) => limpiar(() => emisor?.destroy()));
+      limpiar(() => this.spriteDesborde?.destroy());
+      limpiar(() => this.cameras.main.setScroll(this.scrollBase?.x ?? 0, this.scrollBase?.y ?? 0));
+      limpiar(() => this.renderIntercambioFijo.destroy());
+      limpiar(() => this.renderIntercambioFlujo.destroy());
+      limpiar(() => this.renderIntercambioAviso.destroy());
+      limpiar(() => this.renderLlaveChorro.destroy());
       limpiar(() => this.renderOverlay.destroy());
       limpiar(() => this.renderEquilibrio.destroy());
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
@@ -425,6 +466,310 @@ export class Simulacion extends EscenaBase {
     if (!this.esCascada) dibujarTanquesFijos(this.renderFijo, this.renderMarcasFijas, this.renderTuberias, this.nivel.tanques, { conSprites: this.conSprites, conSpritesValvula: this.conSpritesValvula });
     if (!this.esCascada && this.calderoCaja) this.dibujarSalidaFija();
     if (this.esCascada && this.calderoCaja) this.dibujarSalidaCascadaFija();
+    // Las perturbaciones se anclan después de crear mesa, equipo, tuberías y caldero.
+    try { this.crearVisualPerturbacion(); }
+    catch (error) { console.warn('[AVISO JUEGO] No se pudo dibujar la perturbación; la simulación continúa.', error); }
+    this.crearRetroalimentacion();
+  }
+
+  crearVisualPerturbacion() {
+    const programacion = this.nivel?.perturbacion;
+    if (!programacion) return;
+    if (!this.calderoCaja || !this.anclajeBocaCaldero) {
+      console.warn('[AVISO JUEGO] Perturbación omitida: falta la geometría del caldero.');
+      return;
+    }
+    const L = LAYOUT.simulacion;
+    if (this.nivel.id === 2) {
+      const metadata = this.cache.json.get('llave-consumo-puntos');
+      const key = 'llave-consumo-cerrada';
+      const texturasLlave = ['cerrada', 'aviso', 'abierta'].every((estado) => this.textures.exists(`llave-consumo-${estado}`));
+      if (!metadata?.puntos?.union || !metadata?.puntos?.boca || !texturasLlave) {
+        console.warn('[AVISO JUEGO] Perturbación del nivel 2 omitida: falta el sprite o sus puntos de anclaje.');
+        return;
+      }
+      const tank = this.spritesTanques[0] || (() => { const p = posicionSpriteTanque(0, 1); return { x: p.x, y: p.y, displayWidth: p.ancho, displayHeight: p.alto }; })();
+      const cfg = L.perturbaciones.llaveConsumo;
+      const ancho = cfg.alto * metadata.frameWidth / metadata.frameHeight;
+      // El borde del cuerpo a la altura de la unión se midió en el contorno alfa del sprite (fila 150/300: x=23/215).
+      const unionX = tank.x - tank.displayWidth / 2 + cfg.bordeIzquierdoRel * tank.displayWidth + cfg.insetUnion;
+      const unionY = tank.y - tank.displayHeight / 2 + tank.displayHeight * cfg.alturaUnionRel;
+      this.llaveConsumo = this.add.sprite(unionX - (metadata.puntos.union[0] - .5) * ancho, unionY - (metadata.puntos.union[1] - .5) * cfg.alto, key, 0)
+        .setDisplaySize(ancho, cfg.alto).setDepth(-.6);
+      this.puntoBocaLlave = {
+        x: this.llaveConsumo.x + (metadata.puntos.boca[0] - .5) * ancho,
+        y: this.llaveConsumo.y + (metadata.puntos.boca[1] - .5) * cfg.alto,
+      };
+      const etiqueta = L.perturbaciones.llaveEtiqueta;
+      this.etiquetaLlave = this.add.text(tank.x - tank.displayWidth / 2 - etiqueta.ancho - 8, this.llaveConsumo.y + cfg.alto / 2 + etiqueta.margenY, '', fuenteInterfaz(9, '#E6E8EA', { fontStyle: 'bold', backgroundColor: 'rgba(28,32,38,.92)', padding: { x: 3, y: 2 }, wordWrap: { width: etiqueta.ancho } })).setDepth(6);
+      this.salpiqueLlave = { x: this.puntoBocaLlave.x, y: this.anclajesMesa?.apoyoTanque.y ?? L.mesa.patasY };
+      return;
+    }
+    if (this.nivel.id === 3 && this.cajaCascada) {
+      const cuerpo = L.cascada.cuerpoTanques;
+      const caja = this.cajaCascada;
+      const xInicio = caja.x + cuerpo.x1 * caja.w;
+      const intercambio = L.perturbaciones.intercambio;
+      const ruedaV2Y = caja.y + L.cascada.ruedas.v2.y * caja.h;
+      const yInicio = ruedaV2Y + intercambio.separacionSalidaV2;
+      const xEntradaBoca = this.calderoCaja.x + this.calderoCaja.w * intercambio.bocaXRel;
+      const yFin = this.calderoCaja.y + intercambio.entradaBocaY;
+      if (!(xEntradaBoca > xInicio) || !(yFin > yInicio)) {
+        console.warn('[AVISO JUEGO] Intercambio visual omitido: no hay espacio entre el alambique 2 y el caldero.');
+        return;
+      }
+      this.recorridoIntercambio = [{ x: xInicio, y: yInicio }, { x: xEntradaBoca, y: yInicio }, { x: xEntradaBoca, y: yFin }];
+      dibujarTuberia(this.renderIntercambioFijo, this.recorridoIntercambio, L.tuberia.ancho);
+      const etiqueta = intercambio.etiqueta;
+      this.etiquetaIntercambio = this.add.text(etiqueta.x, etiqueta.y, '', fuenteInterfaz(9, '#E6E8EA', { fontStyle: 'bold', backgroundColor: 'rgba(28,32,38,.92)', padding: { x: 3, y: 2 }, wordWrap: { width: etiqueta.ancho } })).setDepth(6);
+    }
+  }
+
+  actualizarVisualPerturbacion() {
+    const p = this.nivel.perturbacion;
+    if (!p) return;
+    const tiempo = this.tiempoJuego;
+    const fase = faseVisualPerturbacion(this.nivel, tiempo);
+    if (this.nivel.id === 2 && this.llaveConsumo) {
+      const texturas = { cerrada: 'llave-consumo-cerrada', aviso: 'llave-consumo-aviso', abierta: 'llave-consumo-abierta' };
+      if (fase !== this.faseLlave) {
+        this.faseLlave = fase;
+        const textura = texturas[fase];
+        this.llaveConsumo.stop();
+        if (fase === 'aviso' && this.anims.exists('llave-consumo-aviso')) this.llaveConsumo.play('llave-consumo-aviso');
+        else this.llaveConsumo.setTexture(textura, 0);
+      }
+      const qd = obtenerPerturbacion(this.nivel, tiempo);
+      this.etiquetaLlave?.setText(`consumo q_d = ${qd.toFixed(2).replace('.', ',')} m³/s`);
+      const cfg = LAYOUT.simulacion.perturbaciones.llaveConsumo;
+      this.renderLlaveChorro.clear();
+      if (qd > 0) {
+        const ancho = Math.max(2, cfg.chorroMaximo * Math.min(1, qd / p.valor));
+        const fin = this.salpiqueLlave;
+        this.renderLlaveChorro.lineStyle(ancho + 2, 0x168e4d, .45).lineBetween(this.puntoBocaLlave.x, this.puntoBocaLlave.y, fin.x, fin.y);
+        this.renderLlaveChorro.lineStyle(ancho, 0x2ecc71, .9).lineBetween(this.puntoBocaLlave.x, this.puntoBocaLlave.y, fin.x, fin.y);
+        const r = 2 + 3 * Math.min(1, qd / p.valor);
+        this.renderLlaveChorro.fillStyle(0x00e676, .9).fillCircle(fin.x, fin.y, r).fillCircle(fin.x - r, fin.y - 1, r * .65).fillCircle(fin.x + r, fin.y - 2, r * .55);
+      }
+      return;
+    }
+    if (this.nivel.id === 3 && this.recorridoIntercambio) {
+      const qd = obtenerPerturbacion(this.nivel, tiempo), cfg = LAYOUT.simulacion.perturbaciones.intercambio;
+      const amplitud = Math.min(1, Math.abs(qd) / p.amplitud);
+      this.renderIntercambioFlujo.clear();
+      if (amplitud > 0) {
+        const puntos = this.recorridoIntercambio;
+        const anchoFlujo = Math.max(1.5, cfg.anchoTubo * .48 * amplitud);
+        this.renderIntercambioFlujo.lineStyle(anchoFlujo, 0x2ecc71, .92);
+        for (let i = 1; i < puntos.length; i++) this.renderIntercambioFlujo.lineBetween(puntos[i - 1].x, puntos[i - 1].y, puntos[i].x, puntos[i].y);
+        const tramos = puntos.slice(1).map((b, i) => ({ a: puntos[i], b, largo: Math.hypot(b.x - puntos[i].x, b.y - puntos[i].y) }));
+        const largoTotal = tramos.reduce((suma, tramo) => suma + tramo.largo, 0);
+        const puntoEnRecorrido = (distancia) => {
+          let d = ((distancia % largoTotal) + largoTotal) % largoTotal;
+          if (qd < 0) d = largoTotal - d;
+          for (const tramo of tramos) {
+            if (d <= tramo.largo) {
+              const f = d / tramo.largo;
+              return { x: tramo.a.x + (tramo.b.x - tramo.a.x) * f, y: tramo.a.y + (tramo.b.y - tramo.a.y) * f };
+            }
+            d -= tramo.largo;
+          }
+          return puntos[0];
+        };
+        const paso = (tiempo * cfg.velocidad * 30) % largoTotal;
+        for (const separacion of [0, largoTotal * .48, largoTotal * .82]) {
+          const pulso = puntoEnRecorrido(paso + separacion);
+          this.renderIntercambioFlujo.fillStyle(0x00e676, .98).fillCircle(pulso.x, pulso.y, 1 + .6 * amplitud);
+        }
+        const sentido = qd >= 0 ? 1 : -1;
+        const dibujarFlecha = (x, y, horizontal) => {
+          const tam = 4, medioAncho = 1.45;
+          const vertices = horizontal
+            ? (sentido > 0 ? [[x + tam, y], [x - tam, y - medioAncho], [x - tam, y + medioAncho]] : [[x - tam, y], [x + tam, y - medioAncho], [x + tam, y + medioAncho]])
+            : (sentido > 0 ? [[x, y + tam], [x - medioAncho, y - tam], [x + medioAncho, y - tam]] : [[x, y - tam], [x - medioAncho, y + tam], [x + medioAncho, y + tam]]);
+          this.renderIntercambioFlujo.fillStyle(0x00e676, 1).fillTriangle(...vertices.flat());
+        };
+        dibujarFlecha((puntos[0].x + puntos[1].x) / 2, puntos[0].y, true);
+        dibujarFlecha(puntos[2].x, (puntos[1].y + puntos[2].y) / 2, false);
+      }
+      this.renderIntercambioAviso.clear();
+      if (fase === 'aviso' && Math.floor(performance.now() / 250) % 2 === 0) {
+        this.renderIntercambioAviso.lineStyle(cfg.anchoTubo + 3, 0xffb52e, .8);
+        for (let i = 1; i < this.recorridoIntercambio.length; i++) this.renderIntercambioAviso.lineBetween(this.recorridoIntercambio[i - 1].x, this.recorridoIntercambio[i - 1].y, this.recorridoIntercambio[i].x, this.recorridoIntercambio[i].y);
+      }
+      this.etiquetaIntercambio?.setText(`intercambio q_d = ${qd >= 0 ? '+' : ''}${qd.toFixed(3).replace('.', ',')} m³/s`);
+    }
+  }
+
+  crearRetroalimentacion() {
+    try {
+      if (!this.textures.exists('fx-particula-grafica')) {
+        const circulo = this.make.graphics({ x: 0, y: 0, add: false });
+        circulo.fillStyle(0xffffff, 1).fillCircle(8, 8, 7).generateTexture('fx-particula-grafica', 16, 16);
+        circulo.destroy();
+      }
+      const reducido = this.reducirEfectos;
+      const crearEmisor = (nombre, maxNormal, opciones) => {
+        const clave = `efecto-${nombre}`;
+        const textura = this.textures.exists(clave) ? clave : 'fx-particula-grafica';
+        if (textura === 'fx-particula-grafica') console.warn(`[AVISO JUEGO] Falta ${clave}; partículas dibujadas con Graphics.`);
+        const emisor = this.add.particles(0, 0, textura, { frame: 0, emitting: false, frequency: -1, maxParticles: reducido ? Math.floor(maxNormal / 2) : maxNormal, blendMode: Phaser.BlendModes.ADD, ...opciones });
+        emisor.setDepth(5.8);
+        this.emisoresEfectos.push(emisor);
+        return emisor;
+      };
+      this.emisoresEfectos = [];
+      this.emisorSalpicadura = crearEmisor('salpicadura', 30, { lifespan: 420, speed: { min: 35, max: 130 }, angle: { min: 215, max: 325 }, gravityY: 260, scale: { start: .55, end: .08 }, alpha: { start: .95, end: 0 }, tint: [0x00e676, 0x2ecc71, 0xb5ffd0] });
+      this.emisorVapor = crearEmisor('vapor', 20, { lifespan: 900, speed: { min: 12, max: 42 }, angle: { min: 245, max: 295 }, scale: { start: .35, end: .8 }, alpha: { start: .32, end: 0 }, tint: 0xd7f1e4 });
+      this.emisorChispa = crearEmisor('chispa', 10, { lifespan: 300, speed: { min: 40, max: 150 }, angle: { min: 200, max: 340 }, gravityY: 90, scale: { start: .65, end: 0 }, alpha: { start: 1, end: 0 }, tint: [0xffd700, 0xfff0a0] });
+      this.scrollBase = { x: this.cameras.main.scrollX, y: this.cameras.main.scrollY };
+      this.ultimoSplashCaldero = 0;
+      this.ultimoSplashLlave = 0;
+      this.ultimoVapor = 0;
+      this.renderDesbordeFallback = this.add.graphics().setDepth(3.9);
+    } catch (error) {
+      console.warn('[AVISO JUEGO] No se pudieron crear algunos efectos; la partida continúa.', error);
+      this.emisoresEfectos ||= [];
+    }
+  }
+
+  emitirParticulas(emisor, x, y, cantidad = 1) {
+    if (!emisor || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    try { emisor.emitParticleAt(x, y, cantidad); }
+    catch (error) {
+      if (!this.avisoErrorEfectos) { this.avisoErrorEfectos = true; console.warn('[AVISO JUEGO] Falló una emisión de partículas; se omite ese efecto.', error); }
+    }
+  }
+
+  reproducirEfectoSonoro(clave, importante = false, indicador = '') {
+    try {
+      this.audio?.sonar(clave.replaceAll('-', '_'), 'efectos', { importante });
+      if (indicador) this.audio?.indicador(indicador, contextoJuego.indicadoresSonido !== false);
+    } catch (error) {
+      if (!this.avisoAudioEfectos) { this.avisoAudioEfectos = true; console.warn('[AVISO JUEGO] No se pudo reproducir un efecto sonoro.', error); }
+    }
+  }
+
+  activarVibracionGamepad() {
+    try {
+      const pads = navigator.getGamepads?.() || [];
+      for (const pad of pads) {
+        const actuador = pad?.vibrationActuator || pad?.hapticActuators?.[0];
+        if (actuador?.playEffect) {
+          const promesa = actuador.playEffect('dual-rumble', { duration: 150, strongMagnitude: .55, weakMagnitude: .35 });
+          promesa?.catch?.(() => {});
+        }
+      }
+    } catch (error) { console.warn('[AVISO JUEGO] No se pudo vibrar el gamepad.', error); }
+  }
+
+  activarImpacto(tanque = 0) {
+    this.flashTanque = tanque;
+    if (!this.reducirEfectos) {
+      this.destelloHasta = performance.now() + 120;
+      this.resorteCamaraX.impulsar(2.2);
+      this.resorteCamaraY.impulsar(-1.7);
+    }
+    this.activarVibracionGamepad();
+  }
+
+  mostrarAnimacionDesborde(hs) {
+    const tanque = hs.findIndex((h) => h >= 3);
+    let x, y;
+    if (this.esCascada) {
+      const v = this.visoresCascada[tanque === 0 ? 'superior' : 'inferior'];
+      x = v.x + v.w / 2;
+      y = v.y - 12;
+    } else {
+      const sprite = this.spritesTanques[tanque] || this.spritesTanques[0];
+      if (sprite) { x = sprite.x; y = sprite.y - sprite.displayHeight / 2 + 26; }
+      else { const p = posicionSpriteTanque(tanque, this.nivel.tanques); x = p.x; y = p.y - p.alto / 2 + 26; }
+    }
+    if (this.textures.exists('efecto-desborde') && this.anims.exists('efecto-desborde')) {
+      this.spriteDesborde = this.add.sprite(x, y, 'efecto-desborde', 0).setDisplaySize(112, 112).setDepth(3.9).play('efecto-desborde');
+      this.spriteDesborde.once('animationcomplete', () => this.spriteDesborde?.destroy());
+    } else {
+      if (this.renderDesbordeFallback) {
+        this.renderDesbordeFallback.clear().fillStyle(0x2ecc71, .88).fillEllipse(x, y + 10, 100, 40).fillCircle(x - 24, y - 7, 13).fillCircle(x + 18, y - 18, 10);
+        this.time.delayedCall(240, () => this.renderDesbordeFallback?.clear());
+      }
+    }
+    const base = this.esCascada ? (this.cajaCascada.y + this.cajaCascada.h * LAYOUT.simulacion.cascada.baseTanque2Y) : LAYOUT.simulacion.mesa.patasY - LAYOUT.simulacion.mesa.alto * .72;
+    const centro = this.esCascada ? this.cajaCascada.x + this.cajaCascada.w / 2 : (this.spritesTanques[tanque]?.x ?? 330);
+    for (const dx of [-36, -14, 14, 36]) this.emitirParticulas(this.emisorSalpicadura, centro + dx, base, this.reducirEfectos ? 2 : 4);
+  }
+
+  iniciarEfectoDesborde(hs) {
+    if (this.desbordePendiente) return;
+    this.desbordePendiente = true;
+    const tanque = Math.max(0, hs.findIndex((h) => h >= 3));
+    this.activarImpacto(tanque);
+    this.mostrarAnimacionDesborde(hs);
+    this.reproducirEfectoSonoro('sfx-modelo-desborde', true, 'DESBORDE');
+    this.time.delayedCall(180, () => { if (this.sys.isActive() && !this.terminado) this.terminar(true); });
+  }
+
+  actualizarOleaje(dt) {
+    const actual = { v1: this.actuador1.salida(), v2: this.actuador2.salida() };
+    for (const [indice, clave] of ['v1', 'v2'].entries()) {
+      const muestras = this.historialActuadores[clave], t = this.tiempoJuego, v = actual[clave];
+      muestras.push({ t, v });
+      while (muestras.length > 2 && muestras[1].t < t - .5) muestras.shift();
+      const diferencia = muestras.length > 1 && muestras[0].t <= t - .45 ? v - muestras[0].v : 0;
+      if (Math.abs(diferencia) > .1 && this.oleajeArmado[clave]) {
+        this.resortesOleaje[indice].impulsar(Math.sign(diferencia) * Math.min(1.2, Math.abs(diferencia) * 10));
+        this.oleajeArmado[clave] = false;
+      } else if (Math.abs(diferencia) < .06) this.oleajeArmado[clave] = true;
+      this.oleajeActual[indice] = Math.max(-6, Math.min(6, this.resortesOleaje[indice].actualizar(dt) * 28));
+    }
+  }
+
+  actualizarParticulas() {
+    const ahora = performance.now();
+    const p = this.sistema.p;
+    const qSalida = this.esCascada
+      ? p.coeficienteDescarga2 * this.actuador2.salida() * Math.sqrt(Math.max(0, this.sistema.x[1] ?? 0))
+      : p.coeficienteDescarga1 * Math.sqrt(Math.max(0, this.sistema.x[0] ?? 0));
+    if (qSalida > 0 && this.superficiePocionCaldero && ahora - this.ultimoSplashCaldero > 150) {
+      const maximo = (this.esCascada ? p.coeficienteDescarga2 : p.coeficienteDescarga1) * Math.sqrt(3);
+      this.emitirParticulas(this.emisorSalpicadura, this.superficiePocionCaldero.x, this.superficiePocionCaldero.y, 1 + Math.round(3 * qSalida / maximo));
+      this.ultimoSplashCaldero = ahora;
+    }
+    const qd = obtenerPerturbacion(this.nivel, this.tiempoJuego);
+    if (this.nivel.id === 2 && qd > 0 && this.salpiqueLlave && ahora - this.ultimoSplashLlave > 160) {
+      this.emitirParticulas(this.emisorSalpicadura, this.salpiqueLlave.x, this.salpiqueLlave.y, 1 + Math.round(2 * qd / this.nivel.perturbacion.valor));
+      this.ultimoSplashLlave = ahora;
+    }
+    if (this.actuador1.salida() > .5 && ahora - this.ultimoVapor > 180) {
+      const punto = this.esCascada
+        ? { x: this.cajaCascada.x + this.cajaCascada.w * .5, y: this.cajaCascada.y + this.cajaCascada.h * .10 }
+        : { x: this.spritesTanques[0]?.x ?? 330, y: (this.spritesTanques[0]?.y ?? 369) - (this.spritesTanques[0]?.displayHeight ?? 300) / 2 + 8 };
+      this.emitirParticulas(this.emisorVapor, punto.x, punto.y, 1);
+      this.ultimoVapor = ahora;
+    }
+  }
+
+  actualizarEfectosDePantalla(dt) {
+    const sx = this.resorteCamaraX.actualizar(dt), sy = this.resorteCamaraY.actualizar(dt);
+    const camara = this.cameras.main;
+    if (this.reducirEfectos) camara.setScroll(this.scrollBase?.x ?? 0, this.scrollBase?.y ?? 0);
+    else camara.setScroll((this.scrollBase?.x ?? 0) + sx * 65, (this.scrollBase?.y ?? 0) + sy * 65);
+    const ahora = performance.now();
+    this.renderDestello.clear();
+    if (!this.reducirEfectos && ahora < this.destelloHasta) {
+      const sprite = this.esCascada ? this.spriteCascada : this.spritesTanques[this.flashTanque];
+      if (sprite) this.renderDestello.fillStyle(0xff1744, .24 * (this.destelloHasta - ahora) / 120).fillEllipse(sprite.x, sprite.y, sprite.displayWidth * 1.08, sprite.displayHeight * .75);
+    }
+    this.renderBrilloBanda.clear();
+    if (ahora < this.brilloBandaHasta) {
+      const restante = (this.brilloBandaHasta - ahora) / 500, l = LAYOUT.simulacion;
+      const visor = this.esCascada ? this.visoresCascada[this.nivel.tanques === 2 ? 'inferior' : 'superior'] : obtenerVisorTanque(0, 1, this.conSprites);
+      if (visor) {
+        const y = visor.y ?? visor.top, h = visor.h ?? visor.bottom - visor.top;
+        this.renderBrilloBanda.lineStyle(3, 0x00e676, .65 * restante).strokeRoundedRect(visor.x - 3, y - 3, visor.w + 6, h + 6, 4);
+      }
+      this.renderBrilloBanda.lineStyle(2, 0x00e676, .55 * restante).strokeRoundedRect(l.hmi.x + 3, l.estado.y - 3, l.estado.ancho - 6, l.estado.alto + 6, 8);
+    }
   }
 
   dibujarFijacionesEntrada() {
@@ -513,12 +858,14 @@ export class Simulacion extends EscenaBase {
     const dt = Math.max(0, (ahoraReal - this.ultimoUpdateReal) / 1000);
     this.ultimoUpdateReal = ahoraReal;
     const c = this.gestor.actualizar(dt) ?? {}, camara = contextoJuego.camara;
+    this.audio?.actualizarDesbloqueo();
+    if (c?.der?.presente || c?.izq?.presente) this.audio?.desbloquear();
     if (camara?.activo && this.gestor.fuente === 'camara') {
       const hayManos = Boolean(c?.der?.presente || c?.izq?.presente);
       if (hayManos) { this.noManosDesde = null; if (this.pausaPorManos) { this.pausado = false; this.pausaPorManos = false; } }
       else { this.noManosDesde ??= performance.now(); if (performance.now() - this.noManosDesde > 3000) { this.pausado = true; this.pausaPorManos = true; } }
     }
-    if (!this.pausado) {
+    if (!this.pausado && !this.desbordePendiente) {
       const conservaAusente = this.gestor.fuente === 'camara';
       const mando1 = leerSenalSiPresente(c, MAPA_CONTROL.v1, null, this.actuador1.salida(), conservaAusente);
       const crudo = leerSenalSiPresente(c, MAPA_CONTROL.v1, 'u_crudo', mando1, conservaAusente);
@@ -551,15 +898,32 @@ export class Simulacion extends EscenaBase {
       if (this.registro.reloj + 1e-9 >= this.registro.periodo) { this.registro.reloj %= this.registro.periodo; this.registro.filas.push([muestra.t, muestra.u_crudo, muestra.u, hs[0], hs[1] ?? '', y, v2, qd, muestra.h_sp]); }
       if (this.tiempoJuego - (this.ultimoVista || 0) >= 1 / 30) { this.muestrasVista.push(muestra); this.ultimoVista = this.tiempoJuego; }
       this.registrarAlarmas(hs);
+      this.actualizarEventosAudio(hs, qd, referenciaActual);
       const desborde = hs.some((h) => h >= PARAMETROS_TANQUES.alturaMaxima);
-      if (desborde) { this.terminar(true); return; }
+      if (desborde) { this.iniciarEfectoDesborde(hs); return; }
       if (this.tiempoJuego >= this.nivel.duracion) { this.terminar(false); return; }
       if (!this.modoVerificacionEscalon && this.nivel.criterio.tipo === 'consecutivo' && this.tiempoEnBandaSeguido >= this.nivel.criterio.segundos) { this.terminar(false); return; }
     }
+    this.actualizarOleaje(dt);
     this.actualizarBarrasEnVivo();
     this.actualizarElementosVivos();
     this.actualizarAyudaPellizco(c);
     this.actualizarFlujoSalida();
+    this.actualizarParticulas();
+    this.actualizarEfectosDePantalla(dt);
+    const nivelSonoro = this.nivel.tanques === 2 ? (this.sistema.x[1] ?? 0) : (this.sistema.x[0] ?? 0);
+    this.audio?.actualizarSonificacion(nivelSonoro, .4 * this.actuador1.salida(), this.pausado || this.terminado || this.desbordePendiente);
+    try { this.actualizarVisualPerturbacion(); }
+    catch (error) {
+      if (!this.avisoErrorPerturbacion) {
+        this.avisoErrorPerturbacion = true;
+        console.warn('[AVISO JUEGO] Se desactivó el dibujo de la perturbación; el simulador continúa.', error);
+      }
+      this.llaveConsumo?.setVisible(false);
+      this.renderLlaveChorro?.clear();
+      this.renderIntercambioFlujo?.clear();
+      this.renderIntercambioAviso?.clear();
+    }
     if (this.debug !== this.debugVisibleAnterior) {
       contextoJuego.vistaDepuracionActiva = this.debug;
       mostrarVistaCamaraDepuracion(this.debug);
@@ -592,8 +956,16 @@ export class Simulacion extends EscenaBase {
     const variableControlada = this.nivel.tanques === 2 ? hs[1] : hs[0];
     const referencia = obtenerReferencia(this.nivel, this.tiempoJuego), banda = obtenerTolerancia(this.nivel, this.tiempoJuego);
     const dentroBanda = Math.abs(variableControlada - referencia) <= banda;
+    if (dentroBanda && !this.dentroBandaAnterior) {
+      this.brilloBandaHasta = performance.now() + 500;
+      this.reproducirEfectoSonoro('sfx-modelo-en-banda');
+      this.audio?.indicador('EN BANDA', contextoJuego.indicadoresSonido !== false);
+    } else if (!dentroBanda && this.dentroBandaAnterior) {
+      this.reproducirEfectoSonoro('sfx-modelo-fuera-banda');
+    }
+    this.dentroBandaAnterior = dentroBanda;
     if (this.esCascada) {
-      dibujarLiquidosCascada(this.renderVisorLiquido, this.visoresCascada, hs, referencia, banda, dentroBanda);
+      dibujarLiquidosCascada(this.renderVisorLiquido, this.visoresCascada, hs, referencia, banda, dentroBanda, this.oleajeActual);
       this.renderTuberiasExtra.clear();
       const q12 = this.sistema.p.coeficienteDescarga1 * Math.sqrt(Math.max(0, hs[0] ?? 0));
       if (q12 > 0) {
@@ -602,7 +974,7 @@ export class Simulacion extends EscenaBase {
         this.renderTuberiasExtra.fillStyle(0x00e676, alpha).fillRect(this.cajaCascada.x + v.x * this.cajaCascada.w + m, this.cajaCascada.y + v.y * this.cajaCascada.h + m, v.ancho * this.cajaCascada.w - m * 2, v.alto * this.cajaCascada.h - m * 2);
       }
     } else dibujarNivelesTanques(this.render, this.renderOverlay, hs, this.nivel.tanques, {
-      tanqueControlado: this.nivel.tanques === 2 ? 1 : 0, referencia, tolerancia: banda, dentroBanda, conSprites: this.conSprites,
+      tanqueControlado: this.nivel.tanques === 2 ? 1 : 0, referencia, tolerancia: banda, dentroBanda, conSprites: this.conSprites, oleaje: this.oleajeActual,
     });
     const alturaEtiqueta = this.nivel.tanques === 2 ? 'h2' : 'h1';
     this.refTexto.setText(this.nivel.tanques === 2
@@ -697,8 +1069,9 @@ export class Simulacion extends EscenaBase {
       : `${this.gestor.fuente} · P parámetros\nD depuración · F terminar`);
     this.tiempoTexto.setText(`${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`}`);
     const seriesAltura = [{ clave: 'x', indice: 0, nombre: 'h1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'x', indice: 1, nombre: 'h2', color: 0x2ecc71 }] : [])];
-    const opcionesNiveles = { ...L.tendenciaNiveles, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true };
-    const opcionesValvulas = { ...L.tendenciaValvulas, muestras: this.muestrasVista, min: 0, max: 1, unidad: '', titulo: 'Válvulas v1 / v2', tituloEjeY: 'apertura', formatoTickY: (v) => Number(v.toFixed(2)).toString(), ejeTiempo: true, series: [{ clave: 'u', nombre: 'v1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x2ecc71 }] : [])] };
+    const marcadoresTiempo = instantesInicioPerturbacion(this.nivel).filter((t) => t <= this.tiempoJuego);
+    const opcionesNiveles = { ...L.tendenciaNiveles, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true, marcadoresTiempo };
+    const opcionesValvulas = { ...L.tendenciaValvulas, muestras: this.muestrasVista, min: 0, max: 1, unidad: '', titulo: 'Válvulas v1 / v2', tituloEjeY: 'apertura', formatoTickY: (v) => Number(v.toFixed(2)).toString(), ejeTiempo: true, marcadoresTiempo, series: [{ clave: 'u', nombre: 'v1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'v2', nombre: 'v2', color: 0x2ecc71 }] : [])] };
     if (!this.graf) this.graf = dibujarTendencia(this, opcionesNiveles); else this.graf.actualizar(opcionesNiveles);
     if (!this.grafValvulas) this.grafValvulas = dibujarTendencia(this, opcionesValvulas); else this.grafValvulas.actualizar(opcionesValvulas);
   }
@@ -716,8 +1089,63 @@ export class Simulacion extends EscenaBase {
     hs.forEach((h, i) => {
       const estado = h >= 2.8 ? 'HH' : h >= 2.4 ? 'H' : null;
       if (estado && this.ultimaAlarma[i] !== estado) this.alarmas.push({ t: this.tiempoJuego, tanque: i + 1, tipo: estado, altura: h });
+      if (estado === 'HH' && this.ultimaAlarma[i] !== 'HH') {
+        this.activarImpacto(i);
+        const placa = this.runasAlarmas?.[i];
+        if (placa) this.emitirParticulas(this.emisorChispa, placa.x, placa.y, this.reducirEfectos ? 2 : 4);
+      }
       this.ultimaAlarma[i] = estado;
     });
+  }
+
+  actualizarEventosAudio(hs, qd, referencia) {
+    const importante = contextoJuego.indicadoresSonido !== false;
+    for (const [i, h] of hs.entries()) {
+      const previo = this.audioAlarma[i] || { H: false, HH: false };
+      const hh = previo.HH ? h >= 2.7 : h >= 2.8;
+      const alta = previo.H ? h >= 2.3 : h >= 2.4;
+      if (hh && !previo.HH) { this.reproducirEfectoSonoro('sfx-alarma-hh', true, `HH${i + 1}`); }
+      else if (alta && !previo.H) this.reproducirEfectoSonoro('sfx-alarma-h', true, `H${i + 1}`);
+      else if (!alta && previo.H) {
+        this.audio?.sonar('sfx_alarma_h', 'efectos', { importante: true });
+        this.audio?.indicador(`H${i + 1} despejada`, importante);
+      }
+      if (!hh && previo.HH) {
+        this.audio?.sonar('sfx_alarma_hh', 'efectos', { importante: true });
+        this.audio?.indicador(`HH${i + 1} despejada`, importante);
+      }
+      this.audioAlarma[i] = { H: alta, HH: hh };
+    }
+    if (this.audioReferencia === null) this.audioReferencia = referencia;
+    else if (Math.abs(referencia - this.audioReferencia) > 1e-6) {
+      this.reproducirEfectoSonoro('sfx-modelo-cambio-referencia', false, 'REFERENCIA');
+      this.audioReferencia = referencia;
+    }
+    const fase = this.nivel.perturbacion ? faseVisualPerturbacion(this.nivel, this.tiempoJuego) : 'cerrada';
+    if (this.audioFasePerturbacion !== fase) {
+      if (fase === 'aviso') this.reproducirEfectoSonoro('sfx-perturbacion-aviso', false, 'AVISO DE CONSUMO');
+      if (fase === 'abierta') {
+        this.reproducirEfectoSonoro('sfx-perturbacion-inicio', false, 'CONSUMO ACTIVO');
+        this.audio?.setMusic('musica_perturbacion');
+      }
+      if (this.audioFasePerturbacion === 'abierta' && fase !== 'abierta') {
+        this.reproducirEfectoSonoro('sfx-perturbacion-fin');
+        this.audio?.setMusic('musica_operacion');
+      }
+      this.audioFasePerturbacion = fase;
+    }
+    const valores = { v1: this.actuador1.salida(), v2: this.actuador2.salida() };
+    for (const [clave, valor] of Object.entries(valores)) {
+      if (clave === 'v2' && this.nivel.tanques < 2) continue;
+      const anterior = this.audioUltimoMando[clave] ?? valor;
+      if (Math.abs(valor - anterior) > .1) {
+        this.audio?.sonar('sfx_actuador_mover');
+        this.audioUltimoMando[clave] = valor;
+      }
+      const tope = valor <= .001 ? 0 : valor >= .999 ? 1 : null;
+      if (tope !== null && this.audioUltimoTope[clave] !== tope) this.audio?.sonar('sfx_actuador_tope');
+      this.audioUltimoTope[clave] = tope;
+    }
   }
 
   toggleParametros() {
@@ -784,6 +1212,7 @@ export class Simulacion extends EscenaBase {
         }
       : { ...evaluacion, superado: evaluacion.superado && evaluacionCompleta && !desborde };
     const datosFin = { nivel: this.nivel, muestras: this.muestras, registro: this.registro, alarmas: this.alarmas, desborde, resultado, parametros: { ...this.sistema.p }, modoVerificacionEscalon: this.modoVerificacionEscalon, tauTeorico: constanteTiempoTanque(this.nivel.referencia), KTeorica: gananciaTanque(this.nivel.referencia) };
+    this.audio?.detenerSonificacion();
     console.info('terminar: cambio de escena');
     this.scene.start('Fin', datosFin);
     setTimeout(() => {

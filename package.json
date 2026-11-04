@@ -8,9 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "assets": "node scripts/procesar-assets.mjs",
+    "assets:efectos": "node scripts/procesar-efectos.mjs",
+    "audio": "node scripts/procesar-audio.mjs",
     "test": "node --test"
   },
   "devDependencies": {
+    "ffmpeg-static": "^5.3.0",
     "sharp": "^0.35.5",
     "vite": "^8.3.5"
   }

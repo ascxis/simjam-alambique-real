@@ -2,10 +2,13 @@ import { EscenaBase } from './EscenaBase.js';
 import { contextoJuego } from './contexto.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
+import { obtenerGestorAudio } from './audio.js';
 
 export class Calibracion extends EscenaBase {
   constructor() { super('Calibracion'); }
   create() {
+    this.audio = obtenerGestorAudio(this);
+    this.audio?.instalarDesbloqueo(this, null);
     this.crearFondo();
     const C = LAYOUT.calibracion;
     this.panel(C.panel);
@@ -54,6 +57,9 @@ export class Calibracion extends EscenaBase {
   }
 
   update(_, deltaMs) {
+    this.audio?.actualizarDesbloqueo();
+    const controles = contextoJuego.gestor?.camara?.controles;
+    if (controles?.der?.presente || controles?.izq?.presente) this.audio?.desbloquear();
     if (!this.sys.isActive() || !this.tareas || this.indiceTarea >= this.tareas.length) return;
     if (this.fase === 'espera') return;
     this.tiempoFase += Math.max(0, deltaMs) / 1000;

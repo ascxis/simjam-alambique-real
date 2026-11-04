@@ -1,5 +1,6 @@
 import { LAYOUT } from '../hmi/layout.js';
 import { crearBoton, dibujarPanel } from '../hmi/estilo.js';
+import { obtenerGestorAudio } from './audio.js';
 
 export class EscenaBase extends Phaser.Scene {
   constructor(key) { super(key); }
@@ -26,5 +27,18 @@ export class EscenaBase extends Phaser.Scene {
   }
 
   panel(rect, opciones) { return dibujarPanel(this, rect, opciones); }
-  boton(rect, texto, callback, opciones) { return crearBoton(this, rect, texto, callback, opciones); }
+  boton(rect, texto, callback, opciones) {
+    const normalizado = texto.toLowerCase();
+    const clave = normalizado.includes('iniciar') || normalizado.includes('descargar') || normalizado.includes('aplicar')
+      ? 'sfx_interfaz_aceptar'
+      : normalizado.includes('volver') || normalizado.includes('omitir')
+        ? 'sfx_interfaz_cancelar'
+        : 'sfx_interfaz_clic';
+    return crearBoton(this, rect, texto, (...args) => {
+      const audio = obtenerGestorAudio(this);
+      audio?.desbloquear();
+      audio?.sonar(clave, 'interfaz');
+      callback?.(...args);
+    }, opciones);
+  }
 }

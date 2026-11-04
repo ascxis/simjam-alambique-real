@@ -6,6 +6,7 @@ import { contextoJuego } from './contexto.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
 import { descargarCSV } from '../hmi/descargarCSV.js';
+import { obtenerGestorAudio } from './audio.js';
 
 function metricasTanque(muestras, nivel) {
   const dentro = (m) => Math.abs(m.y - m.h_sp) <= m.tolerancia;
@@ -76,6 +77,13 @@ export class Fin extends EscenaBase {
   constructor() { super('Fin'); }
   create(data) {
     const inicio = performance.now();
+    this.audio = obtenerGestorAudio(this);
+    this.audio?.instalarDesbloqueo(this, null);
+    const resultado = data?.resultado || {};
+    const superado = Boolean(resultado.superado && !data?.desborde);
+    this.audio?.setMusic(superado ? 'musica_superado' : 'musica_fallido');
+    this.audio?.sonar(superado ? 'sfx_resultado_superado' : 'sfx_resultado_fallido', 'efectos', { importante: true });
+    this.audio?.indicador(superado ? 'NIVEL SUPERADO' : data?.desborde ? 'DESBORDE' : 'NIVEL FALLIDO', contextoJuego.indicadoresSonido !== false);
     console.info('[DIAG] Fin.create inicio', '0.0 ms');
     this.events.once('render', () => console.info('[DIAG] Fin primer render'));
     try {
@@ -95,6 +103,8 @@ export class Fin extends EscenaBase {
     }
     this.events.once('shutdown', () => { try { contextoJuego.camara?.pausarDeteccion(); } catch (error) { console.error('[ERROR JUEGO] Fin.create', error); } });
   }
+
+  update() { this.audio?.actualizarDesbloqueo(); }
 
   renderFin(data) {
     this.crearFondo();
