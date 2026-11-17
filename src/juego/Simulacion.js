@@ -1,6 +1,6 @@
 import { instruccionesNivel, estadoPerturbacion } from './niveles/instrucciones.js';
 import { giroVolante } from '../hmi/representacion.js';
-import { MATRIZ_LABORATORIO, ORIGEN_BALDOSAS, TAM_BALDOSA, DECORACIONES_NIVEL, AMBIENTE_NIVEL, POLVO_MAXIMO, PROFUNDIDAD, validarMatriz } from './niveles/escenario.js';
+import { MATRIZ_LABORATORIO, ORIGEN_BALDOSAS, TAM_BALDOSA, DECORACIONES_NIVEL, AMBIENTE_NIVEL, POLVO_MAXIMO, PROFUNDIDAD, CAPAS_FONDO, CERCANA_NIVEL, apagarCapa, validarMatriz } from './niveles/escenario.js';
 import { limitarFps, debeReducir, FPS_OBJETIVO, FPS_REDUCIDO } from './rendimiento.js';
 import { Equipo } from './entidades/Equipo.js';
 import { claveEquipo } from './animaciones.js';
@@ -646,9 +646,23 @@ export class Simulacion extends EscenaBase {
         scale: { min: .35, max: .9 }, alpha: { start: .32, end: 0 }, frequency: 320,
         maxParticles: maxPolvo, maxAliveParticles: maxPolvo,
       }).setDepth(PROFUNDIDAD.polvo);
+      this.crearCapaCercana(id);
     } catch (error) {
       console.warn('[AVISO JUEGO] Escenario simplificado; la partida continúa.', error);
     }
+  }
+
+  // Capa cercana: trozos de fondo_cercano.png (cadenas y una vela) en huecos de la planta, delante
+  // de los efectos y detrás de la HMI. Nunca tapan piezas del modelo ni la franja de perturbación
+  // (ZONAS_MODELO_NIVEL en escenario.js; lo comprueba test/escenario-rendimiento.test.js).
+  crearCapaCercana(id) {
+    const clave = CAPAS_FONDO.cercana.clave;
+    if (!this.textures.exists(clave)) return;
+    const { ancho, alto } = LAYOUT.canvas;
+    const escala = this.textures.get(clave).getSourceImage().width / ancho; // 1 con la imagen de 1280x720
+    this.capaCercana = (CERCANA_NIVEL[id] || []).map(({ recorte: r, destino: d }) => this.add.image(d.x - r.x, d.y - r.y, clave)
+      .setOrigin(0).setDisplaySize(ancho, alto).setCrop(r.x * escala, r.y * escala, r.ancho * escala, r.alto * escala)
+      .setDepth(PROFUNDIDAD.primerPlano)).map((img) => apagarCapa(img, CAPAS_FONDO.cercana));
   }
 
   hayPieza(frame) { return this.textures.exists('piezas') && this.textures.get('piezas').has(frame); }
@@ -830,7 +844,7 @@ export class Simulacion extends EscenaBase {
         const textura = this.textures.exists(clave) ? clave : 'fx-particula-grafica';
         if (textura === 'fx-particula-grafica') console.warn(`[AVISO JUEGO] Falta ${clave}; partículas dibujadas con Graphics.`);
         const emisor = this.add.particles(0, 0, textura, { frame: 0, emitting: false, frequency: -1, maxParticles: reducido ? Math.floor(maxNormal / 2) : maxNormal, blendMode: Phaser.BlendModes.ADD, ...opciones });
-        emisor.setDepth(5.8);
+        emisor.setDepth(PROFUNDIDAD.efectos); // detrás de la capa cercana y de la HMI
         this.emisoresEfectos.push(emisor);
         return emisor;
       };

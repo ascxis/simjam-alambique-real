@@ -1,18 +1,24 @@
 import { LAYOUT } from '../hmi/layout.js';
 import { crearBoton, dibujarPanel } from '../hmi/estilo.js';
 import { obtenerGestorAudio } from './audio.js';
+import { CAPAS_FONDO, PROFUNDIDAD, apagarCapa } from './niveles/escenario.js';
 
 export class EscenaBase extends Phaser.Scene {
   constructor(key) { super(key); }
 
-  crearFondo() {
+  // Fondo fijo: capa lejana y capa media a pantalla completa, y viñeta oscura en los bordes.
+  // { cercana: true } agrega la capa cercana completa detrás de los paneles (solo el menú: en la
+  // simulación se usan trozos de ella en huecos de la planta, ver Simulacion.crearCapaCercana).
+  crearFondo({ cercana = false } = {}) {
     const { ancho, alto } = LAYOUT.canvas;
     this.cameras.main.setBackgroundColor('#1C2026');
-    if (this.textures.exists('fondo-laboratorio')) {
-      this.fondoArte = this.add.image(ancho / 2, alto / 2, 'fondo-laboratorio')
-        .setDisplaySize(ancho, alto).setDepth(-1000);
-    }
-    this.vineta = this.add.graphics().setDepth(-990);
+    const capa = (c, profundidad) => (this.textures.exists(c.clave)
+      ? apagarCapa(this.add.image(ancho / 2, alto / 2, c.clave).setDisplaySize(ancho, alto).setDepth(profundidad), c)
+      : null);
+    this.fondoLejano = capa(CAPAS_FONDO.lejana, PROFUNDIDAD.fondo);
+    this.fondoMedio = capa(CAPAS_FONDO.media, PROFUNDIDAD.fondoMedio);
+    if (cercana) this.fondoCercano = capa(CAPAS_FONDO.cercana, PROFUNDIDAD.cercanaMenu);
+    this.vineta = this.add.graphics().setDepth(PROFUNDIDAD.vineta);
     const { viñeta } = LAYOUT.fondo;
     for (const banda of viñeta.slice(0, 4)) {
       const x = banda.ancho;

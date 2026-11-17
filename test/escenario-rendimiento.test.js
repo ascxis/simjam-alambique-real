@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MATRIZ_LABORATORIO, validarMatriz, DECORACIONES_NIVEL, POLVO_MAXIMO, PROFUNDIDAD } from '../src/juego/niveles/escenario.js';
+import { MATRIZ_LABORATORIO, validarMatriz, DECORACIONES_NIVEL, POLVO_MAXIMO, PROFUNDIDAD, CAPAS_FONDO, CERCANA_NIVEL, ZONAS_MODELO_NIVEL } from '../src/juego/niveles/escenario.js';
 import { debeReducir, limitarFps } from '../src/juego/rendimiento.js';
 import { leerPng, empaquetar } from '../scripts/crear-atlas.mjs';
 
@@ -19,8 +19,27 @@ test('escenario: matriz de baldosas válida para la hoja 8x4 y decoraciones por 
     for (const d of decos) assert.ok(d.x - d.tam / 2 >= 16 && d.x + d.tam / 2 <= 645, `nivel ${id}: ${d.deco} dentro de la planta, sin tapar la HMI`);
   }
   assert.ok(POLVO_MAXIMO <= 30);
-  const orden = [PROFUNDIDAD.fondo, PROFUNDIDAD.baldosas, PROFUNDIDAD.decoraciones, PROFUNDIDAD.ambiente, PROFUNDIDAD.polvo, PROFUNDIDAD.primerPlano, PROFUNDIDAD.hmi];
-  assert.deepEqual([...orden].sort((a, b) => a - b), orden, 'fondos < baldosas < decoraciones < ... < HMI');
+  const orden = [PROFUNDIDAD.fondo, PROFUNDIDAD.fondoMedio, PROFUNDIDAD.baldosas, PROFUNDIDAD.decoraciones, PROFUNDIDAD.ambiente, PROFUNDIDAD.polvo, PROFUNDIDAD.efectos, PROFUNDIDAD.primerPlano, PROFUNDIDAD.hmi];
+  assert.deepEqual([...orden].sort((a, b) => a - b), orden, 'lejana < media < baldosas < decoraciones < ... < efectos < cercana < HMI');
+});
+
+test('fondo: tres capas de 1280x720 y la capa cercana no tapa ninguna pieza del modelo', () => {
+  for (const capa of Object.values(CAPAS_FONDO)) {
+    const png = leerPng(readFileSync(join(raiz, 'public', capa.archivo)));
+    assert.deepEqual([png.ancho, png.alto], [1280, 720], capa.archivo);
+  }
+  const P = { x: 20, y: 80, ancho: 620, alto: 570 }; // planta, desde el borde de la barra superior
+  const choca = (a, b) => a.x < b.x + b.ancho && b.x < a.x + a.ancho && a.y < b.y + b.alto && b.y < a.y + a.alto;
+  for (const id of [1, 2, 3]) {
+    assert.ok(CERCANA_NIVEL[id].length >= 1, `nivel ${id}: usa la capa cercana`);
+    assert.ok(ZONAS_MODELO_NIVEL[id].length >= 8, `nivel ${id}: zonas del modelo definidas`);
+    for (const { recorte: r, destino: d } of CERCANA_NIVEL[id]) {
+      assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.ancho <= 1280 && r.y + r.alto <= 720, `nivel ${id}: recorte dentro de la imagen`);
+      const caja = { x: d.x, y: d.y, ancho: r.ancho, alto: r.alto };
+      assert.ok(caja.x >= P.x && caja.y >= P.y && caja.x + caja.ancho <= P.x + P.ancho && caja.y + caja.alto <= P.y + P.alto, `nivel ${id}: trozo dentro de la planta`);
+      for (const z of ZONAS_MODELO_NIVEL[id]) assert.ok(!choca(caja, z), `nivel ${id}: la capa cercana tapa "${z.nombre}"`);
+    }
+  }
 });
 
 test('atlas: piezas.json apunta a cuadros dentro de piezas.png sin solaparse', () => {

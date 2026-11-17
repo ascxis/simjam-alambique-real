@@ -13,7 +13,8 @@
     "test": "node --test",
     "atlas": "node scripts/crear-atlas.mjs",
     "hojas:equipo": "python scripts/hojas_equipo.py",
-    "escenario": "python scripts/preparar_escenario.py"
+    "escenario": "python scripts/preparar_escenario.py",
+    "fondos": "python scripts/procesar_fondos.py"
   },
   "devDependencies": {
     "ffmpeg-static": "^5.3.0",

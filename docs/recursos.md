@@ -51,7 +51,7 @@ El **tamaño en el juego** es al que el script de la sección 5.8 (`npm run asse
 | Mobiliario | `mesa_laboratorio.png` | 390 px de ancho | 1 | Mesa de trabajo sobre la que se apoya el alambique en los niveles 1 y 2. Vista un poco desde arriba: el tablero va del 17 % al 35 % de la altura de la imagen, y el alambique se apoya a la altura del 28 % |
 | Indicadores y alarmas | `alarma_placa.png` | 64 × 64 | 1 | Placa de piedra con el hueco de la runa |
 | Indicadores y alarmas | `alarma_runa.png` | 64 × 64 | 1 | Runa blanca; el juego la colorea: gris (apagada), `#FFD700` (alarma H) y `#FF1744` (alarma HH) |
-| Escenario 1 | `fondo_laboratorio.png` | 1280 × 720 | 1 | Fondo único 16:9. El juego es de pantalla fija (sin desplazamiento de cámara), así que no se usan capas de parallax |
+| Escenario 1 | `fondo_laboratorio.png` | 1280 × 720 | 1 | Fondo único 16:9 del día 1. **Retirado en el día 2** de `public/` (el original sigue en `arte_fuente/originales/`): lo reemplazan las tres capas de la tabla de fondos del día 2 |
 | Baldosas | `baldosas_laboratorio.png` | 64 × 64 por baldosa | 16 (4 × 4) | Piso de piedra (primera fila); las piezas vienen separadas por líneas magenta |
 | Interfaz (HMI) | `interfaz_iconos.png` | 64 × 64 por ícono (hoja de 256 × 128) | 8 (4 × 2) | Nivel, válvula, alarma H, alarma HH, setpoint, mano, reloj y pausa. Los íconos de alarma traen la palabra "NO" y no se usan; las alarmas se muestran con la runa |
 | Interfaz (HMI) | `logotipo_titulo.png` | 400 × 256 | 1 | Logotipo "Alambique Real: El Arte de la Alquimia" (menú) |
@@ -148,5 +148,16 @@ Lo que quedó en `public/assets/` después de la integración. Los tamaños de c
 Notas:
 
 - Las hojas del cucharón y del sifón (`arte_fuente/originales/perturbacion_*`) no se usan en el juego: la pareja pidió que la perturbación quedara conectada físicamente al alambique (llave en el nivel 2 y tubería al caldero en el nivel 3).
-- Se conserva un solo fondo (`fondos/fondo_laboratorio.png`): la cámara es fija, así que no hay parallax; las tres capas de Gemini quedan como fuente en `arte_fuente/originales/`.
+- **Fondos: tres capas fijas en uso** (guía 2: tabla 5.2, 5.3 paso 4 y etapa 5). El fondo pintado del día 1 tenía mucho detalle y su propio alambique, y se confundía con la planta; se reemplazó por las tres capas generadas en el día 2.
+
+| Capa | Archivo en `public/assets/fondos/` | Tamaño | Uso | Profundidad |
+|---|---|---|---|---|
+| Lejana | `fondo_lejano.png` (opaca) | 1280 × 720 | Pantalla completa en todas las escenas | −1000 |
+| Media | `fondo_medio.png` (transparente) | 1280 × 720 | Pantalla completa en todas las escenas; tinte `#8A827C` y saturación −0,5 | −995 |
+| Cercana | `fondo_cercano.png` (transparente) | 1280 × 720 | Menú: completa, detrás de los paneles. Simulación: solo trozos (cadenas y una vela) en huecos de la planta, delante de los efectos y detrás de la HMI; tinte `#9A9088` y saturación −0,3 | −980 (menú) / 4,9 (simulación) |
+
+  - Se generan con `npm run fondos` (`scripts/procesar_fondos.py`) desde `arte_fuente/originales/fondo_{lejano,medio,cercano}.png` (2576 × 1438): recorte mínimo al centro a 16:9 (10 px por lado) y escalado a 1280 × 720. En la media y la cercana el magenta pasa a transparencia sin halos: zonas grandes de magenta y magenta puro de cualquier tamaño (huecos de los eslabones), franja de 3 px con alfa parcial y sin el tinte magenta, vidrio de los frascos vacío (zona teñida unida al magenta) en gris semitransparente, y escalado con alfa premultiplicado. Las pociones moradas no se tocan.
+  - Orden de profundidad: lejana, media, baldosas, decoraciones, equipo y piezas del modelo, perturbaciones, efectos (hasta 4,8), capa cercana (4,9) y HMI (5 en adelante). Las partículas de efectos pasaron de 5,8 a 4,8 para quedar detrás de la capa cercana y de la HMI.
+  - La capa cercana completa taparía la planta (cadenas sobre la entrada de v1 y el alambique; velas sobre la mesa, el caldero y la franja de perturbación). Por eso en la simulación solo se usan trozos (`CERCANA_NIVEL` en `src/juego/niveles/escenario.js`): niveles 1 y 2, dos cadenas cortas que cuelgan de la barra superior (entre los soportes de la tubería de v1 y sobre el alambique); nivel 3, una cadena larga a la izquierda, una corta sobre la entrada de v1 y una vela abajo a la izquierda. `test/escenario-rendimiento.test.js` comprueba que ningún trozo toque las zonas del modelo (`ZONAS_MODELO_NIVEL`), y en el navegador se verificó con la captura sin fondo que la capa cercana cubre 0 píxeles de planta o HMI en los tres niveles.
+  - Contraste (desviación de la luminancia, 0–255) en zonas solo de fondo de la planta: 8 a 14, frente a 21–23 en las gráficas de la HMI; luminancia media del fondo similar a la del día 1 (≈ 28 arriba a la izquierda). La capa de ambiente de cada nivel bajó de 0,42–0,48 a 0,22–0,28 de alfa porque las capas ya vienen apagadas.
 - La baldosa de 64 × 64 del día 1 (`baldosas_laboratorio.png`) y los PNG sueltos de la válvula, la alarma y el caldero se retiraron de `public/` porque ahora están en el atlas o en la hoja de 32 × 32.

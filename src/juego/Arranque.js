@@ -2,6 +2,7 @@ import { EscenaBase } from './EscenaBase.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteTitulo } from '../hmi/estilo.js';
 import { cargarHojasEquipo, registrarAnimaciones, EFECTOS } from './animaciones.js';
+import { CAPAS_FONDO } from './niveles/escenario.js';
 
 export class Arranque extends EscenaBase {
   constructor() { super('Arranque'); }
@@ -33,7 +34,8 @@ export class Arranque extends EscenaBase {
     this.load.atlas('piezas', 'assets/sprites/piezas.png', 'assets/sprites/piezas.json');
     cargarHojasEquipo(this);
     this.load.image('baldosas-laboratorio', 'assets/tiles/laboratorio_tiles.png');
-    this.load.image('fondo-laboratorio', 'assets/fondos/fondo_laboratorio.png');
+    // Fondo en tres capas fijas (lejana, media y cercana): src/juego/niveles/escenario.js.
+    for (const capa of Object.values(CAPAS_FONDO)) this.load.image(capa.clave, capa.archivo);
     this.load.spritesheet('interfaz', 'assets/sprites/interfaz_iconos.png', { frameWidth: 64, frameHeight: 64 });
     this.load.image('logotipo', 'assets/sprites/logotipo_titulo.png');
     this.load.image('panel-final', 'assets/sprites/pantalla_post_partida.png');

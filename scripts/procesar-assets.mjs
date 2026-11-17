@@ -20,7 +20,6 @@ const recursos = [
   { archivo: 'valvula_volante_aislado.png', destino: 'sprites/valvula_volante_aislado.png', ancho: 50, alto: 50 },
   { archivo: 'alarma_placa.png', destino: 'sprites/alarma_placa.png', ancho: 64, alto: 64 },
   { archivo: 'alarma_runa.png', destino: 'sprites/alarma_runa.png', ancho: 64, alto: 64 },
-  { archivo: 'fondo_laboratorio.png', destino: 'fondos/fondo_laboratorio.png', ancho: 1280, alto: 720, fondo: true },
   { archivo: 'baldosas_laboratorio.png', destino: 'sprites/baldosas_laboratorio.png', columnas: 4, filas: 4, cuadros: 16, cuadro: 64 },
   { archivo: 'interfaz_iconos.png', destino: 'sprites/interfaz_iconos.png', columnas: 4, filas: 2, cuadros: 8, cuadro: 64 },
   { archivo: 'logotipo_titulo.png', destino: 'sprites/logotipo_titulo.png', ancho: 400, alto: 256 },

@@ -20,7 +20,7 @@ export class Menu extends EscenaBase {
     this.audio.vincular(this);
     this.audio.setMusic('musica_menu');
     document.getElementById('camera-debug-info')?.remove();
-    this.crearFondo();
+    this.crearFondo({ cercana: true });
     const M = LAYOUT.menu;
     if (this.textures.exists('logotipo')) this.add.image(M.logo.x, M.logo.y, 'logotipo').setDisplaySize(M.logo.ancho, M.logo.alto);
     this.panel(M.panel);
