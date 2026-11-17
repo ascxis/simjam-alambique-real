@@ -1705,3 +1705,15 @@ Del nivel 2 entiendo que la perturbación es que a los 40 segundos sale líquido
 - **Franja de la perturbación** en el piso del laboratorio (niveles 2 y 3): dice en palabras qué pasa en cada momento. Nivel 2: cuenta regresiva hasta los 40 s, aviso ámbar parpadeante, "ABIERTA: saca 0,080 m³/s" en rojo con flecha hacia abajo y aviso de cierre a los 80 s. Nivel 3: "SALE … del alambique 2 hacia el caldero (el nivel baja)" en rojo o "ENTRA … (el nivel sube)" en verde, según el signo de q_d.
 - **Tubería de intercambio** más gruesa, con pulsos y flechas más grandes que muestran el sentido.
 - Prueba nueva `test/instrucciones.test.js`. Pruebas: 62/62.
+
+---
+
+## 87. ZIP de la entrega regenerado tras la pantalla de inicio por nivel
+
+```
+Haz git pull, corre npm test y npm run build, y vuelve a generar Grupo1_SimJam_Modelado_Dia2.zip con tar. Anota el tamaño y haz commit y push.
+```
+
+- Se trajo `9d9538b` (pantalla de inicio por nivel). `src/modelo/` no cambió; en `layout.js` solo cambió el grosor de la tubería de intercambio del día 2 (7 → 9).
+- `npm test` (62 de 62) y `npm run build` sin errores (`dist/assets/index-*.js`, 161,5 kB).
+- `Grupo1_SimJam_Modelado_Dia2.zip` regenerado con `tar -a` (85 archivos, rutas con `/`): 7 973 633 bytes (7,60 MB); extraído, queda idéntico a `dist/`. Tamaño anotado en `docs/pruebas_dia2.md`; el ZIP sigue fuera de git.

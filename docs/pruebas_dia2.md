@@ -78,7 +78,7 @@ docs/dia2_escalon_lento.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pa
 | La música se repite sin cortes y las alarmas se oyen sobre ella. | Sí: bucles con fundido cruzado y ducking del 40 % | `18a806e` |
 | El sonido se activa tras la primera interacción y hay volumen por canal y silencio. | Sí | `18a806e` |
 | El simulador mantiene 60 FPS y la detección 20 FPS o más. | **Pendiente** de medir con la cámara (panel D) | `55b1008` |
-| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 7,59 MB en total (3,88 sin audio); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 85 archivos): 7,60 MB (7 971 135 bytes, generado con `tar` desde `2b6dae3`) | `55b1008` |
+| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 7,59 MB en total (3,88 sin audio); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 85 archivos): 7,60 MB (7 973 633 bytes, generado con `tar` desde `9d9538b`) | `55b1008` |
 
 ## Capturas "antes y después"
 
