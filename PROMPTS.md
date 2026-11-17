@@ -1643,3 +1643,16 @@ Desde este punto trabaja tú mismo con Claude Code en vez de decirme qué poner 
 - **Etapa 8:** `render: { antialias: true, roundPixels: true }`, 60 FPS de objetivo con bajada automática a 30 FPS y efectos reducidos si la detección promedia menos de 20 FPS durante 5 s (`src/juego/rendimiento.js`), atlas `piezas` (`scripts/crear-atlas.mjs`, sin dependencias), subpasos del integrador y estado del equipo en el panel D.
 - **Pruebas:** `analisis/regresion.py` (código de la guía), `docs/dia2_escalon.csv` y `docs/dia2_escalon_lento.csv` capturados en Chromium con `?control=escalon` (el segundo con la CPU 4x más lenta), y pruebas nuevas: `test/paso-fijo.test.js`, `test/equipo-estados.test.js` y `test/escenario-rendimiento.test.js`. Tablas en `docs/pruebas_dia2.md`.
 - **Problemas detectados y corregidos:** la alarma salía casi totalmente roja (se bajó el tinte); el candelero de la vela cambiaba de color entre cuadros (solo se anima la llama); las decoraciones sobre la mesa quedaban ocultas detrás de ella (se les dio la profundidad de objetos apoyados); los deslizadores de la Galería salían en columna porque Phaser fija `display: block` en el nodo del DOMElement (la cuadrícula va en un nodo hijo).
+
+---
+
+## 83. Entrega del día 2 (5.8): build, ZIP y guion del video
+
+```
+Sí, arranca con las pruebas, el build, el ZIP y el guion con Antigravity. Dos cosas: no subas el ZIP a git (solo anota su tamaño en la tabla) y haz commit y push de CLAUDE.md junto con lo demás.
+```
+
+- **Pruebas y build:** `npm test` (60 de 60) y `npm run build` sin errores (`dist/assets/index-*.js`, 153,7 kB).
+- **ZIP:** `Grupo1_SimJam_Modelado_Dia2.zip` con el contenido de `dist/` (85 archivos, 7,60 MB; `*.zip` está en `.gitignore`). El primer intento con `Compress-Archive` de PowerShell 5.1 guardaba las rutas con `\`, que en un servidor Linux pueden aplanar las carpetas; se rehízo con `tar -a` (rutas con `/`) y se comprobó que al extraerlo queda idéntico a `dist/`.
+- **Guion del video:** Antigravity (Gemini, modo de solo lectura) escribió un borrador desde `README.md`, `docs/pruebas_dia2.md` y este archivo. Se comprobó contra el código (teclas G y F, deslizadores de la Galería, nivel 2 con perturbación de 0,08 entre 40 y 80 s, pellizco para v₂) y se corrigió: los estados de alarma y desborde se muestran con la Galería, la perturbación del nivel 2 se graba aparte, y se quitaron los BPM, que no están en el código. Resultado en `docs/guion_video_dia2.md`.
+- Se agregó `CLAUDE.md` (contexto del proyecto para Claude Code).
