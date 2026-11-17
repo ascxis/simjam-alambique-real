@@ -32,8 +32,8 @@ export class Arranque extends EscenaBase {
     // Sprites pequeños agrupados en un atlas (npm run atlas): válvula, alarma, caldero y decoraciones.
     this.load.atlas('piezas', 'assets/sprites/piezas.png', 'assets/sprites/piezas.json');
     cargarHojasEquipo(this);
+    this.load.image('baldosas-laboratorio', 'assets/tiles/laboratorio_tiles.png');
     this.load.image('fondo-laboratorio', 'assets/fondos/fondo_laboratorio.png');
-    this.load.spritesheet('baldosas', 'assets/sprites/baldosas_laboratorio.png', { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('interfaz', 'assets/sprites/interfaz_iconos.png', { frameWidth: 64, frameHeight: 64 });
     this.load.image('logotipo', 'assets/sprites/logotipo_titulo.png');
     this.load.image('panel-final', 'assets/sprites/pantalla_post_partida.png');

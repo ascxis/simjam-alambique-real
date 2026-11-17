@@ -1,4 +1,5 @@
 import { giroVolante } from '../hmi/representacion.js';
+import { MATRIZ_LABORATORIO, ORIGEN_BALDOSAS, TAM_BALDOSA, DECORACIONES_NIVEL, AMBIENTE_NIVEL, POLVO_MAXIMO, PROFUNDIDAD, validarMatriz } from './niveles/escenario.js';
 import { Equipo } from './entidades/Equipo.js';
 import { claveEquipo } from './animaciones.js';
 import { EscenaBase } from './EscenaBase.js';
@@ -152,6 +153,7 @@ export class Simulacion extends EscenaBase {
     this.ultimoUpdateReal = performance.now();
     this.ultimoTiempoMuestra = 0;
     this.crearFondo();
+    this.crearEscenario();
     const L = LAYOUT.simulacion;
     this.panel(L.barraSuperior, { radio: 0, profundidad: -850 });
     this.add.text(L.titulo.x, L.titulo.y, this.nivel.nombre, fuenteTitulo(27)).setDepth(5);
@@ -489,6 +491,46 @@ export class Simulacion extends EscenaBase {
     try { this.crearVisualPerturbacion(); }
     catch (error) { console.warn('[AVISO JUEGO] No se pudo dibujar la perturbación; la simulación continúa.', error); }
     this.crearRetroalimentacion();
+  }
+
+  // Etapa 5: baldosas desde la matriz de src/juego/niveles/escenario.js, decoraciones
+  // animadas sin interacción, capa de ambiente y polvo lento (máx. 30). Todo detrás de la
+  // planta y de la HMI; la planta y sus posiciones del día 1 no cambian.
+  crearEscenario() {
+    const id = this.nivel.id;
+    try {
+      if (this.textures.exists('baldosas-laboratorio') && validarMatriz(MATRIZ_LABORATORIO)) {
+        const mapa = this.make.tilemap({ data: MATRIZ_LABORATORIO, tileWidth: TAM_BALDOSA, tileHeight: TAM_BALDOSA });
+        const hoja = mapa.addTilesetImage('baldosas-laboratorio', 'baldosas-laboratorio', TAM_BALDOSA, TAM_BALDOSA);
+        this.capaBaldosas = mapa.createLayer(0, hoja, ORIGEN_BALDOSAS.x, ORIGEN_BALDOSAS.y);
+        this.capaBaldosas?.setDepth(PROFUNDIDAD.baldosas).setAlpha(.82);
+      }
+      this.decoraciones = [];
+      for (const d of DECORACIONES_NIVEL[id] || []) {
+        const clave = `deco-${d.deco}`;
+        if (!this.anims.exists(clave)) continue;
+        const sprite = this.add.sprite(d.x, d.y, 'piezas', `${clave}-0`).setOrigin(.5, 1).setDisplaySize(d.tam, d.tam).setDepth(d.enMuro ? PROFUNDIDAD.decoraciones : PROFUNDIDAD.decoracionesApoyadas);
+        sprite.play({ key: clave, startFrame: d.fase || 0 });
+        if (d.inverso) sprite.anims.reverse();
+        this.decoraciones.push(sprite);
+      }
+      const amb = AMBIENTE_NIVEL[id] || AMBIENTE_NIVEL[1], P = LAYOUT.simulacion.planta;
+      this.capaAmbiente = this.add.rectangle(P.x + P.ancho / 2, P.y + P.alto / 2, P.ancho, P.alto, amb.color, amb.alfa).setDepth(PROFUNDIDAD.ambiente);
+      if (!this.textures.exists('fx-mota')) {
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+        g.fillStyle(0xfff3d6, 1).fillCircle(3, 3, 2.5).generateTexture('fx-mota', 6, 6);
+        g.destroy();
+      }
+      const maxPolvo = this.reducirEfectos ? POLVO_MAXIMO / 2 : POLVO_MAXIMO;
+      this.emisorPolvo = this.add.particles(0, 0, 'fx-mota', {
+        x: { min: P.x, max: P.x + P.ancho }, y: { min: P.y + 40, max: P.y + P.alto },
+        lifespan: 9000, speedX: { min: -5, max: 5 }, speedY: { min: -7, max: -2 },
+        scale: { min: .35, max: .9 }, alpha: { start: .32, end: 0 }, frequency: 320,
+        maxParticles: maxPolvo, maxAliveParticles: maxPolvo,
+      }).setDepth(PROFUNDIDAD.polvo);
+    } catch (error) {
+      console.warn('[AVISO JUEGO] Escenario simplificado; la partida continúa.', error);
+    }
   }
 
   hayPieza(frame) { return this.textures.exists('piezas') && this.textures.get('piezas').has(frame); }
