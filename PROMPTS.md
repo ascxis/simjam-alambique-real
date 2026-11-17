@@ -1717,3 +1717,27 @@ Haz git pull, corre npm test y npm run build, y vuelve a generar Grupo1_SimJam_M
 - Se trajo `9d9538b` (pantalla de inicio por nivel). `src/modelo/` no cambió; en `layout.js` solo cambió el grosor de la tubería de intercambio del día 2 (7 → 9).
 - `npm test` (62 de 62) y `npm run build` sin errores (`dist/assets/index-*.js`, 161,5 kB).
 - `Grupo1_SimJam_Modelado_Dia2.zip` regenerado con `tar -a` (85 archivos, rutas con `/`): 7 973 633 bytes (7,60 MB); extraído, queda idéntico a `dist/`. Tamaño anotado en `docs/pruebas_dia2.md`; el ZIP sigue fuera de git.
+
+---
+
+## 88. Despliegue en Netlify (cambio de la entrega indicado por el docente)
+
+```
+Lee CLAUDE.md. Cambio de la entrega indicado por el profesor: ya no se sube el ZIP al aula virtual; el juego se despliega en Netlify y se entrega el enlace.
+
+1. Haz git pull, corre npm test y npm run build sin errores.
+2. Revisa si la carpeta ya está enlazada a un sitio de Netlify (.netlify/state.json o un sitio del día 1). Si existe, actualiza ese mismo sitio; si no, crea uno nuevo llamado "alambique-real-grupo1" (o el más parecido que esté libre).
+3. Despliega dist/ a producción con la CLI de Netlify usando npx (netlify-cli), sin instalarla globalmente. Si hace falta iniciar sesión, ejecuta el comando de login y avísame: yo autorizo en el navegador; no crees cuentas ni escribas contraseñas.
+4. Agrega .netlify/ al .gitignore.
+5. Comprueba el sitio publicado: que no haya errores 404 en la consola, que Phaser y MediaPipe carguen del CDN, que el menú, la Galería (G) y los 3 niveles abran, que haya sonido después del primer clic y que el navegador pida permiso de la cámara (Netlify usa HTTPS). Si algo falla, corrígelo y vuelve a desplegar.
+6. En docs/pruebas_dia2.md agrega la tabla de la sección 5.8 (Dato | Valor) con: nombre del ZIP, tamaño del ZIP en MB y "Enlace de previsualización" con la URL de Netlify. Debajo, una nota: "Por indicación del docente, la entrega se hace con el enlace de Netlify en lugar del aula virtual". Pon también el enlace al inicio del README.
+7. Actualiza CLAUDE.md (la entrega es el enlace de Netlify, ya no el aula virtual), registra la entrada en PROMPTS.md, haz commit y push, y dame la URL final.
+```
+
+- Pull sin cambios; `npm test` 62/62 y `npm run build` sin errores.
+- No había `.netlify/` ni sitios en la cuenta (tampoco uno del día 1): se creó `alambique-real-grupo1` con `npx netlify-cli sites:create` tras el inicio de sesión que autorizó la pareja en el navegador, y se desplegó `dist/` con `deploy --prod --dir=dist --no-build`.
+- **Problema:** todo el sitio respondía 401 y llevaba al inicio de sesión de Netlify: la cuenta tenía activada la protección de acceso ("solo miembros del equipo") para todos los despliegues. No se cambió por la API; la pareja la desactivó en Visitor access → Site protection. Después el sitio respondió 200.
+- `.netlify/` quedó en `.gitignore`; enlace al inicio del README.
+- Las comprobaciones del sitio publicado, la tabla de la 5.8 y la actualización de CLAUDE.md se hicieron junto con la entrada 89 (con el despliegue final que ya incluye las tres capas de fondo).
+
+URL: https://alambique-real-grupo1.netlify.app

@@ -26,3 +26,6 @@ dist-ssr
 
 # Material del docente (no se publica)
 docs/guias/
+
+# Enlace local con el sitio de Netlify
+.netlify/

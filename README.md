@@ -1,5 +1,7 @@
 # Alambique Real: El Arte de la Alquimia
 
+**Jugar en línea:** https://alambique-real-grupo1.netlify.app
+
 Simulador 2D del **Operador de tanques** (simulador N.º 1 de la SimJam de Modelado y Simulación de Sistemas Continuos, Universidad de Pamplona). El jugador controla con las manos, frente a la cámara, las válvulas de uno o dos alambiques en cascada. El nivel de cada alambique sale de un modelo continuo no lineal integrado con RK4.
 
 Integrantes: Juan David Bohorquez Prieto, Daniel Andres Galvis Marin, Andres Felipe Florez Mora — Grupo 1.
