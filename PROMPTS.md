@@ -1678,3 +1678,15 @@ Se recorrieron el menú, los 3 niveles (antes y durante la perturbación), la Ga
 - **Menú:** el texto de controles quedaba casi invisible detrás del recuadro; se puso al frente.
 
 Se actualizaron las capturas de `docs/capturas/despues/`. Pruebas: 60/60.
+
+---
+
+## 85. ZIP de la entrega regenerado tras la revisión visual
+
+```
+Haz git pull, corre npm test y npm run build, y vuelve a generar Grupo1_SimJam_Modelado_Dia2.zip con tar (rutas con /). Anota el nuevo tamaño en docs/pruebas_dia2.md y haz commit y push.
+```
+
+- Se trajo `2b6dae3` (revisión visual). `src/modelo/` no cambió; en `layout.js` solo se movió la tubería de intercambio del día 2.
+- `npm test` (60 de 60) y `npm run build` sin errores (`dist/assets/index-*.js`, 154,4 kB).
+- `Grupo1_SimJam_Modelado_Dia2.zip` regenerado con `tar -a` (85 archivos, rutas con `/`): 7 971 135 bytes (7,60 MB); extraído, queda idéntico a `dist/`. Tamaño anotado en `docs/pruebas_dia2.md`; el ZIP sigue fuera de git.
