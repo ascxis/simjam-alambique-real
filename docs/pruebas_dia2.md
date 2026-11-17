@@ -78,14 +78,14 @@ docs/dia2_escalon_lento.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pa
 | La música se repite sin cortes y las alarmas se oyen sobre ella. | Sí: bucles con fundido cruzado y ducking del 40 % | `18a806e` |
 | El sonido se activa tras la primera interacción y hay volumen por canal y silencio. | Sí | `18a806e` |
 | El simulador mantiene 60 FPS y la detección 20 FPS o más. | **Pendiente** de medir con la cámara (panel D) | `55b1008` |
-| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 8,59 MB en total (4,89 sin audio, con las tres capas de fondo); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 87 archivos): 8,60 MB (9 016 932 bytes, generado con `tar`, con las tres capas de fondo) | `55b1008` |
+| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 8,59 MB en total (4,89 sin audio, con las tres capas de fondo); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 87 archivos): 8,60 MB (9 017 868 bytes, generado con `tar`, con los botones de la pantalla final) | `55b1008` |
 
 ## 5.8 Entrega
 
 | Dato | Valor |
 |---|---|
 | Nombre del ZIP | `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, rutas con `/`) |
-| Tamaño del ZIP (MB) | 8,60 (9 016 932 bytes, 87 archivos) |
+| Tamaño del ZIP (MB) | 8,60 (9 017 868 bytes, 87 archivos) |
 | Enlace de previsualización | https://alambique-real-grupo1.netlify.app |
 
 Por indicación del docente, la entrega se hace con el enlace de Netlify en lugar del aula virtual.
@@ -95,4 +95,4 @@ Comprobado en el sitio publicado: los 87 archivos de `dist/` responden 200 (sin 
 ## Capturas "antes y después"
 
 - Antes (simulador del día 1): `docs/capturas/antes/`.
-- Después (día 2): `docs/capturas/despues/` — `tres_capas_menu.png`, `tres_capas_nivel1.png`, `tres_capas_nivel2.png`, `tres_capas_nivel3.png`, `tres_capas_galeria.png` y `tres_capas_final.png` (fondo en tres capas fijas, versión final); antes de ese cambio: `nivel1.png` (equipo funcionando, volante y escenario), `nivel1_alarma_HH.png` (estado de alarma), `nivel2_aviso_consumo.png` y `nivel2_consumo_activo.png` (aviso y perturbación activa), `nivel3.png` (cascada e intercambio) y `galeria.png` (escena Galería).
+- Después (día 2): `docs/capturas/despues/` — `tres_capas_menu.png`, `tres_capas_nivel1.png`, `tres_capas_nivel2.png`, `tres_capas_nivel3.png`, `tres_capas_galeria.png` y `tres_capas_final.png` (fondo en tres capas fijas); `final_botones_nivel1.png`, `final_botones_nivel2.png` y `final_botones_nivel3.png` (pantalla final con Repetir nivel · Siguiente nivel / Último nivel · Volver al menú); antes de ese cambio: `nivel1.png` (equipo funcionando, volante y escenario), `nivel1_alarma_HH.png` (estado de alarma), `nivel2_aviso_consumo.png` y `nivel2_consumo_activo.png` (aviso y perturbación activa), `nivel3.png` (cascada e intercambio) y `galeria.png` (escena Galería).

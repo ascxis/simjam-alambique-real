@@ -3,6 +3,7 @@ import { contextoJuego, fuenteInicial } from './contexto.js';
 import { leerPreferencia, guardarPreferencia } from './preferencias.js';
 import { obtenerSesionCamara, listarCamaras } from '../vision/servicioCamara.js';
 import { obtenerVideoPreview } from '../hmi/vistaCamara.js';
+import { activarCamaraJuego, arrancarNivel } from './arranqueNivel.js';
 import { GestorEntrada } from '../entrada/gestorEntrada.js';
 import { cargarNiveles } from '../modelo/niveles.js';
 import { LAYOUT } from '../hmi/layout.js';
@@ -130,11 +131,8 @@ export class Menu extends EscenaBase {
 
     const activarCamara = async () => {
       try {
-        const camara = obtenerSesionCamara();
-        camara.intercambiar = invertir.querySelector('input').checked;
-        const numHands = 2; // siempre 2: con una sola mano MediaPipe confunde y alterna las manos
-        await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined, { numHands });
-        obtenerVideoPreview().style.display = 'block';
+        // siempre 2 manos: con una sola MediaPipe confunde y alterna las manos (arranqueNivel.js)
+        await activarCamaraJuego({ deviceId: camSelect.value || leerPreferencia('alambique.cameraId', '') || null, intercambiar: invertir.querySelector('input').checked });
         return await poblarCamaras();
       } catch (e) {
         const gamepad = confirm(`No se pudo iniciar la cámara (${e.message}).\nAceptar: usar gamepad. Cancelar: elegir teclado.`);
@@ -145,9 +143,7 @@ export class Menu extends EscenaBase {
     this.boton(M.botones[0], 'Iniciar simulación', async () => {
       if (valoresFuente.includes(select.value)) fuenteActiva = select.value;
       contextoJuego.fuenteElegida = fuenteActiva;
-      contextoJuego.nivelElegido = Number(nivelSelect.value) || 1;
-      if (fuenteActiva === 'camara') await activarCamara();
-      this.scene.start('Simulacion');
+      await arrancarNivel(this, Number(nivelSelect.value) || 1, { activarCamara });
     });
     this.boton(M.botones[1], 'Calibrar cámara', async () => {
       contextoJuego.gestor = new GestorEntrada({ fuente: 'camara' }); // calibrar no cambia la fuente elegida

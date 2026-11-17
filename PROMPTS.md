@@ -1777,3 +1777,27 @@ Sí, corrige el error de setScroll al terminar con F
 - **Causa:** al cerrar la escena Simulacion, la limpieza devolvía la cámara a su sitio (por la vibración de cámara) con `this.cameras.main.setScroll(...)`. El gestor de cámaras de Phaser 3.87 también escucha `shutdown`: deja `main` en `undefined` y destruye las cámaras, así que a veces la cámara ya no existía (`TypeError: Cannot read properties of undefined (reading 'setScroll')`). El error lo atrapaba `limpiar()` y la pantalla final abría igual.
 - **Corrección:** `this.cameras?.main?.setScroll(...)`. Ese reinicio no hace falta en el cierre: al volver a empezar la escena, Phaser crea una cámara nueva sin desplazamiento.
 - **Comprobación en el navegador (desarrollo y Netlify):** se terminaron con F partidas de los 3 niveles, dos de ellas con la cámara desplazada como en mitad de una vibración: 0 errores en la consola, y cada partida nueva empezó con la cámara en (0, 0). `npm test` 63/63, build sin errores, desplegado de nuevo en https://alambique-real-grupo1.netlify.app.
+
+---
+
+## 91. Pantalla final: Repetir nivel y Siguiente nivel
+
+```
+Lee CLAUDE.md. Quiero que al terminar un nivel, en la pantalla final ("Lo que pasó en el modelo", escena Fin), aparezcan junto a "Volver al menú" dos botones más: "Repetir nivel" y "Siguiente nivel", para no tener que volver al menú a elegir el nivel.
+
+1. Revisa cómo el menú arranca la escena Simulacion (qué guarda en contextoJuego: nivel, gestor de entrada, cámara, preferencias) y reutiliza ese mismo camino. La fuente de control elegida (cámara, teclado o gamepad) y la sesión de cámara deben seguir funcionando sin pasar por el menú ni recalibrar.
+2. "Repetir nivel" vuelve a empezar el mismo nivel desde cero (con su pantalla de inicio). "Siguiente nivel" empieza el nivel siguiente; en el nivel 3, que es el último, ese botón no aparece o queda desactivado con el texto "Último nivel".
+3. Pon los tres botones alineados en el panel derecho, en el lugar donde hoy está "Volver al menú", con el mismo estilo de botón del juego, sin tapar el texto del análisis ni el botón "Descargar CSV".
+4. Agrega atajos: R repite, N pasa al siguiente y Esc vuelve al menú; también con el gamepad si es sencillo (por ejemplo A = repetir, Start = siguiente). Muéstralos en pequeño debajo de los botones.
+5. La música debe cambiar bien al volver a jugar (sin dos pistas sonando a la vez) y no deben quedar eventos de teclado, de la cámara ni de la escena anterior duplicados: repite un nivel 3 veces seguidas y revisa la consola.
+6. No modifiques src/modelo/ ni niveles.json. Agrega una prueba sencilla para el cálculo del siguiente nivel (que del 1 vaya al 2, del 2 al 3 y que el 3 no tenga siguiente).
+7. Revisa con capturas la pantalla final de los 3 niveles, corre npm test y npm run build, vuelve a desplegar en el mismo sitio de Netlify, regenera el ZIP, registra la entrada en PROMPTS.md y haz commit y push.
+```
+
+- **Camino del menú:** guardaba `fuenteElegida` y `nivelElegido` en `contextoJuego`, activaba la cámara con `CamaraManos.iniciar` (que reutiliza stream y detector si la cámara es la misma) y arrancaba Simulacion, que crea su `GestorEntrada` desde `contextoJuego`. Se sacó a `src/juego/arranqueNivel.js` (`arrancarNivel`, `activarCamaraJuego`) y ahora lo usan el botón "Iniciar simulación" del menú y la pantalla final.
+- **Pantalla final (`Fin.js`):** botones "Repetir nivel", "Siguiente nivel" (en el nivel 3, "Último nivel" en gris y sin acción: opción `desactivado` de `crearBoton`) y "Volver al menú", alineados en `LAYOUT.final.acciones` donde estaba "Volver al menú"; atajos en pequeño debajo. Teclado R / N / Esc; gamepad A / Start / B (solo cuenta al pulsar, no si el botón venía pulsado de la partida). Fin pausaba la detección a los 500 ms y al cerrarse: al repetir o pasar de nivel se cancela esa pausa para no apagar la cámara recién reanudada.
+- **Siguiente nivel:** `siguienteNivel(id, ids)` en `src/juego/niveles/progresion.js` y `test/progresion.test.js` (1 → 2, 2 → 3, 3 → ninguno).
+- **Música:** cada sonido tiene un solo fundido activo (al repetir enseguida, la pista de la pantalla final ya no sube y baja a la vez) y la pista anterior se destruye al terminar de bajar (antes solo se detenía y quedaba en el gestor de sonido).
+- **Error encontrado y corregido (ya existía):** Phaser reutiliza la instancia de Simulacion y `etiquetasValvulas` (solo en la cascada) nunca se reiniciaba: jugar el nivel 1 o 2 después del 3 daba `update TypeError: Cannot read properties of null (reading 'drawImage')` al escribir en una etiqueta destruida. Al empezar cada partida se reinician las referencias que solo existen en algunos niveles o tras un desborde.
+- **Comprobación en el navegador (desarrollo y Netlify):** R tres veces seguidas, N del 1 al 2 y del 2 al 3, N sin efecto en el 3, A del gamepad (simulado), Esc. En las 6 partidas: 40 escuchadores en `document`/`window` (sin duplicados), una sola pista de música y 0 errores en la consola. Con cámara simulada: un solo `getUserMedia` en tres partidas, detección activa en cada una y pausada en la pantalla final. En Netlify, sin respuestas 4xx/5xx (los 404 que aparecieron venían del propio script de prueba). Capturas `docs/capturas/despues/final_botones_nivel{1,2,3}.png`.
+- `npm test` 64/64, `npm run build` sin errores, desplegado en https://alambique-real-grupo1.netlify.app; ZIP 8,60 MB (9 017 868 bytes). `src/modelo/` y `niveles.json` sin cambios.

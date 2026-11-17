@@ -98,19 +98,25 @@ export class GestorAudio {
     }
     this.musicaActual = nueva;
     this.fundido(nueva, 0, this.volumenFinal('musica'), 1000);
-    if (anterior) this.fundido(anterior, anterior.volume, 0, 1000, () => anterior.stop());
+    // La anterior baja y se destruye (antes solo se detenía y quedaba en el gestor de sonido).
+    if (anterior) this.fundido(anterior, anterior.volume, 0, 1000, () => { try { anterior.stop(); anterior.destroy(); } catch {} });
   }
 
+  // Un solo fundido por sonido: si la pista que estaba subiendo empieza a bajar (por ejemplo, al
+  // repetir un nivel enseguida), se cancela el fundido de subida para que no peleen.
   fundido(sonido, desde, hasta, duracion, terminar) {
+    this.fundidos ??= new WeakMap();
+    if (sonido && this.fundidos.has(sonido)) clearInterval(this.fundidos.get(sonido));
     const inicio = performance.now();
     const tick = () => {
       if (this.despedido || !sonido) { clearInterval(id); return; }
       const f = Math.min(1, (performance.now() - inicio) / duracion);
       try { sonido.setVolume(this.silencio ? 0 : desde + (hasta - desde) * f); }
       catch (error) { console.warn('[AVISO AUDIO] Falló un fundido de sonido.', error); }
-      if (f >= 1) { clearInterval(id); terminar?.(); }
+      if (f >= 1) { clearInterval(id); this.fundidos.delete(sonido); terminar?.(); }
     };
     const id = setInterval(tick, 30);
+    if (sonido) this.fundidos.set(sonido, id);
   }
 
   volumenFinal(canal) { return this.silencio ? 0 : this.volumenes[canal] ?? 0; }

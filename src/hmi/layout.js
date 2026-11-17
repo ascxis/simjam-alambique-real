@@ -162,6 +162,10 @@ export const LAYOUT = Object.freeze({
     rightTitle: { x: 680, y: 32 }, modelo: { x: 680, y: 78, ancho: 550, alto: 190 },
     explicacion: { x: 680, y: 218, ancho: 550, alto: 330 },
     volver: { x: 976, y: 590, ancho: 250, alto: 46 },
+    // Botones de la pantalla final (Repetir nivel · Siguiente nivel · Volver al menú), alineados
+    // a lo ancho del panel derecho donde estaba "Volver al menú"; atajos en pequeño debajo.
+    acciones: { x: 680, y: 578, ancho: 175, alto: 44, separacion: 12.5 },
+    atajos: { x: 955, y: 631 },
     franjaCsv: { x: 680, y: 654, ancho: 550, alto: 30 },
     encabezadosCsv: { x: 680, y: 660 },
   },

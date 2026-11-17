@@ -52,6 +52,7 @@ tar -a -cf ..\Grupo1_SimJam_Modelado.zip index.html assets favicon.ico favicon.s
 | Pausa | Sacar las manos de la zona más de 3 s | Enter | Start |
 | Terminar la partida | — | F | Y |
 | Panel de parámetros / depuración / silencio | — | P / D / M | Select (mantener) = depuración |
+| Pantalla final: repetir nivel / siguiente nivel / menú | Botones de la pantalla | R / N / Esc | A / Start / B |
 
 - **Configurar controles:** en el menú, al elegir Teclado o Gamepad aparece el botón **Configurar controles**. Ahí se reasigna cada acción (se guarda en el navegador) y, con gamepad, se ve en vivo qué botón o eje se pulsa. Chrome solo detecta el gamepad después de pulsar un botón.
 - **Teclado y gamepad** mueven la válvula poco a poco, como una perilla: al soltar la tecla o el stick la apertura se conserva.

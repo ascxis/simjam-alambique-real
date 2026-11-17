@@ -88,6 +88,15 @@ export class Simulacion extends EscenaBase {
   constructor() { super('Simulacion'); }
   create() {
     this.terminado = false;
+    // Phaser reutiliza esta misma instancia en cada partida. Las referencias que solo existen en
+    // algunos niveles (etiquetas de v1/v2 en la cascada, llave de consumo del nivel 2, intercambio
+    // del nivel 3) o después de un desborde se reinician, para no escribir en objetos destruidos
+    // de la partida anterior (p. ej. jugar el nivel 1 después del 3 fallaba en setText).
+    Object.assign(this, {
+      etiquetasValvulas: null, llaveConsumo: null, etiquetaLlave: null, etiquetaIntercambio: null,
+      frascoConsumo: null, spriteDesborde: null, renderDesbordeFallback: null,
+      capaIntro: null, textoCuentaIntro: null, capaCercana: null,
+    });
     this.audio = obtenerGestorAudio(this);
     this.audio?.vincular(this);
     this.audio?.setMusic('musica_operacion');

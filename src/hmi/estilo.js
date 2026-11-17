@@ -23,7 +23,8 @@ export function dibujarPanel(scene, rect, { fondo = LAYOUT.colores.fondo, alpha 
   return g;
 }
 
-export function crearBoton(scene, rect, etiqueta, callback, { fondo = LAYOUT.colores.cobre, texto = LAYOUT.colores.titulo, tamano = 17 } = {}) {
+// desactivado: mismo botón en gris, sin cursor de mano, sin resaltado y sin acción.
+export function crearBoton(scene, rect, etiqueta, callback, { fondo = LAYOUT.colores.cobre, texto = LAYOUT.colores.titulo, tamano = 17, desactivado = false } = {}) {
   const contenedor = scene.add.container(rect.x, rect.y);
   contenedor.setSize(rect.ancho, rect.alto);
   const g = scene.add.graphics();
@@ -32,6 +33,11 @@ export function crearBoton(scene, rect, etiqueta, callback, { fondo = LAYOUT.col
     g.fillStyle(color, 1).fillRoundedRect(0, 0, rect.ancho, rect.alto, 9);
     g.lineStyle(1, 0x1a1b1d, 1).strokeRoundedRect(0, 0, rect.ancho, rect.alto, 9);
   };
+  if (desactivado) {
+    pintar(0x3a3d40);
+    contenedor.add([g, scene.add.text(rect.ancho / 2, rect.alto / 2, etiqueta, fuenteInterfaz(tamano, '#8F949A', { fontStyle: 'bold' })).setOrigin(.5)]);
+    return contenedor;
+  }
   pintar(fondo);
   const label = scene.add.text(rect.ancho / 2, rect.alto / 2, etiqueta, fuenteInterfaz(tamano, texto, { fontStyle: 'bold' })).setOrigin(.5);
   const hitArea = scene.add.zone(0, 0, rect.ancho, rect.alto).setOrigin(0, 0)

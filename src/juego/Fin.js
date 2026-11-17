@@ -1,12 +1,15 @@
 import { EscenaBase } from './EscenaBase.js';
 import { dibujarTendencia } from '../hmi/tendencia.js';
-import { evaluarNivel } from '../modelo/niveles.js';
+import { cargarNiveles, evaluarNivel } from '../modelo/niveles.js';
 import { PARAMETROS_TANQUES } from '../modelo/tanques.js';
 import { contextoJuego } from './contexto.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz, fuenteTitulo } from '../hmi/estilo.js';
 import { descargarCSV } from '../hmi/descargarCSV.js';
 import { obtenerGestorAudio } from './audio.js';
+import { activarCamaraJuego, arrancarNivel } from './arranqueNivel.js';
+import { siguienteNivel } from './niveles/progresion.js';
+import { elegirGamepad } from '../entrada/configControles.js';
 
 function metricasTanque(muestras, nivel) {
   const dentro = (m) => Math.abs(m.y - m.h_sp) <= m.tolerancia;
@@ -87,7 +90,8 @@ export class Fin extends EscenaBase {
     console.info('[DIAG] Fin.create inicio', '0.0 ms');
     this.events.once('render', () => console.info('[DIAG] Fin primer render'));
     try {
-      this.time.delayedCall(500, () => {
+      this.saliendo = false;
+      this.pausaCamara = this.time.delayedCall(500, () => {
         try {
           contextoJuego.camara?.pausarDeteccion();
           console.info('cámara detenida: detección pausada; stream y detector conservados');
@@ -101,10 +105,72 @@ export class Fin extends EscenaBase {
     } finally {
       console.info('[DIAG] Fin.create fin', `${(performance.now() - inicio).toFixed(1)} ms`);
     }
-    this.events.once('shutdown', () => { try { contextoJuego.camara?.pausarDeteccion(); } catch (error) { console.error('[ERROR JUEGO] Fin.create', error); } });
+    // Al volver al menú se pausa la detección. Al repetir o pasar de nivel no: arrancarNivel ya la
+    // reanudó para la partida nueva.
+    this.events.once('shutdown', () => { try { if (!this.seguirJugando) contextoJuego.camara?.pausarDeteccion(); } catch (error) { console.error('[ERROR JUEGO] Fin.create', error); } });
   }
 
-  update() { this.audio?.actualizarDesbloqueo(); }
+  update() {
+    this.audio?.actualizarDesbloqueo();
+    this.leerGamepad();
+  }
+
+  // Gamepad: A = repetir, Start = siguiente, B = menú. Solo cuenta al pulsar (no si el botón ya venía
+  // pulsado de la partida, por ejemplo Y para terminar).
+  leerGamepad() {
+    const gp = elegirGamepad();
+    const pulsados = new Set((gp?.buttons || []).flatMap((b, i) => (b?.pressed ? [i] : [])));
+    const nuevo = (i) => pulsados.has(i) && this.botonesGamepad && !this.botonesGamepad.has(i);
+    if (nuevo(0)) this.repetirNivel();
+    else if (nuevo(9)) this.irSiguienteNivel();
+    else if (nuevo(1)) this.volverAlMenu();
+    this.botonesGamepad = pulsados;
+  }
+
+  // Repetir / siguiente: mismo camino que el menú (arranqueNivel.js), con la fuente de control y la
+  // sesión de cámara que ya estaban en uso.
+  async jugarNivel(id) {
+    if (this.saliendo || !id) return;
+    this.saliendo = true; this.seguirJugando = true;
+    this.pausaCamara?.remove(false); // que la pausa diferida no apague la cámara reanudada
+    try {
+      await arrancarNivel(this, id, {
+        activarCamara: async () => {
+          try { await activarCamaraJuego(); }
+          catch (error) {
+            console.error('[ERROR JUEGO] No se pudo reanudar la cámara; se sigue con teclado.', error);
+            contextoJuego.fuenteElegida = 'teclado';
+          }
+        },
+      });
+    } catch (error) {
+      console.error('[ERROR JUEGO] Fin.jugarNivel', error);
+      this.saliendo = false; this.seguirJugando = false;
+    }
+  }
+
+  repetirNivel() { this.jugarNivel(this.nivelId); }
+  irSiguienteNivel() { this.jugarNivel(this.siguienteId); }
+  volverAlMenu() {
+    if (this.saliendo) return;
+    this.saliendo = true;
+    this.scene.start('Menu');
+  }
+
+  crearAcciones() {
+    const A = LAYOUT.final.acciones, T = LAYOUT.final.atajos;
+    const rect = (i) => ({ x: A.x + i * (A.ancho + A.separacion), y: A.y, ancho: A.ancho, alto: A.alto });
+    this.boton(rect(0), 'Repetir nivel', () => this.repetirNivel(), { tamano: 15 });
+    if (this.siguienteId) this.boton(rect(1), 'Siguiente nivel', () => this.irSiguienteNivel(), { tamano: 15 });
+    else this.boton(rect(1), 'Último nivel', null, { tamano: 15, desactivado: true });
+    this.boton(rect(2), 'Volver al menú', () => this.volverAlMenu(), { tamano: 15 });
+    const atajos = `R repetir · ${this.siguienteId ? 'N siguiente · ' : ''}Esc menú   |   gamepad: A repetir · ${this.siguienteId ? 'Start siguiente · ' : ''}B menú`;
+    this.add.text(T.x, T.y, atajos, fuenteInterfaz(11, '#B8BCC2')).setOrigin(.5, 0);
+    const teclado = this.input.keyboard;
+    teclado?.on('keydown-R', () => this.repetirNivel());
+    teclado?.on('keydown-N', () => this.irSiguienteNivel());
+    teclado?.on('keydown-ESC', () => this.volverAlMenu());
+  }
 
   renderFin(data) {
     this.crearFondo();
@@ -113,6 +179,8 @@ export class Fin extends EscenaBase {
     else this.panel(F.marco, { profundidad: -4 });
     this.panel(F.panel, { profundidad: -4 });
     const nivel = data.nivel || { nombre: 'Nivel', tanques: 1, referencia: 1 };
+    this.nivelId = nivel.id ?? (Number(contextoJuego.nivelElegido) || 1);
+    this.siguienteId = siguienteNivel(this.nivelId, cargarNiveles().map((n) => n.id));
     const muestras = data.muestras || [], resultado = data.resultado || evaluarNivel(nivel, muestras, data.alarmas || []);
     const metricas = metricasTanque(muestras, nivel);
     const parametros = { ...PARAMETROS_TANQUES, ...(data.parametros || {}) };
@@ -136,7 +204,7 @@ export class Fin extends EscenaBase {
     this.add.text(F.explicacion.x, F.explicacion.y, 'El caudal de salida depende de √h, por eso el tanque es no lineal.\nCerca de una altura de operación se aproxima con un modelo lineal y valores locales de τ y K.\nLa válvula limita la rapidez del caudal; qd modifica el equilibrio.\nCada apertura de la válvula lleva el nivel a un equilibrio distinto, h_eq = (0,4·v1/c)², y el tanque tarda unas 4τ en llegar a él.\nLas tendencias comparan la respuesta con la referencia y su banda.', fuenteInterfaz(16, '#E6E8EA', { lineSpacing: 8 })).setWordWrapWidth(F.explicacion.ancho);
     this.boton(F.descarga, 'Descargar CSV', () => descargarCSV(data.registro, `nivel-${nivel.id}-partida.csv`), { tamano: 11 });
     this.add.text(F.encabezadosCsv.x, F.encabezadosCsv.y, 'CSV: t,u_crudo,u,x1,x2,y,v2,q_d,h_sp', fuenteInterfaz(13)).setDepth(5);
-    this.boton(F.volver, 'Volver al menú', () => this.scene.start('Menu'));
+    this.crearAcciones();
   }
 
   mostrarFinFallback(data) {
