@@ -1,6 +1,6 @@
 # PROMPTS — Alambique Real: El Arte de la Alquimia
 
-Registro, en orden, de los prompts usados en Gemini y en la vista Codex de ChatGPT Desktop.
+Registro, en orden, de los prompts usados en Gemini, en la vista Codex de ChatGPT Desktop y, desde la entrada 82, en Claude Code.
 Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de la IA detectó la pareja.
 
 | N.º | Sección | Herramienta | Prompt | Resultado |
@@ -78,7 +78,15 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 71 | Día 2, 5.3 | Gemini | Efectos visuales: salpicadura, vapor, chispa, polvo, aparición y desborde | Funcionó parcialmente (retoques) |
 | 72 | Día 2, 5.4 a) | Gemini | Diseño de audio (docs/audio.md) | Funcionó, con ajustes de la pareja |
 | 73 | Día 2, 5.4 b) | Gemini (Música, Lyria 3) | Cinco pistas de música por situación | Funcionó; recortadas en bucle por la pareja |
-
+| 74 | Día 2, 5.5 paso 1 | Codex | Diagnóstico y prueba de regresión (test/regresion.test.js) | Funcionó |
+| 75 | Día 2, 5.5 etapa 1 | Codex | Carga de recursos centralizada en Arranque con barra y respaldo | Funcionó |
+| 76 | Día 2, 5.6 a) | Codex | Estados del equipo y Galería | No aceptado (desalineado; se revirtió) |
+| 77 | Día 2, 5.6 b) | Codex | Actuadores y piezas guiadas por el modelo | No aceptado (rompió los niveles 2 y 3; se revirtió) |
+| 78 | Día 2 | Codex | Volver al simulador del día 1 conservando el audio | Funcionó |
+| 79 | Día 2, 5.6 c) | Codex | Perturbaciones y avisos: llave de consumo (nivel 2) y tubería de intercambio (nivel 3) | Funcionó tras 2 ajustes de posición |
+| 80 | Día 2, 5.6 e) | Codex | Retroalimentación con sistemas de segundo orden (resorteVisual) | Funcionó |
+| 81 | Día 2, 5.6 f) | Codex | Música, efectos sonoros y sonificación | Funcionó |
+| 82 | Día 2, 5.5 a 5.7 | Claude Code | Continuar las fases pendientes del día 2 sobre el simulador desplegado | Funcionó |
 ---
 
 ## 1. Skill `disenador-juegos-simulacion` (5.2)
@@ -1603,3 +1611,35 @@ Las otras cuatro cambian la situación, el estilo, el tempo y el ambiente según
 
 Los efectos sonoros (5.4 c) no se hicieron con IA: se sintetizaron con scripts/sintetizar_sfx.py.
 
+
+---
+
+## 74 a 81. Integración por etapas en Codex (5.5 y 5.6)
+
+Se envió primero el prompt de la sección 5.5 (paso 1: diagnóstico y prueba de regresión) y luego un prompt por etapa con el texto de la sección 5.6 correspondiente, completado con los datos del simulador (alambique de 3 m, h₁/h₂, v₁/v₂, q_d, aviso de 2000 ms).
+
+- **74 (paso 1):** Codex creó `test/regresion.test.js` (valor final, tiempo de subida 10–90 % y sobreimpulso contra `docs/linea_base_escalon.csv`, y niveles.json sin cambios). Funcionó.
+- **75 (etapa 1):** carga centralizada en `Arranque.js` con barra de progreso y aviso de respaldo si falta un archivo. Funcionó.
+- **76 y 77 (etapas 2 y 3):** Codex no puede ver la pantalla y el resultado quedó desalineado: el alambique temblaba de izquierda a derecha (recentrado en cada cuadro) y luego de arriba abajo, las piezas no encajaban y al final el menú fallaba con `TypeError: Cannot read properties of undefined (reading 'ancho') at Simulacion.crearVisualPerturbacion`, sin poder iniciar los niveles 2 y 3. **Decisión de la pareja:** volver al simulador del día 1 y cambiar solo el arte, sin mover posiciones.
+- **78:** commit "Vuelve el simulador al estado del día 1", conservando los sonidos ya integrados.
+- **79 (etapa 4):** perturbaciones conectadas físicamente: llave de consumo pegada al costado del alambique en el nivel 2 (aviso de 2000 ms, chorro según q_d) y tubería de intercambio entre el alambique 2 y el caldero en el nivel 3 (pulsos en el sentido de q_d). Hubo que pedir dos ajustes de posición.
+- **80 (etapa 6):** `src/juego/efectos/resorteVisual.js` (RK4 sobre m·x'' + c·x' + k·x) para la vibración de cámara (ζ = 0,3, 12 Hz) y el oleaje (ζ = 0,2, 2 Hz), destello rojo de 120 ms, brillo verde al entrar en la banda, partículas (máx. 60) y opción "Reducir efectos".
+- **81 (etapa 7):** `scripts/procesar-audio.mjs`, gestor de audio de 4 canales con ducking, desbloqueo tras la primera interacción, sonificación con filtro y burbujeo, volumen por canal y silencio.
+
+---
+
+## 82. Continuación del día 2 en Claude Code (5.5 a 5.7)
+
+A partir de aquí el trabajo pendiente se hizo en Claude Code, que puede ejecutar el juego en un navegador y revisar capturas, sobre la versión desplegada (con los cambios de gamepad, cámara y "Configurar controles").
+
+```
+Desde este punto trabaja tú mismo con Claude Code en vez de decirme qué poner en Codex. Ya se desplegó el simulador y se cambiaron algunas cosas (están en este .zip). Con esto continuemos con las fases de la guía (las partes que faltan o quedaron pendientes): FASE 1 (5.1 y 5.2), FASE 2 (5.3 y 5.4), FASE 3 (5.5 y 5.6) y FASE 4 (5.7).
+```
+
+- **Revisión frente a la guía:** faltaban la máquina de estados del equipo y la Galería (etapa 2), `src/hmi/representacion.js` (etapa 3), el escenario con Tilemap, decoraciones y ambiente (etapa 5), la etapa 8 completa (atlas, 60 FPS, subpasos, pooling, tamaños) y las pruebas de la 5.7.
+- **Etapa 2:** hojas de estados generadas desde los sprites del día 1 con el mismo tamaño de cuadro (215 × 300 y 395 × 510), para no mover nada (`scripts/hojas_equipo.py`); `src/juego/animaciones.js`, `src/juego/entidades/Equipo.js` (apagado, arranque, funcionando, falla, alarma; HH entra en 2,8 m y sale en 2,7 m; timeScale de 0,5 a 2 según q_in) y escena `Galeria` (tecla G) con deslizadores de h₁, h₂, v₁, v₂ y q_d.
+- **Etapa 3:** `src/hmi/representacion.js` (mapear con saturación, interpolación de color, umbral con histéresis); el giro de los volantes se calcula con esas funciones.
+- **Etapa 5:** Tilemap desde la matriz de `src/juego/niveles/escenario.js` (zócalo de piedra y piso de losas de 32 × 32), vela, frasco y engranajes animados en huecos de cada nivel, capa de ambiente por nivel y polvo lento (máx. 30), con el orden de profundidad documentado.
+- **Etapa 8:** `render: { antialias: true, roundPixels: true }`, 60 FPS de objetivo con bajada automática a 30 FPS y efectos reducidos si la detección promedia menos de 20 FPS durante 5 s (`src/juego/rendimiento.js`), atlas `piezas` (`scripts/crear-atlas.mjs`, sin dependencias), subpasos del integrador y estado del equipo en el panel D.
+- **Pruebas:** `analisis/regresion.py` (código de la guía), `docs/dia2_escalon.csv` y `docs/dia2_escalon_lento.csv` capturados en Chromium con `?control=escalon` (el segundo con la CPU 4x más lenta), y pruebas nuevas: `test/paso-fijo.test.js`, `test/equipo-estados.test.js` y `test/escenario-rendimiento.test.js`. Tablas en `docs/pruebas_dia2.md`.
+- **Problemas detectados y corregidos:** la alarma salía casi totalmente roja (se bajó el tinte); el candelero de la vela cambiaba de color entre cuadros (solo se anima la llama); las decoraciones sobre la mesa quedaban ocultas detrás de ella (se les dio la profundidad de objetos apoyados); los deslizadores de la Galería salían en columna porque Phaser fija `display: block` en el nodo del DOMElement (la cuadrícula va en un nodo hijo).

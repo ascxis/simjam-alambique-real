@@ -130,3 +130,23 @@ Rangos del modelo: h de 0 a 3 m (desborde a 3,0 m), v de 0 a 1, q_in = 0,4·v₁
 | `efecto_chispa.png` | Se quitaron los marcos y los números; el cuadro 4 (dos estrellas borrosas) se reemplazó por la estrella del cuadro 2 al 55 % | Copia fantasma en el cuadro 4 |
 | `efecto_salpicadura.png` | Solo se centraron los cuadros | — |
 | `efecto_desborde.png` | Se extrajo solo el líquido que rebosa (sin la olla de la imagen de Gemini) y se aclaró el verde para que coincida con el visor del alambique | La olla no es el alambique; así el efecto se dibuja sobre la cúpula del alambique en el juego |
+
+## Día 2: recursos integrados en el juego (etapas 2, 5 y 8)
+
+Lo que quedó en `public/assets/` después de la integración. Los tamaños de cuadro del equipo son los del sprite del día 1, para que el alambique, sus visores y las tuberías conserven exactamente las mismas posiciones en pantalla.
+
+| Recurso | Archivo | Cuadro (px) | Estados y cuadros | Cómo se genera | Variable que lo controla |
+|---|---|---|---|---|---|
+| Equipo principal (niveles 1 y 2) | `sprites/equipo/alambique_simple_{reposo,funcionando,falla,alarma}.png` + `alambique_simple.json` | 215 × 300 | Reposo 1, funcionando 4 (reflejo que recorre el cobre), falla 4 (cobre quemado y poción que escurre desde la tapa), alarma 2 (tinte y borde rojo, parpadeo de 2 Hz) | `npm run hojas:equipo` (`scripts/hojas_equipo.py`) a partir de `alambique_cuerpo_vacio.png` | Máquina de estados `src/juego/entidades/Equipo.js`: h₁ y q_in = 0,4·v₁ |
+| Equipo principal (nivel 3) | `sprites/equipo/alambique_cascada_{reposo,funcionando,falla,alarma}.png` + `alambique_cascada.json` | 395 × 510 | Igual que el simple | Igual, a partir de `alambique_cascada.png` | El mayor de h₁ y h₂, y q_in |
+| Piezas pequeñas en atlas | `sprites/piezas.png` + `piezas.json` (512 × 256) | Cada pieza conserva su tamaño | Cuerpo y volante de la válvula, placa y runa de alarma, caldero real, y los 4 cuadros de cada decoración | `npm run atlas` (`scripts/crear-atlas.mjs`) con las piezas de `arte_fuente/atlas_piezas/` | El volante gira con la salida del Actuador; la runa, con H y HH |
+| Baldosas | `tiles/laboratorio_tiles.png` | 32 × 32 | Hoja de 8x4: losas, muro de piedra, tuberías y pasarelas | `npm run escenario` (`scripts/preparar_escenario.py`), magenta → transparente | No aplica (Tilemap desde la matriz de `src/juego/niveles/escenario.js`) |
+| Decoraciones animadas | `deco-vela-0…3`, `deco-frasco-0…3`, `deco-engranaje-0…3` dentro del atlas | 64 × 64 | 4 cuadros cada una (la vela solo anima la llama) | `npm run escenario` y `npm run atlas` | No aplica: capa sin interacción |
+| Perturbación nivel 2 | `sprites/llave_consumo_{cerrada,aviso,abierta}.png` + `llave_consumo.json` | 144 × 180 | Cerrada 1, aviso 3 (2000 ms antes), abierta 1 con chorro dibujado según q_d | Hecha en el día 2 para que el consumo quede pegado al alambique | q_d del escalón de niveles.json |
+| Perturbación nivel 3 | Tubería de intercambio dibujada con Graphics | — | Aviso (2000 ms antes), flujo con pulsos en el sentido de q_d | En código (`Simulacion.actualizarVisualPerturbacion`) | q_d senoidal (±0,04 m³/s, 40 s) |
+
+Notas:
+
+- Las hojas del cucharón y del sifón (`arte_fuente/originales/perturbacion_*`) no se usan en el juego: la pareja pidió que la perturbación quedara conectada físicamente al alambique (llave en el nivel 2 y tubería al caldero en el nivel 3).
+- Se conserva un solo fondo (`fondos/fondo_laboratorio.png`): la cámara es fija, así que no hay parallax; las tres capas de Gemini quedan como fuente en `arte_fuente/originales/`.
+- La baldosa de 64 × 64 del día 1 (`baldosas_laboratorio.png`) y los PNG sueltos de la válvula, la alarma y el caldero se retiraron de `public/` porque ahora están en el atlas o en la hoja de 32 × 32.

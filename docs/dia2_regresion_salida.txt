@@ -1,0 +1,3 @@
+línea base: valor final = 1.5494 tr = 27.256 s                 Mp = 0.00 %
+docs/dia2_escalon.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pasa
+docs/dia2_escalon_lento.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pasa
