@@ -4,6 +4,7 @@ import { Calibracion } from './juego/Calibracion.js';
 import { Simulacion } from './juego/Simulacion.js';
 import { Fin } from './juego/Fin.js';
 import { Galeria } from './juego/Galeria.js';
+import { limitarFps, FPS_OBJETIVO } from './juego/rendimiento.js';
 
 window.addEventListener('error', (event) => {
   console.error('[ERROR JUEGO]', event.message, event.error?.stack || '');
@@ -29,4 +30,7 @@ const config = {
   scene: [Arranque, Menu, Calibracion, Simulacion, Fin, Galeria]
 };
 
-new Phaser.Game(config);
+const juego = new Phaser.Game(config);
+// Phaser fija el umbral exacto de 1000/60 ms, que pierde cuadros con vsync: se aplica el margen
+// de src/juego/rendimiento.js desde el arranque.
+juego.events.once('ready', () => limitarFps(juego, FPS_OBJETIVO));

@@ -44,7 +44,7 @@ export function crearPanelDepuracion(scene, { intercambiar = false, onIntercambi
   const dom = scene.add.dom(18, 105, panel).setOrigin(0, 0).setDepth(50).setVisible(false);
   return {
     setVisible(visible) { panel.style.display = visible ? 'block' : 'none'; if (visible) dom.setPosition(18, 105).setOrigin(0, 0); dom.setVisible(visible); },
-    actualizar({ fps, fpsCamara, fpsJuego, tiempoDeteccionMs, tiempoCuadroMs, delegado, resolucion, avisoResolucion = '', alertaFPS = '', alfa, Ts, tau, controles, x, canales = {}, subpasos, pasoIntegrador, estadoEquipo }) {
+    actualizar({ fps, fpsCamara, fpsJuego, fpsPantalla, tiempoDeteccionMs, tiempoCuadroMs, delegado, resolucion, avisoResolucion = '', alertaFPS = '', alfa, Ts, tau, controles, x, canales = {}, subpasos, pasoIntegrador, estadoEquipo }) {
       marcarAlfa(alfa);
       const formatMano = (id) => {
         const mano = controles?.[id] ?? {}, crudos = mano.u_crudo ?? {};
@@ -54,7 +54,7 @@ export function crearPanelDepuracion(scene, { intercambiar = false, onIntercambi
       const estado = Array.isArray(x) ? x : [];
       const dimensiones = resolucion ? `${resolucion.ancho}×${resolucion.alto}` : '—';
       const aviso = avisoResolucion ? `\nAVISO: ${avisoResolucion}` : '';
-      texto.textContent = `Juego ${formato(fpsJuego, 1)} FPS (${formato(tiempoCuadroMs, 1)} ms/cuadro) · detección ${formato(fps, 1)} FPS (${formato(tiempoDeteccionMs, 1)} ms/detección) · cámara ${formato(fpsCamara, 1)} FPS\nMediaPipe ${delegado || '—'} · video ${dimensiones}${alertaFPS}${alertaJuego}${aviso}\nα=${formato(alfa, 3)} · Ts=${formato(Ts, 4)} s · τf=${formato(tau, 4)} s\n${formatMano('der')}\n${formatMano('izq')}\nIntegrador RK4: ${subpasos ?? '—'} subpasos de h = ${Number.isFinite(pasoIntegrador) ? `1/${Math.round(1 / pasoIntegrador)}` : '—'} s en este cuadro · equipo: ${estadoEquipo || '—'}\nx(t)=[${estado.map((v) => formato(v, 3)).join(', ')}]`;
+      texto.textContent = `Juego ${formato(fpsJuego, 1)} FPS (${formato(tiempoCuadroMs, 1)} ms/cuadro; pantalla ${formato(fpsPantalla, 0)} Hz) · detección ${formato(fps, 1)} FPS (${formato(tiempoDeteccionMs, 1)} ms/detección) · cámara ${formato(fpsCamara, 1)} FPS\nMediaPipe ${delegado || '—'} · video ${dimensiones}${alertaFPS}${alertaJuego}${aviso}\nα=${formato(alfa, 3)} · Ts=${formato(Ts, 4)} s · τf=${formato(tau, 4)} s\n${formatMano('der')}\n${formatMano('izq')}\nIntegrador RK4: ${subpasos ?? '—'} subpasos de h = ${Number.isFinite(pasoIntegrador) ? `1/${Math.round(1 / pasoIntegrador)}` : '—'} s en este cuadro · equipo: ${estadoEquipo || '—'}\nx(t)=[${estado.map((v) => formato(v, 3)).join(', ')}]`;
       const lineaCanal = (nombre, datos) => `${nombre}: ruido p-p ${formato(datos?.ruido, 4)} · τf ${formato(tau * 1000, 1)} ms · retraso n=${datos?.n ?? 0}, último ${formatoMs(datos?.ultimoRetraso)} · media 5 ${formatoMs(datos?.retrasoPromedio)}`;
       mediciones.textContent = `${lineaCanal('der.altura', canales['der.altura'])}\n${lineaCanal('izq.pellizco', canales['izq.pellizco'])}`;
       lineaMedicion = `α=${formato(alfa, 3)}; Ts=${formato(Ts * 1000, 2)} ms; τ=${formato(tau * 1000, 2)} ms; ${lineaCanal('der.altura', canales['der.altura'])}; ${lineaCanal('izq.pellizco', canales['izq.pellizco'])}`;

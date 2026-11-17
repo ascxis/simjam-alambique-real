@@ -1201,9 +1201,14 @@ export class Simulacion extends EscenaBase {
     if (ahoraHmi - this.ultimoHmi >= 100) { this.actualizarHmi(camara, ahoraHmi); this.ultimoHmi = ahoraHmi; }
     if (this.debug && ahoraHmi - this.ultimoDebug >= 200) {
       const dep = this.gestor.camara.depuracion();
-      const fpsJuego = this.game.loop.actualFps || (dt > 0 ? 1 / dt : 0);
+      // FPS del juego: cuadros que de verdad se actualizan y dibujan (promedio de los últimos 60
+      // deltas de update). game.loop.actualFps no sirve con el límite de FPS: en Phaser 3.87
+      // stepLimitFPS cuenta cada requestAnimationFrame, así que da la frecuencia de la pantalla
+      // (p. ej. 180 Hz) aunque el juego corra a 60. Se muestra aparte como "pantalla".
+      const fpsJuego = this.tiempoMedioCuadroMs > 0 ? 1000 / this.tiempoMedioCuadroMs : (dt > 0 ? 1 / dt : 0);
+      const fpsPantalla = this.game.loop.actualFps;
       const alertaFPS = camara?.activo && camara.fps < 15 ? ' · detección lenta: más luz, cerrar pestañas o bajar resolución' : '';
-      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, tiempoDeteccionMs: camara?.promedioDeteccionMs, tiempoCuadroMs: this.tiempoMedioCuadroMs, delegado: camara?.delegado, resolucion: camara?.obtenerResolucion?.(), avisoResolucion: camara?.avisoResolucion, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x, canales: dep.canales, subpasos: this.subpasosCuadro, pasoIntegrador: this.sistema.paso, estadoEquipo: this.equipo?.estado });
+      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, fpsPantalla, tiempoDeteccionMs: camara?.promedioDeteccionMs, tiempoCuadroMs: this.tiempoMedioCuadroMs, delegado: camara?.delegado, resolucion: camara?.obtenerResolucion?.(), avisoResolucion: camara?.avisoResolucion, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x, canales: dep.canales, subpasos: this.subpasosCuadro, pasoIntegrador: this.sistema.paso, estadoEquipo: this.equipo?.estado });
       this.ultimoDebug = ahoraHmi;
     }
   }

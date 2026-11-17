@@ -8,13 +8,26 @@ export const FPS_OBJETIVO = 60;
 export const FPS_REDUCIDO = 30;
 export const DETECCION_MINIMA = 20;
 
+// Margen del límite de FPS. En Phaser 3.87, TimeStep.stepLimitFPS dibuja un cuadro cuando el tiempo
+// acumulado llega a 1000/límite ms y luego lo deja en 0 (sin guardar el sobrante). Con vsync los
+// refrescos duran 16,66 ± 0,1 ms (60 Hz) o 5,555 ms (180 Hz, tres = 16,665 ms): cuando quedan
+// apenas por debajo de 16,667 ms se pierde el cuadro y el juego va a 40-52 FPS en vez de 60.
+// Con 1 ms de margen un refresco de 60 Hz (o tres de 180 Hz) siempre alcanza, y dos de 180 Hz
+// (11,1 ms) no, así que el tope sigue siendo 60.
+export const MARGEN_LIMITE_MS = 1;
+
+/** Umbral en ms entre cuadros para un límite de FPS (0 = sin límite). */
+export function intervaloLimite(limite) {
+  return limite > 0 ? 1000 / limite - MARGEN_LIMITE_MS : 0;
+}
+
 /** Cambia el límite de FPS del bucle de Phaser (0 = sin límite) y lo reinicia sin saltos. */
 export function limitarFps(game, limite) {
   const loop = game?.loop;
-  if (!loop || loop.fpsLimit === limite) return false;
+  if (!loop || (loop.fpsLimit === limite && loop._limitRate === intervaloLimite(limite))) return false;
   loop.fpsLimit = limite;
   loop.hasFpsLimit = limite > 0;
-  loop._limitRate = limite > 0 ? 1000 / limite : 0;
+  loop._limitRate = intervaloLimite(limite);
   loop.sleep();
   loop.wake(true);
   return true;

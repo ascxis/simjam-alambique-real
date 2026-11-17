@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MATRIZ_LABORATORIO, validarMatriz, DECORACIONES_NIVEL, POLVO_MAXIMO, PROFUNDIDAD, CAPAS_FONDO, CERCANA_NIVEL, ZONAS_MODELO_NIVEL } from '../src/juego/niveles/escenario.js';
-import { debeReducir, limitarFps } from '../src/juego/rendimiento.js';
+import { debeReducir, limitarFps, intervaloLimite } from '../src/juego/rendimiento.js';
 import { leerPng, empaquetar } from '../scripts/crear-atlas.mjs';
 
 const raiz = fileURLToPath(new URL('..', import.meta.url));
@@ -64,9 +64,38 @@ test('rendimiento: reduce efectos solo si la detección lleva 5 s bajo 20 FPS', 
   const llamadas = [];
   const game = { loop: { fpsLimit: 60, sleep: () => llamadas.push('sleep'), wake: () => llamadas.push('wake') } };
   assert.equal(limitarFps(game, 30), true);
-  assert.deepEqual([game.loop.fpsLimit, game.loop.hasFpsLimit, game.loop._limitRate], [30, true, 1000 / 30]);
+  assert.deepEqual([game.loop.fpsLimit, game.loop.hasFpsLimit, game.loop._limitRate], [30, true, intervaloLimite(30)]);
   assert.deepEqual(llamadas, ['sleep', 'wake']);
   assert.equal(limitarFps(game, 30), false);
+  // Al arrancar Phaser deja fpsLimit = 60 con el umbral exacto: limitarFps debe aplicar el margen.
+  const recien = { loop: { fpsLimit: 60, _limitRate: 1000 / 60, sleep() {}, wake() {} } };
+  assert.equal(limitarFps(recien, 60), true);
+  assert.equal(recien.loop._limitRate, intervaloLimite(60));
+});
+
+// Reproduce TimeStep.stepLimitFPS de Phaser 3.87: acumula el tiempo de cada requestAnimationFrame y
+// dibuja cuando llega al umbral, dejando el acumulado en 0. Marcas de vsync con ±0,05 ms de ruido.
+function cuadrosPorSegundo(hz, umbralMs, segundos = 20) {
+  let semilla = 7;
+  const azar = () => ((semilla = (semilla * 16807) % 2147483647) / 2147483647) - 0.5;
+  let ultimo = 0, acumulado = 0, cuadros = 0;
+  for (let k = 1; k <= hz * segundos; k++) {
+    const t = (k * 1000) / hz + azar() * 0.1;
+    acumulado += Math.max(0, t - ultimo); ultimo = t;
+    if (acumulado >= umbralMs) { cuadros++; acumulado = 0; }
+  }
+  return cuadros / segundos;
+}
+
+test('rendimiento: el límite de 60 FPS da 60 en pantallas de 60, 120 y 180 Hz (con el margen)', () => {
+  for (const hz of [60, 120, 180]) {
+    assert.ok(cuadrosPorSegundo(hz, 1000 / 60) < 56, `${hz} Hz con el umbral exacto de Phaser pierde cuadros`);
+    const conMargen = cuadrosPorSegundo(hz, intervaloLimite(60));
+    assert.ok(conMargen >= 59.5 && conMargen <= 60.5, `${hz} Hz con margen: ${conMargen} FPS`);
+  }
+  assert.ok(cuadrosPorSegundo(144, intervaloLimite(60)) <= 60, '144 Hz no pasa de 60');
+  const reducido = cuadrosPorSegundo(180, intervaloLimite(30));
+  assert.ok(reducido >= 29.5 && reducido <= 30.5, `modo reducido a 180 Hz: ${reducido} FPS`);
 });
 
 function tamano(dir) {

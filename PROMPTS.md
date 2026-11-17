@@ -1830,3 +1830,33 @@ C) Cierre:
 - **Entregables del día 1 (5.13 de la guía 1, de `c168db4`):** `docs/` (diseno, niveles, modelo, recursos; además `identificacion.md`, que enlaza el README, y `causal.png`, `forrester.png` y `vensim_h1.png`, que enlaza `modelo.md`), los 11 CSV de los ensayos, los 3 `.mdl` de Vensim, `analisis/` (identificar.py y las dos gráficas), README, PROMPTS (del día 1), el informe APA (.docx y .pdf) y `ENLACES.txt` (repositorio, commit del día 1, Netlify como opcional y "Video: pendiente").
 - **Entregables del día 2 (5.9 de la guía 2, versión actual):** los archivos pedidos, `docs/capturas/antes` y `despues`, y `ENLACES.txt` (Netlify como entrega, repositorio y "Video: pendiente"); sin `docs/guias/`.
 - `entregables/` en `.gitignore`; tabla de la 5.8 con el tamaño final del ZIP del día 2; `CLAUDE.md` actualizado.
+
+---
+
+## 93. Mediciones con cámara de la 5.7 b y FPS del panel D
+
+```
+Lee CLAUDE.md. Estas son las mediciones reales con cámara de la sección 5.7 b) de la guía 2. Llénalas en docs/pruebas_dia2.md tal cual (sin cambiar el formato de las tablas), cambiando cada "pendiente" por el valor:
+
+- Nivel 1 con las manos: superado, 30 s seguidos en la banda (1,35–1,65 m), nivel final y máximo 1,559 m.
+- FPS del simulador: alrededor de 180.
+- FPS de detección: alrededor de 30.
+- Aciertos de gestos: 100 % (promedio).
+- Sonificación a ciegas: 9 de 10.
+- Galería (G): todas las animaciones se ven correctamente y los deslizadores funcionan.
+- Sonido con audífonos: cada evento suena correctamente.
+- Prueba con otra pareja: 1) sí distinguen el equipo principal de las perturbaciones; 2) sí ven venir las perturbaciones; 3) identifican el visor (nivel h), la llave (consumo q_d) y el chorro de salida (caudal); 4) por el sonido reconocen las alarmas.
+
+Además:
+1. Antes de anotar los FPS, revisa por qué el panel D muestra unos 180 FPS si en src/main.js el límite es 60: comprueba qué valor muestra el panel (game.loop.actualFps u otro cálculo) y si el límite de fps se está aplicando en una pantalla de alta frecuencia. Si es un error del panel o del límite, corrígelo y dime el valor real esperado; si no, explica en una nota debajo de la tabla por qué sale ese valor. En la tabla deja el valor medido (≈ 180) con esa nota.
+2. Actualiza la lista de verificación: "El simulador mantiene 60 FPS y la detección 20 FPS o más" pasa a "Sí", con los valores medidos.
+3. Agrega en la sección 5.1 que la detección mejoró de 18–20,6 FPS (día 1) a ≈ 30 FPS.
+4. Corre npm test y npm run build; si cambiaste código, vuelve a desplegar en Netlify y regenera el ZIP del día 2. Registra la entrada en PROMPTS.md, actualiza CLAUDE.md (las mediciones ya no están pendientes) y haz commit y push.
+5. Después de llenar las tablas, vuelve a armar entregables/Grupo1_SimJam_Entregables_Dia2.zip para que incluya el docs/pruebas_dia2.md actualizado.
+```
+
+- **Por qué el panel D marcaba ≈ 180:** mostraba `game.loop.actualFps`. En Phaser 3.87, `TimeStep.stepLimitFPS` (el que se usa con `fps.limit`) suma `framesThisSecond` en cada `requestAnimationFrame`, antes de decidir si dibuja: con límite, `actualFps` es la frecuencia de la pantalla (180 Hz en el portátil de la medición), no los cuadros del juego.
+- **El límite se aplicaba, pero perdía cuadros:** dibuja cuando el tiempo acumulado llega a 1000/60 = 16,667 ms y luego lo deja en 0 (no guarda el sobrante). Con vsync, un refresco de 60 Hz o tres de 180 Hz suman 16,66 ± 0,1 ms; cuando quedan apenas por debajo se espera un refresco más. Con un script que simula el vsync (marcas k·periodo ± 0,05 ms) y cuenta los eventos `update` de la escena: ≈ 52 FPS reales a 180 Hz y ≈ 40 FPS a 60 Hz (cercano a los 42,9 FPS del día 1).
+- **Corrección:** `src/juego/rendimiento.js` aplica el límite con 1 ms de margen (`intervaloLimite`, umbral 15,67 ms para 60 FPS y 32,33 ms para 30) y `src/main.js` lo aplica al arrancar (Phaser fija el umbral exacto). El panel D (`Simulacion.js`, `panelDepuracion.js`) muestra los FPS reales del juego (1000 / promedio de los últimos 60 deltas de `update`) y, aparte, la frecuencia de la pantalla. Prueba nueva en `test/escenario-rendimiento.test.js` que reproduce `stepLimitFPS`: 60 FPS con margen en pantallas de 60, 120 y 180 Hz (sin margen, menos de 56), 30 en modo reducido. En el navegador (local y Netlify), con vsync simulado: 60,0 FPS a 180 Hz y a 60 Hz; el panel dice "Juego 60,0 FPS (16,7 ms/cuadro; pantalla 178 Hz)". Limitación: en pantallas de 144 o 165 Hz el limitador de Phaser deja 48 o 55 FPS.
+- **Tablas (`docs/pruebas_dia2.md`):** 5.7 b con los valores medidos (FPS del simulador ≈ 180 con la nota que explica el valor y el real esperado, 60 FPS); tabla aparte para los pasos 6, 9 y 11 (Galería, audífonos y otra pareja); lista de verificación "60 FPS y detección 20 o más" en Sí; en la 5.1, la mejora de la detección de 18–20,6 FPS a ≈ 30 FPS.
+- `npm test` 65/65, `npm run build` sin errores; desplegado en Netlify; `entregables/Grupo1_SimJam_Modelado_Dia2.zip` regenerado (8,59 MB, 9 010 229 bytes) y `Grupo1_SimJam_Entregables_Dia2.zip` armado de nuevo con este `pruebas_dia2.md` y este `PROMPTS.md`.

@@ -1,6 +1,6 @@
 # Pruebas del día 2 — Alambique Real: El Arte de la Alquimia
 
-Tablas de las secciones 5.1, 5.5 y 5.7 de la guía del día 2. Las celdas marcadas **pendiente** son mediciones que solo se pueden hacer jugando con las manos frente a la cámara (nivel 1 con gestos, FPS de detección, prueba de gestos, sonificación a ciegas y prueba con otra pareja).
+Tablas de las secciones 5.1, 5.5 y 5.7 de la guía del día 2. Las mediciones con las manos frente a la cámara (nivel 1 con gestos, FPS, prueba de gestos, sonificación a ciegas, Galería, sonido con audífonos y prueba con otra pareja) las hizo la pareja y están en la sección 5.7 b.
 
 ## 5.1 Revisión del estado del simulador y línea base del modelo
 
@@ -15,6 +15,7 @@ Tablas de las secciones 5.1, 5.5 y 5.7 de la guía del día 2. Las celdas marcad
 | Recursos que faltan en public/assets | Ninguno de los 13 de docs/recursos.md; faltaba todo el audio (PROMPTS 63) |
 | Archivo de línea base del modelo | `docs/linea_base_escalon.csv`: valor final 1,5494 m, tiempo de subida 27,256 s, Mp 0,00 % |
 | Resultado del nivel 1 / FPS del simulador / FPS de detección | Nivel 1 superado (30 s seguidos en la banda) / 42,9 FPS / 18 a 20,6 FPS (PROMPTS 53 a 56); aciertos de gestos del día 1: 100 % (docs/pruebas_5_9.md) |
+| Mejora de la detección en el día 2 | La detección pasó de 18 a 20,6 FPS (día 1) a ≈ 30 FPS (medición del día 2, sección 5.7 b) |
 
 ## 5.5 Integración por etapas
 
@@ -52,13 +53,24 @@ docs/dia2_escalon_lento.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pa
 |---|---|---|---|
 | Regresión del modelo: valor final / tiempo de subida / Mp | 0 | 0,00 % / 0,00 % / 0,00 puntos | < 0,5 % / < 2 % / < 1 punto |
 | Regresión con CPU 4x: valor final / tiempo de subida / Mp | — | 0,00 % / 0,00 % / 0,00 puntos | < 0,5 % / < 2 % / < 1 punto |
-| Valor del criterio del nivel 1 | Superado: 30 s seguidos en la banda | **pendiente** (jugar el nivel 1 con las manos) | Igual o mejor |
-| FPS del simulador | 42,9 | **pendiente** (panel D durante una partida; objetivo 60, baja a 30 solo si la detección < 20) | 60 |
-| FPS de detección | 18 a 20,6 | **pendiente** (panel D) | 20 o más |
-| % de aciertos de gestos (promedio) | 100 % | **pendiente** (20 intentos por gesto) | 90 % o más |
-| Aciertos en la sonificación a ciegas (de 10) | — | **pendiente** | 8 o más |
+| Valor del criterio del nivel 1 | Superado: 30 s seguidos en la banda | Superado con las manos: 30 s seguidos en la banda (1,35–1,65 m); nivel final y máximo 1,559 m | Igual o mejor |
+| FPS del simulador | 42,9 | ≈ 180 en el panel D (ver la nota: era la frecuencia de la pantalla; el juego corre a 60) | 60 |
+| FPS de detección | 18 a 20,6 | ≈ 30 | 20 o más |
+| % de aciertos de gestos (promedio) | 100 % | 100 % (20 intentos por gesto) | 90 % o más |
+| Aciertos en la sonificación a ciegas (de 10) | — | 9 | 8 o más |
 | Tamaño de public/assets sin audio (MB) | 2,15 | 4,89 (con las tres capas de fondo; 3,88 con el fondo único) | Menos de 10 |
 | Tamaño de public/assets/audio (MB) | — (sin audio) | 3,71 | Menos de 8 |
+
+**Nota sobre los FPS del simulador.** El panel D mostraba `game.loop.actualFps` de Phaser. Con el límite de FPS activo (`fps: { limit: 60 }` en `src/main.js`), Phaser 3.87 (`TimeStep.stepLimitFPS`) cuenta ese valor en cada `requestAnimationFrame` del navegador, antes de decidir si dibuja, así que da la frecuencia de refresco de la pantalla: ≈ 180 en el portátil de la medición, que tiene una pantalla de 180 Hz. El límite sí se aplicaba, pero perdía cuadros: dibuja cuando el tiempo acumulado llega a 1000/60 = 16,667 ms y luego lo deja en 0, y con vsync los refrescos suman 16,66 ± 0,1 ms (un refresco de 60 Hz o tres de 180 Hz), a veces apenas menos, y entonces espera uno más. Con marcas de vsync simuladas el juego daba ≈ 52 FPS reales a 180 Hz y ≈ 40 FPS a 60 Hz (cercano a los 42,9 FPS anotados en el día 1, aunque no se sabe con qué pantalla se midieron). Corrección (PROMPTS 93): `src/juego/rendimiento.js` aplica el límite con 1 ms de margen (umbral 15,67 ms) desde el arranque, y el panel D muestra los FPS reales del juego (promedio de los últimos 60 cuadros) y, aparte, la frecuencia de la pantalla. Valor real esperado: **60 FPS** en pantallas de 60, 120, 180 y 240 Hz (medido: 60,0 FPS con vsync simulado a 180 y a 60 Hz; prueba en `test/escenario-rendimiento.test.js`). En pantallas de 144 o 165 Hz, cuyos refrescos no suman exactamente 16,7 ms, el límite de Phaser deja 48 o 55 FPS. La detección (≈ 30 FPS) no se ve afectada: corre en su propio bucle con `requestVideoFrameCallback`.
+
+| Prueba (pasos 6, 9 y 11 de la 5.7 b) | Resultado |
+|---|---|
+| Galería (tecla G): cada animación y los deslizadores de cada variable en todo su rango | Todas las animaciones se ven correctamente y los deslizadores funcionan |
+| Partida con audífonos: cada evento con su sonido | Cada evento suena correctamente |
+| Otra pareja: ¿se distingue el equipo principal de las perturbaciones? | Sí |
+| Otra pareja: ¿se ven venir las perturbaciones? | Sí |
+| Otra pareja: ¿qué variable del modelo muestra cada pieza que se mueve? | Identifican el visor (nivel h), la llave (consumo q_d) y el chorro de salida (caudal) |
+| Otra pareja: ¿qué evento del modelo reconocen solo por el sonido? | Las alarmas |
 
 ## Lista de verificación
 
@@ -77,15 +89,15 @@ docs/dia2_escalon_lento.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pa
 | La sonificación sigue a la variable del modelo sin chasquidos. | Sí: setTargetAtTime con τ = 0,03 s (filtro) y 0,05 s (burbujeo) | `18a806e` |
 | La música se repite sin cortes y las alarmas se oyen sobre ella. | Sí: bucles con fundido cruzado y ducking del 40 % | `18a806e` |
 | El sonido se activa tras la primera interacción y hay volumen por canal y silencio. | Sí | `18a806e` |
-| El simulador mantiene 60 FPS y la detección 20 FPS o más. | **Pendiente** de medir con la cámara (panel D) | `55b1008` |
-| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 8,59 MB en total (4,89 sin audio, con las tres capas de fondo); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 87 archivos): 8,59 MB (9 010 152 bytes, versión final en `entregables/`) | `55b1008` |
+| El simulador mantiene 60 FPS y la detección 20 FPS o más. | Sí: juego limitado a 60 FPS (el panel D marcaba ≈ 180, que era la frecuencia de la pantalla; ver la nota de la 5.7 b) y detección ≈ 30 FPS | `55b1008` y la corrección del límite de FPS (PROMPTS 93) |
+| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 8,59 MB en total (4,89 sin audio, con las tres capas de fondo); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 87 archivos): 8,59 MB (9 010 229 bytes, versión final en `entregables/`) | `55b1008` |
 
 ## 5.8 Entrega
 
 | Dato | Valor |
 |---|---|
-| Nombre del ZIP | `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/` de `78f940e`: `index.html` y `assets/` en la raíz, rutas con `/`), en `entregables/` |
-| Tamaño del ZIP (MB) | 8,59 (9 010 152 bytes, 87 archivos) |
+| Nombre del ZIP | `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/` con la corrección del límite de FPS: `index.html` y `assets/` en la raíz, rutas con `/`), en `entregables/` |
+| Tamaño del ZIP (MB) | 8,59 (9 010 229 bytes, 87 archivos) |
 | Enlace de previsualización | https://alambique-real-grupo1.netlify.app |
 
 Por indicación del docente, la entrega se hace con el enlace de Netlify en lugar del aula virtual.
