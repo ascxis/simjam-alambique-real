@@ -452,7 +452,10 @@ export class Simulacion extends EscenaBase {
       limpiar(() => this.renderDesbordeFallback?.destroy());
       this.emisoresEfectos?.forEach((emisor) => limpiar(() => emisor?.destroy()));
       limpiar(() => this.spriteDesborde?.destroy());
-      limpiar(() => this.cameras.main.setScroll(this.scrollBase?.x ?? 0, this.scrollBase?.y ?? 0));
+      // Quitar el desplazamiento de la vibración. Si el gestor de cámaras de Phaser ya procesó su
+      // propio 'shutdown' (deja main en undefined y destruye las cámaras), no hace falta: al
+      // volver a empezar la escena se crea una cámara nueva sin desplazamiento.
+      limpiar(() => this.cameras?.main?.setScroll(this.scrollBase?.x ?? 0, this.scrollBase?.y ?? 0));
       limpiar(() => this.renderIntercambioFijo.destroy());
       limpiar(() => this.renderIntercambioFlujo.destroy());
       limpiar(() => this.renderIntercambioAviso.destroy());

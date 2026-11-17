@@ -1765,3 +1765,15 @@ Lee CLAUDE.md. La guía 2 (tabla 5.2, sección 5.3 paso 4 y etapa 5 de la 5.6) p
 - **Posiciones:** comparación de zonas opacas (volantes, alambique, mesa, caldero, franja, botón Terminar) entre capturas de antes y después: el mejor ajuste es dx = 0, dy = 0 en todas.
 - `fondo_laboratorio.png` salió de `public/` (y de `scripts/procesar-assets.mjs`); `public/assets` sin audio: 4,89 MB. Capturas `docs/capturas/despues/tres_capas_*.png`. `npm test` 63/63, `npm run build` sin errores. Desplegado de nuevo en https://alambique-real-grupo1.netlify.app; ZIP de respaldo 8,60 MB.
 - Error previo, no relacionado y sin corregir: al terminar una partida con F la consola muestra `[ERROR JUEGO] limpieza Simulacion TypeError: ... reading 'setScroll'` (ya aparecía antes de este cambio); la pantalla final abre igual.
+
+---
+
+## 90. Error de `setScroll` al terminar la partida con F
+
+```
+Sí, corrige el error de setScroll al terminar con F
+```
+
+- **Causa:** al cerrar la escena Simulacion, la limpieza devolvía la cámara a su sitio (por la vibración de cámara) con `this.cameras.main.setScroll(...)`. El gestor de cámaras de Phaser 3.87 también escucha `shutdown`: deja `main` en `undefined` y destruye las cámaras, así que a veces la cámara ya no existía (`TypeError: Cannot read properties of undefined (reading 'setScroll')`). El error lo atrapaba `limpiar()` y la pantalla final abría igual.
+- **Corrección:** `this.cameras?.main?.setScroll(...)`. Ese reinicio no hace falta en el cierre: al volver a empezar la escena, Phaser crea una cámara nueva sin desplazamiento.
+- **Comprobación en el navegador (desarrollo y Netlify):** se terminaron con F partidas de los 3 niveles, dos de ellas con la cámara desplazada como en mitad de una vibración: 0 errores en la consola, y cada partida nueva empezó con la cámara en (0, 0). `npm test` 63/63, build sin errores, desplegado de nuevo en https://alambique-real-grupo1.netlify.app.

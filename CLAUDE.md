@@ -7,7 +7,7 @@ Simulador N.º 1 "Operador de tanques" del laboratorio SimJam de Modelado y Simu
 - Mantener las posiciones de la planta y la HMI del día 1 (`src/hmi/layout.js`); solo cambia el arte.
 - Phaser 3.87 y MediaPipe tasks-vision 0.10.14 se cargan por CDN; nada de `import` de Phaser; rutas relativas y `base: './'`.
 - No abrir los CSV con Excel (la configuración regional los daña).
-- Un commit por etapa; registrar los prompts en `PROMPTS.md` (la última entrada es la 89).
+- Un commit por etapa; registrar los prompts en `PROMPTS.md` (la última entrada es la 90).
 - Comprobar siempre con `npm test` (63 pruebas) y `npm run build`.
 
 ## Modelo
