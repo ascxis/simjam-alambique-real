@@ -7,8 +7,8 @@ Simulador N.º 1 "Operador de tanques" del laboratorio SimJam de Modelado y Simu
 - Mantener las posiciones de la planta y la HMI del día 1 (`src/hmi/layout.js`); solo cambia el arte.
 - Phaser 3.87 y MediaPipe tasks-vision 0.10.14 se cargan por CDN; nada de `import` de Phaser; rutas relativas y `base: './'`.
 - No abrir los CSV con Excel (la configuración regional los daña).
-- Un commit por etapa; registrar los prompts en `PROMPTS.md` (la última entrada es la 85).
-- Comprobar siempre con `npm test` (60 pruebas) y `npm run build`.
+- Un commit por etapa; registrar los prompts en `PROMPTS.md` (la última entrada es la 86).
+- Comprobar siempre con `npm test` (62 pruebas) y `npm run build`.
 
 ## Modelo
 A·dh/dt = 0,4·v − 0,2·√h − q_d, A = 1, RK4 con h = 1/120 s y paso fijo; actuador con 0,25/s; alarmas H 2,4 (sale 2,3), HH 2,8 (sale 2,7), desborde 3,0. Nivel 3 en cascada con q_d = 0,04·sin(2πt/40) sobre h₂. Línea base: `docs/linea_base_escalon.csv` (final 1,5494 m, tr 27,256 s, Mp 0 %).

@@ -89,6 +89,8 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 82 | Día 2, 5.5 a 5.7 | Claude Code | Continuar las fases pendientes del día 2 sobre el simulador desplegado | Funcionó |
 | 83 | Día 2, 5.8 | Claude Code + Antigravity | Build, ZIP medido y guion del video | Funcionó |
 | 84 | Día 2, 5.7 b) paso 12 | Claude Code | Revisión visual de los 3 niveles, la Galería y el menú; corrección de lo que no tenía sentido | Funcionó |
+| 85 | Día 2, 5.8 | Claude Code | ZIP de la entrega regenerado tras la revisión visual | Funcionó |
+| 86 | Día 2, 5.7 b) paso 12 | Claude Code | Pantalla de inicio de cada nivel y perturbaciones explicadas en pantalla | Funcionó |
 ---
 
 ## 1. Skill `disenador-juegos-simulacion` (5.2)
@@ -1690,3 +1692,16 @@ Haz git pull, corre npm test y npm run build, y vuelve a generar Grupo1_SimJam_M
 - Se trajo `2b6dae3` (revisión visual). `src/modelo/` no cambió; en `layout.js` solo se movió la tubería de intercambio del día 2.
 - `npm test` (60 de 60) y `npm run build` sin errores (`dist/assets/index-*.js`, 154,4 kB).
 - `Grupo1_SimJam_Modelado_Dia2.zip` regenerado con `tar -a` (85 archivos, rutas con `/`): 7 971 135 bytes (7,60 MB); extraído, queda idéntico a `dist/`. Tamaño anotado en `docs/pruebas_dia2.md`; el ZIP sigue fuera de git.
+
+---
+
+## 86. Pantalla de inicio de cada nivel y perturbaciones más claras
+
+```
+Del nivel 2 entiendo que la perturbación es que a los 40 segundos sale líquido del tanque por otra llave. Del nivel 1 y 3 no entiendo nada. [...] Agrega un texto al inicio de cada nivel y mejora visualmente las perturbaciones para que se entiendan.
+```
+
+- **Pantalla de inicio** (`src/juego/niveles/instrucciones.js` y `Simulacion.crearIntroNivel`): objetivo con la banda y el criterio, cómo funciona la planta, qué hace la perturbación, los controles de la fuente elegida y los límites (HH y desborde). Todo sale de `niveles.json` y de la configuración de controles. La simulación espera en pausa (el modelo no avanza) hasta pulsar Enter, Espacio, Start o hacer clic, o 15 s. Con `?control=escalon` no aparece, así la regresión no cambia.
+- **Franja de la perturbación** en el piso del laboratorio (niveles 2 y 3): dice en palabras qué pasa en cada momento. Nivel 2: cuenta regresiva hasta los 40 s, aviso ámbar parpadeante, "ABIERTA: saca 0,080 m³/s" en rojo con flecha hacia abajo y aviso de cierre a los 80 s. Nivel 3: "SALE … del alambique 2 hacia el caldero (el nivel baja)" en rojo o "ENTRA … (el nivel sube)" en verde, según el signo de q_d.
+- **Tubería de intercambio** más gruesa, con pulsos y flechas más grandes que muestran el sentido.
+- Prueba nueva `test/instrucciones.test.js`. Pruebas: 62/62.

@@ -1,3 +1,4 @@
+import { instruccionesNivel, estadoPerturbacion } from './niveles/instrucciones.js';
 import { giroVolante } from '../hmi/representacion.js';
 import { MATRIZ_LABORATORIO, ORIGEN_BALDOSAS, TAM_BALDOSA, DECORACIONES_NIVEL, AMBIENTE_NIVEL, POLVO_MAXIMO, PROFUNDIDAD, validarMatriz } from './niveles/escenario.js';
 import { limitarFps, debeReducir, FPS_OBJETIVO, FPS_REDUCIDO } from './rendimiento.js';
@@ -80,6 +81,8 @@ function guardarParametrosGuardados(parametros) {
 }
 
 function decimalParametro(valor) { return String(valor).replace('.', ','); }
+
+const DURACION_INTRO = 15; // s que espera la pantalla de inicio antes de empezar sola
 
 export class Simulacion extends EscenaBase {
   constructor() { super('Simulacion'); }
@@ -399,6 +402,7 @@ export class Simulacion extends EscenaBase {
       if (!this.sys.isActive()) return;
       const T = this.teclasConfig;
       if ([T.terminar, T.pausa, 'KeyP', 'KeyD'].includes(e.code)) e.preventDefault();
+      if (this.introActiva && [T.pausa, 'Enter', 'Space', 'NumpadEnter'].includes(e.code)) { e.preventDefault(); this.cerrarIntro(); return; }
       if (e.code === T.terminar) {
         console.info('[DIAG] tecla terminar', { terminado: this.terminado, sysIsActive: this.sys.isActive(), tiempoJuego: this.tiempoJuego });
         this.terminar(false); return;
@@ -458,7 +462,7 @@ export class Simulacion extends EscenaBase {
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
     this.gestor.eventos.addEventListener('terminar', () => { if (this.gestor.fuente === 'gamepad') this.terminar(false); });
-    this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
+    this.gestor.eventos.addEventListener('pausa', () => { if (this.introActiva) { this.cerrarIntro(); return; } this.pausado = !this.pausado; this.pausaPorManos = false; });
       const ayudaLayout = this.nivel.tanques === 2 ? L.ayudaCascada : L.ayudaSimple;
     this.ayuda = this.add.text(ayudaLayout.x, L.ayuda.y, '', fuenteInterfaz(13)).setDepth(5);
     this.ayuda.setWordWrapWidth(ayudaLayout.ancho);
@@ -495,6 +499,101 @@ export class Simulacion extends EscenaBase {
     try { this.crearVisualPerturbacion(); }
     catch (error) { console.warn('[AVISO JUEGO] No se pudo dibujar la perturbación; la simulación continúa.', error); }
     this.crearRetroalimentacion();
+    try { this.crearFranjaPerturbacion(); }
+    catch (error) { console.warn('[AVISO JUEGO] Franja de perturbación omitida.', error); }
+    this.crearIntroNivel();
+  }
+
+  // ---------- Pantalla de inicio del nivel ----------
+  // Explica el objetivo, cómo funciona la planta, la perturbación y los controles. La
+  // simulación espera en pausa (el modelo no avanza) hasta que el jugador empieza o pasan
+  // DURACION_INTRO segundos. En ?control=escalon no se muestra (prueba automática).
+  crearIntroNivel() {
+    if (this.gestor.fuente === 'escalon' || this.modoVerificacionEscalon) return;
+    const info = instruccionesNivel(this.nivel, { fuente: this.gestor.fuente, teclas: this.teclasConfig || cargarConfig().teclado });
+    const ancho = 760, x0 = 640 - ancho / 2, y0 = 118, prof = 30;
+    const capa = this.add.container(0, 0).setDepth(prof);
+    const fondo = this.add.rectangle(640, 360, 1280, 720, 0x06070a, .62).setInteractive();
+    const marco = this.add.graphics();
+    capa.add([fondo, marco]);
+    const textos = [];
+    let y = y0 + 22;
+    const titulo = this.add.text(640, y, info.titulo, fuenteTitulo(30)).setOrigin(.5, 0);
+    textos.push(titulo); y += 52;
+    const seccion = (etiqueta, cuerpo, color = '#E6E8EA') => {
+      const e = this.add.text(x0 + 30, y, etiqueta, fuenteInterfaz(14, '#F2B66D', { fontStyle: 'bold' }));
+      const t = this.add.text(x0 + 150, y, cuerpo, fuenteInterfaz(14, color, { lineSpacing: 4, wordWrap: { width: ancho - 180 } }));
+      textos.push(e, t); y += Math.max(e.height, t.height) + 14;
+    };
+    seccion('Objetivo', info.objetivo, '#FFFFFF');
+    seccion('Cómo funciona', info.planta);
+    seccion(this.nivel.perturbacion ? 'Perturbación' : 'Perturbación', info.perturbacion, this.nivel.perturbacion ? '#FFD38A' : '#E6E8EA');
+    seccion('Controles', info.controles.join('\n'));
+    seccion('Cuidado', info.avisos, '#FF8A80');
+    this.textoCuentaIntro = this.add.text(640, y + 6, '', fuenteInterfaz(15, '#7CF2A8', { fontStyle: 'bold' })).setOrigin(.5, 0);
+    textos.push(this.textoCuentaIntro);
+    const alto = y + 40 - y0;
+    marco.fillStyle(0x1c2026, .97).fillRoundedRect(x0, y0, ancho, alto, 14);
+    marco.lineStyle(2, 0xb85a24, 1).strokeRoundedRect(x0, y0, ancho, alto, 14);
+    capa.add(textos);
+    this.capaIntro = capa;
+    this.introActiva = true;
+    this.introInicio = performance.now();
+    this.pausado = true; this.pausaPorManos = false;
+    fondo.on('pointerdown', () => this.cerrarIntro());
+  }
+
+  cerrarIntro() {
+    if (!this.introActiva) return;
+    this.introActiva = false;
+    this.capaIntro?.destroy(); this.capaIntro = null;
+    this.pausado = false; this.pausaPorManos = false;
+    this.audio?.desbloquear?.();
+  }
+
+  actualizarIntro() {
+    if (!this.introActiva) return;
+    const restante = DURACION_INTRO - (performance.now() - this.introInicio) / 1000;
+    if (restante <= 0) { this.cerrarIntro(); return; }
+    const como = this.gestor.fuente === 'camara' ? 'Haz clic o espera' : this.gestor.fuente === 'gamepad' ? 'Pulsa Start o espera' : 'Pulsa Enter, Espacio o haz clic, o espera';
+    this.textoCuentaIntro?.setText(`${como}: la partida empieza en ${Math.ceil(restante)} s`);
+  }
+
+  // ---------- Franja de la perturbación ----------
+  // Una franja en el piso del laboratorio dice en palabras qué está haciendo la
+  // perturbación en cada momento (cuándo empieza, cuánto saca o mete y hacia dónde).
+  crearFranjaPerturbacion() {
+    if (!this.nivel.perturbacion) return;
+    const f = { x: 104, y: 604, ancho: 372, alto: 42 };
+    this.franja = f;
+    this.franjaFondo = this.add.graphics().setDepth(6);
+    this.franjaTexto = this.add.text(f.x + 34, f.y + f.alto / 2, '', fuenteInterfaz(12, '#FFFFFF', { fontStyle: 'bold', lineSpacing: 2, wordWrap: { width: f.ancho - 42 } })).setOrigin(0, .5).setDepth(6.1);
+    this.franjaIcono = this.add.graphics().setDepth(6.1);
+    this.etiquetaLlave?.setVisible(false);
+    this.etiquetaIntercambio?.setVisible(false);
+  }
+
+  actualizarFranjaPerturbacion(qd, fase) {
+    if (!this.franjaTexto) return;
+    const estado = estadoPerturbacion(this.nivel, this.tiempoJuego, qd, fase);
+    if (!estado) return;
+    const tonos = {
+      calma: [0x1c2026, 0x6b7280], aviso: [0x3a2a05, 0xffb52e], activa: [0x3a1410, 0xff6b5a], entra: [0x0c2a1a, 0x00e676],
+    };
+    const [relleno, borde] = tonos[estado.tono] || tonos.calma;
+    const parpadeo = estado.tono === 'aviso' && Math.floor(performance.now() / 250) % 2 === 0;
+    const f = this.franja, g = this.franjaFondo;
+    g.clear();
+    g.fillStyle(relleno, .95).fillRoundedRect(f.x, f.y, f.ancho, f.alto, 8);
+    g.lineStyle(parpadeo ? 3 : 2, borde, 1).strokeRoundedRect(f.x, f.y, f.ancho, f.alto, 8);
+    if (this.franjaTexto.text !== estado.texto) this.franjaTexto.setText(estado.texto);
+    // Ícono: flecha hacia abajo (sale del alambique), hacia arriba (entra) o reloj de aviso.
+    const i = this.franjaIcono, cx = f.x + 17, cy = f.y + f.alto / 2;
+    i.clear();
+    i.fillStyle(borde, 1);
+    if (estado.sentido === 1) i.fillTriangle(cx - 8, cy - 6, cx + 8, cy - 6, cx, cy + 9).fillRect(cx - 3, cy - 12, 6, 7);
+    else if (estado.sentido === -1) i.fillTriangle(cx - 8, cy + 6, cx + 8, cy + 6, cx, cy - 9).fillRect(cx - 3, cy + 5, 6, 7);
+    else i.lineStyle(2, borde, 1).strokeCircle(cx, cy, 9).lineBetween(cx, cy, cx, cy - 6).lineBetween(cx, cy, cx + 5, cy);
   }
 
   // Etapa 8: si la detección de manos no llega a 20 FPS, se baja el juego a 30 FPS y se
@@ -655,6 +754,7 @@ export class Simulacion extends EscenaBase {
         else this.llaveConsumo.setTexture(textura, 0);
       }
       const qd = obtenerPerturbacion(this.nivel, tiempo);
+      this.actualizarFranjaPerturbacion(qd, fase);
       this.etiquetaLlave?.setText(`consumo q_d = ${qd.toFixed(2).replace('.', ',')} m³/s`);
       const cfg = LAYOUT.simulacion.perturbaciones.llaveConsumo;
       this.renderLlaveChorro.clear();
@@ -670,6 +770,7 @@ export class Simulacion extends EscenaBase {
     }
     if (this.nivel.id === 3 && this.recorridoIntercambio) {
       const qd = obtenerPerturbacion(this.nivel, tiempo), cfg = LAYOUT.simulacion.perturbaciones.intercambio;
+      this.actualizarFranjaPerturbacion(qd, fase);
       const amplitud = Math.min(1, Math.abs(qd) / p.amplitud);
       this.renderIntercambioFlujo.clear();
       if (amplitud > 0) {
@@ -694,11 +795,11 @@ export class Simulacion extends EscenaBase {
         const paso = (tiempo * cfg.velocidad * 30) % largoTotal;
         for (const separacion of [0, largoTotal * .48, largoTotal * .82]) {
           const pulso = puntoEnRecorrido(paso + separacion);
-          this.renderIntercambioFlujo.fillStyle(0x00e676, .98).fillCircle(pulso.x, pulso.y, 1 + .6 * amplitud);
+          this.renderIntercambioFlujo.fillStyle(0x00e676, .98).fillCircle(pulso.x, pulso.y, 2 + 1.6 * amplitud);
         }
         const sentido = qd >= 0 ? 1 : -1;
         const dibujarFlecha = (x, y, horizontal) => {
-          const tam = 4, medioAncho = 1.45;
+          const tam = 7, medioAncho = 4.5;
           const vertices = horizontal
             ? (sentido > 0 ? [[x + tam, y], [x - tam, y - medioAncho], [x - tam, y + medioAncho]] : [[x - tam, y], [x + tam, y - medioAncho], [x + tam, y + medioAncho]])
             : (sentido > 0 ? [[x, y + tam], [x - medioAncho, y - tam], [x + medioAncho, y - tam]] : [[x, y - tam], [x - medioAncho, y + tam], [x + medioAncho, y + tam]]);
@@ -978,6 +1079,7 @@ export class Simulacion extends EscenaBase {
         if (this.tiemposCuadro.length > 60) this.tiemposCuadro.shift();
         this.tiempoMedioCuadroMs = this.tiemposCuadro.reduce((suma, valor) => suma + valor, 0) / this.tiemposCuadro.length;
       }
+      this.actualizarIntro();
       this.actualizarCuadro(time, deltaMs);
     } catch (error) {
       console.error('[ERROR JUEGO] update', error);
@@ -1184,8 +1286,8 @@ export class Simulacion extends EscenaBase {
   actualizarHmi(camara) {
     const L = LAYOUT.simulacion;
     this.pausaTexto.setText(this.pausado ? (this.pausaPorManos ? 'Muestra las manos' : 'PAUSA · Enter para reanudar') : '');
-    this.pausaTexto.setVisible(this.pausado);
-    this.pausaPanel.setVisible(this.pausado);
+    this.pausaTexto.setVisible(this.pausado && !this.introActiva);
+    this.pausaPanel.setVisible(this.pausado && !this.introActiva);
     const alarmasActivas = this.alarmasActivas || [];
     const criterio = this.nivel.criterio;
     let valorProgreso = 0;
@@ -1203,7 +1305,7 @@ export class Simulacion extends EscenaBase {
     this.ayuda.setText(this.nivel.tanques === 2
       ? 'Mano derecha → v1 entrada · Pellizco izquierdo abierto → v2 abierta'
       : `${this.gestor.fuente} · P parámetros\nD depuración · F terminar`);
-    this.tiempoTexto.setText(`${this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`}`);
+    this.tiempoTexto.setText(`${this.introActiva ? 'Listo para empezar' : this.pausado ? 'PAUSADO' : `Tiempo ${this.tiempoJuego.toFixed(1)} / ${this.nivel.duracion} s`}`);
     const seriesAltura = [{ clave: 'x', indice: 0, nombre: 'h1', color: 0xe6e8ea }, ...(this.nivel.tanques === 2 ? [{ clave: 'x', indice: 1, nombre: 'h2', color: 0x2ecc71 }] : [])];
     const marcadoresTiempo = instantesInicioPerturbacion(this.nivel).filter((t) => t <= this.tiempoJuego);
     const opcionesNiveles = { ...L.tendenciaNiveles, muestras: this.muestrasVista, min: 0, max: 3, unidad: 'm', titulo: 'Niveles y banda', clave: 'y', series: [...seriesAltura, { clave: 'h_sp', nombre: 'referencia', color: 0xc9a227 }], bandaInferiorClave: 'banda_inf', bandaSuperiorClave: 'banda_sup', alarma: alarmasActivas.length > 0, ejeTiempo: true, marcadoresTiempo };
