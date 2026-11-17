@@ -79,3 +79,8 @@ docs/dia2_escalon_lento.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pa
 | El sonido se activa tras la primera interacción y hay volumen por canal y silencio. | Sí | `18a806e` |
 | El simulador mantiene 60 FPS y la detección 20 FPS o más. | **Pendiente** de medir con la cámara (panel D) | `55b1008` |
 | La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 7,59 MB en total (3,88 sin audio); el ZIP se mide en la 5.8 | `55b1008` |
+
+## Capturas "antes y después"
+
+- Antes (simulador del día 1): `docs/capturas/antes/`.
+- Después (día 2): `docs/capturas/despues/` — `nivel1.png` (equipo funcionando, volante y escenario), `nivel1_alarma_HH.png` (estado de alarma), `nivel2_aviso_consumo.png` y `nivel2_consumo_activo.png` (aviso y perturbación activa), `nivel3.png` (cascada e intercambio) y `galeria.png` (escena Galería).
