@@ -63,9 +63,8 @@ test('regresión del escalón: conserva la respuesta del modelo frente a la lín
   assert.ok(Math.abs(modelo.sobreimpulso - base.sobreimpulso) < 1, `diferencia de sobreimpulso ${Math.abs(modelo.sobreimpulso - base.sobreimpulso).toFixed(4)} puntos porcentuales`);
 });
 
-test('los niveles siguen iguales a la versión estable antes del día 2', () => {
-  const commit = 'c168db4';
+test('los niveles coinciden con la copia de referencia (test/fixtures/niveles_base.json)', () => {
   const nivelesActuales = JSON.parse(readFileSync(new URL('../src/modelo/niveles.json', import.meta.url), 'utf8'));
-  const nivelesBase = JSON.parse(execFileSync('git', ['show', `${commit}:src/modelo/niveles.json`], { encoding: 'utf8' }));
-  assert.deepEqual(nivelesActuales, nivelesBase, `src/modelo/niveles.json difiere del commit ${commit}`);
+  const nivelesBase = JSON.parse(readFileSync(new URL('./fixtures/niveles_base.json', import.meta.url), 'utf8'));
+  assert.deepEqual(nivelesActuales, nivelesBase, 'src/modelo/niveles.json difiere de la referencia; si el cambio es intencional, actualiza el fixture');
 });

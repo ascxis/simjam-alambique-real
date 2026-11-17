@@ -29,12 +29,12 @@ function actualizarCrudosDesdeSalidas(controles) {
 }
 
 export class GestorEntrada {
-  constructor({ fuente = new URLSearchParams(globalThis.location?.search || '').get('control') || 'camara', emitir = () => {} } = {}) { this.fuente = fuente; this.eventos = new EventTarget(); this.emitir = (tipo, detalle) => { emitir(tipo, detalle); this.eventos.dispatchEvent(new CustomEvent(tipo, { detail: detalle })); }; this.camara = new EntradaGestos({ emitir: this.emitir }); this.gamepad = new EntradaGamepad({ emitir: this.emitir }); this.teclado = new EntradaTeclado({ emitir: this.emitir }); this.escalon = completarControles({ der: { altura: 0, x: 0, pellizco: 0, giro: 0 }, izq: { altura: .5, pellizco: 0, giro: 0, x: 0 } }); this.t = 0; }
+  constructor({ fuente = new URLSearchParams(globalThis.location?.search || '').get('control') || 'camara', emitir = () => {} } = {}) { this.fuente = fuente; this.eventos = new EventTarget(); this.emitir = (tipo, detalle) => { emitir(tipo, detalle); this.eventos.dispatchEvent(new CustomEvent(tipo, { detail: detalle })); }; this.camara = new EntradaGestos({ emitir: this.emitir }); this.camara.asignacion = 'posicion'; this.gamepad = new EntradaGamepad({ emitir: this.emitir }); this.teclado = new EntradaTeclado({ emitir: this.emitir }); this.escalon = completarControles({ der: { altura: 0, x: 0, pellizco: 0, giro: 0 }, izq: { altura: .5, pellizco: 0, giro: 0, x: 0 } }); this.t = 0; }
   elegir(fuente) { if (!['camara', 'gamepad', 'teclado', 'escalon'].includes(fuente)) throw new Error('Fuente de control desconocida'); this.fuente = fuente; }
   procesarManos(frame) { return completarControles(this.camara.procesar(frame)); }
   actualizar(dt) {
     let controles;
-    if (this.fuente === 'gamepad') controles = this.gamepad.actualizar();
+    if (this.fuente === 'gamepad') controles = this.gamepad.actualizar(dt);
     else if (this.fuente === 'teclado') controles = this.teclado.actualizar(dt);
     else if (this.fuente === 'escalon') { this.t += dt; this.escalon.der.altura = this.t >= 2 ? 0.622372 : 0.612372; controles = this.escalon; }
     else controles = this.camara.controles;

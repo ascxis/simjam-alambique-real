@@ -96,7 +96,7 @@ export class CamaraManos {
         return { puntos, etiqueta: this.intercambiar ? (etiqueta === 'der' ? 'izq' : 'der') : etiqueta };
       });
       const resolucion = this.obtenerResolucion();
-      this.onFrame({ manos, fps: this.fps, fpsCamara: this.fpsCamara, tiempo: now, promedioDeteccionMs: this.promedioDeteccionMs, delegado: this.delegado, resolucion, resolucionReducida: this.resolucionReducida, avisoResolucion: this.avisoResolucion });
+      this.onFrame({ manos, intercambiar: this.intercambiar, fps: this.fps, fpsCamara: this.fpsCamara, tiempo: now, promedioDeteccionMs: this.promedioDeteccionMs, delegado: this.delegado, resolucion, resolucionReducida: this.resolucionReducida, avisoResolucion: this.avisoResolucion });
       this.ajustarResolucionSiLenta(now);
     } catch (error) {
       console.warn('Falló la detección de manos en el cuadro actual.', error);

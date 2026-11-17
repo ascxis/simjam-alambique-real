@@ -15,6 +15,7 @@ export class EntradaGestos {
       }
     } catch {}
     this.alfa = Number.isFinite(alfa) && alfa > 0 && alfa < 1 ? alfa : Number.isFinite(alfaGuardado) && alfaGuardado > 0 && alfaGuardado < 1 ? alfaGuardado : 0.5;
+    this.asignacion = 'etiqueta'; this.modoUnaMano = false; this.seguimiento = null;
     this.opciones = opciones; this.emitir = emitir; this.controles = { der: nuevaMano(), izq: nuevaMano(), pausa: false }; this.cache = {}; this.tiempo = {}; this.punos = {}; this.dedosPendientes = {}; this.dedosTiempo = {}; this.ultimaMano = {}; this.calibracionAvisada = new Set(); this.zona = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 };
     this.muestrasFiltro = { 'der.altura': [], 'izq.pellizco': [] };
     this.estadosMedicion = { 'der.altura': { reposo: [], movimiento: null, esperasFiltro: [] }, 'izq.pellizco': { reposo: [], movimiento: null, esperasFiltro: [] } };
@@ -23,11 +24,11 @@ export class EntradaGestos {
   }
   cargarCalibracion() { try { this.calibracion = JSON.parse(localStorage.getItem('alambique.calibracion') || '{}'); } catch { this.calibracion = {}; } }
   guardarCalibracion() { try { localStorage.setItem('alambique.calibracion', JSON.stringify(this.calibracion)); } catch {} }
-  procesar({ manos = [], tiempo = performance.now() }) {
+  procesar({ manos = [], tiempo = performance.now(), intercambiar = false }) {
     if (this.tiempoAnterior !== undefined) this.Ts = Math.max(0.001, (tiempo - this.tiempoAnterior) / 1000);
     this.tiempoAnterior = tiempo;
     for (const id of ['der', 'izq']) this.controles[id].presente = false;
-    for (const hand of manos) {
+    for (const hand of this.asignarManos(manos, tiempo, intercambiar)) {
       const { puntos: p, etiqueta: id } = hand; if (!p?.[20]) continue;
       const c = centro(p); if (c.x < .1 || c.x > .9 || c.y < .1 || c.y > .9) continue;
       // x y giro usan la imagen espejada que ve el jugador; MediaPipe entrega puntos sin espejo.
@@ -69,6 +70,33 @@ export class EntradaGestos {
       else if (tiempo - this.dedosTiempo[id] >= 300) { if (m.dedos !== dedos) this.emitir('dedos', { mano: id, valor: dedos }); m.dedos = dedos; }
     }
     return this.controles;
+  }
+  // Decide qué mano es la derecha y cuál la izquierda.
+  // MediaPipe etiqueta cada mano suponiendo una imagen ya espejada; el video de la cámara llega sin espejar,
+  // así que esas etiquetas salen invertidas o cambian de un cuadro a otro (más aún con una sola mano), y dos
+  // manos pueden recibir la misma etiqueta. Con asignacion = 'posicion' se usa dónde está cada mano en la
+  // imagen espejada que ve el jugador: la que queda a la derecha de la pantalla es la derecha.
+  // Con modoUnaMano (niveles 1 y 2, que solo usan v1) se sigue una única mano, la derecha, y no se
+  // cambia a otra aunque aparezca la segunda mano en la imagen.
+  asignarManos(manos, tiempo = 0, intercambiar = false) {
+    if (this.asignacion !== 'posicion') return manos;
+    const validas = manos.filter((h) => h.puntos?.[20]).map((h) => ({ h, c: centro(h.puntos) }))
+      .filter(({ c }) => c.x >= .1 && c.x <= .9 && c.y >= .1 && c.y <= .9)
+      .sort((a, b) => a.c.x - b.c.x); // x pequeña en la imagen sin espejar = derecha del jugador
+    if (this.modoUnaMano) {
+      if (!validas.length) return [];
+      const reciente = this.seguimiento && tiempo - this.seguimiento.t < 1000;
+      let elegida = validas[0];                      // al empezar: la más a la derecha de la pantalla
+      if (reciente) {
+        const d = (a) => Math.hypot(a.c.x - this.seguimiento.c.x, a.c.y - this.seguimiento.c.y);
+        elegida = validas.reduce((m, v) => (d(v) < d(m) ? v : m), validas[0]);
+        if (d(elegida) > 0.35) return [];            // la mano seguida salió; no saltar a la otra de golpe
+      }
+      this.seguimiento = { c: elegida.c, t: tiempo };
+      return [{ ...elegida.h, etiqueta: 'der' }];
+    }
+    const lado = (derecha) => (derecha !== intercambiar ? 'der' : 'izq');
+    return validas.map(({ h, c }, i) => ({ ...h, etiqueta: lado(validas.length === 2 ? i === 0 : c.x < .5) }));
   }
   actualizarMedicionMovimiento(canal, tiempo, crudo, filtrado) {
     const estado = this.estadosMedicion[canal];

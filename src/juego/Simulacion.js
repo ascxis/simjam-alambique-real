@@ -1,5 +1,6 @@
 import { EscenaBase } from './EscenaBase.js';
 import { contextoJuego } from './contexto.js';
+import { cargarConfig, elegirGamepad } from '../entrada/configControles.js';
 import { leerPreferencia, guardarPreferencia } from './preferencias.js';
 import { GestorEntrada } from '../entrada/gestorEntrada.js';
 import { Actuador } from '../modelo/actuador.js';
@@ -126,6 +127,7 @@ export class Simulacion extends EscenaBase {
     this.parametrosEdicion = { ...this.parametrosEnUso };
     this.gestor = contextoJuego.gestor = new GestorEntrada({ fuente: contextoJuego.fuenteElegida || undefined });
     this.gestor.elegir(contextoJuego.fuenteElegida || this.gestor.fuente);
+    this.gestor.camara.modoUnaMano = this.nivel.tanques === 1; // niveles 1 y 2: solo v1, una mano
     this.modoVerificacionEscalon = this.gestor.fuente === 'escalon' && this.nivel.id === 1;
     if (this.modoVerificacionEscalon) {
       const alturaEquilibrio = (PARAMETROS_TANQUES.caudalEntradaMaximo * 0.612372 / this.parametrosEnUso.coeficienteDescarga1) ** 2;
@@ -135,6 +137,8 @@ export class Simulacion extends EscenaBase {
     const h1 = this.nivel.estadoInicial[0];
     this.actuador1 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: this.parametrosEnUso.coeficienteDescarga1 * Math.sqrt(h1) / PARAMETROS_TANQUES.caudalEntradaMaximo });
     this.actuador2 = new Actuador({ velocidadMaxima: PARAMETROS_TANQUES.velocidadMaximaValvula, inicial: 1 });
+    // Con teclado o gamepad el mando arranca donde está la válvula (no en 0,5), así no se abre sola al empezar.
+    for (const fuente of [this.gestor.teclado, this.gestor.gamepad]) { fuente.controles.der.altura = this.actuador1.salida(); fuente.controles.izq.pellizco = this.actuador2.salida(); }
     this.audioUltimoMando = { v1: this.actuador1.salida(), v2: this.actuador2.salida() };
     this.audioUltimoTope = { v1: this.actuador1.salida() <= .001 ? 0 : this.actuador1.salida() >= .999 ? 1 : null, v2: 1 };
     this.sistema = crearSistemaTanques(this.nivel);
@@ -380,14 +384,16 @@ export class Simulacion extends EscenaBase {
     this.panelDepuracion.setVisible(false);
     document.activeElement?.blur?.();
     if (this.game.canvas) { this.game.canvas.setAttribute('tabindex', '0'); this.game.canvas.focus({ preventScroll: true }); }
+    this.teclasConfig = cargarConfig().teclado;
     this.documentKeyDown = (e) => {
       if (!this.sys.isActive()) return;
-      if (['KeyF', 'KeyP', 'KeyD', 'Enter'].includes(e.code)) e.preventDefault();
-      if (e.code === 'KeyF' || e.key?.toLowerCase() === 'f') {
-        console.info('[DIAG] tecla F', { terminado: this.terminado, sysIsActive: this.sys.isActive(), tiempoJuego: this.tiempoJuego });
+      const T = this.teclasConfig;
+      if ([T.terminar, T.pausa, 'KeyP', 'KeyD'].includes(e.code)) e.preventDefault();
+      if (e.code === T.terminar) {
+        console.info('[DIAG] tecla terminar', { terminado: this.terminado, sysIsActive: this.sys.isActive(), tiempoJuego: this.tiempoJuego });
         this.terminar(false); return;
       }
-      if (e.code === 'Enter') {
+      if (e.code === T.pausa) {
         if (!e.repeat) { this.pausado = !this.pausado; this.pausaPorManos = false; }
         return;
       }
@@ -395,13 +401,20 @@ export class Simulacion extends EscenaBase {
       if (!e.repeat && e.code === 'KeyD') this.debug = !this.debug;
       if (!e.repeat && e.code === 'KeyP') this.toggleParametros();
     };
-    this.documentKeyUp = (e) => { if (this.sys.isActive() && e.code !== 'Enter') this.gestor.tecla(e.code, false); };
+    this.documentKeyUp = (e) => { if (this.sys.isActive() && e.code !== this.teclasConfig.pausa) this.gestor.tecla(e.code, false); };
     document.addEventListener('keydown', this.documentKeyDown, true);
     document.addEventListener('keyup', this.documentKeyUp, true);
+    // Aviso al conectar o desconectar un gamepad (guía 5.9 c).
+    this.alConectarGamepad = () => this.audio?.indicador('Gamepad conectado: elígelo en el menú o con ?control=gamepad');
+    this.alDesconectarGamepad = () => this.audio?.indicador('Gamepad desconectado');
+    window.addEventListener('gamepadconnected', this.alConectarGamepad);
+    window.addEventListener('gamepaddisconnected', this.alDesconectarGamepad);
     this.events.once('shutdown', () => {
       console.info('[DIAG] Simulacion shutdown');
       const limpiar = (accion) => { try { accion(); } catch (error) { console.error('[ERROR JUEGO] limpieza Simulacion', error); } };
       limpiar(() => document.removeEventListener('keydown', this.documentKeyDown, true));
+      limpiar(() => window.removeEventListener('gamepadconnected', this.alConectarGamepad));
+      limpiar(() => window.removeEventListener('gamepaddisconnected', this.alDesconectarGamepad));
       limpiar(() => document.removeEventListener('keyup', this.documentKeyUp, true));
       limpiar(() => this.panelDepuracion.destruir());
       limpiar(() => this.audio?.detenerSonificacion());
@@ -433,6 +446,7 @@ export class Simulacion extends EscenaBase {
       limpiar(() => this.renderEquilibrio.destroy());
       this.etiquetasEscala.forEach((texto) => limpiar(() => texto.destroy()));
     });
+    this.gestor.eventos.addEventListener('terminar', () => { if (this.gestor.fuente === 'gamepad') this.terminar(false); });
     this.gestor.eventos.addEventListener('pausa', () => { this.pausado = !this.pausado; this.pausaPorManos = false; });
       const ayudaLayout = this.nivel.tanques === 2 ? L.ayudaCascada : L.ayudaSimple;
     this.ayuda = this.add.text(ayudaLayout.x, L.ayuda.y, '', fuenteInterfaz(13)).setDepth(5);
@@ -1063,7 +1077,7 @@ export class Simulacion extends EscenaBase {
       this.criterioTexto.setText(`En banda: ${porcentaje.toFixed(0)} % del tiempo (meta ${criterio.porcentaje} %)`);
     }
     this.progresoCriterio.actualizar(Math.min(1, valorProgreso));
-    this.estadoCamara.setText(this.gestor.fuente === 'camara' ? (camara?.activo ? 'CÁMARA ACTIVA' : 'CÁMARA INACTIVA') : this.gestor.fuente.toUpperCase());
+    this.estadoCamara.setText(this.gestor.fuente === 'camara' ? (camara?.activo ? 'CÁMARA ACTIVA' : 'CÁMARA INACTIVA') : (this.gestor.fuente === 'gamepad' ? (elegirGamepad() ? 'GAMEPAD ACTIVO' : 'GAMEPAD NO DETECTADO · pulsa un botón') : this.gestor.fuente.toUpperCase()));
     this.ayuda.setText(this.nivel.tanques === 2
       ? 'Mano derecha → v1 entrada · Pellizco izquierdo abierto → v2 abierta'
       : `${this.gestor.fuente} · P parámetros\nD depuración · F terminar`);

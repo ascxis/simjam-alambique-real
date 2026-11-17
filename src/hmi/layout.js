@@ -41,7 +41,7 @@ export const LAYOUT = Object.freeze({
     fuenteLabelY: 292, fuenteY: 319, fuenteAlto: 38,
     nivelLabelY: 375, nivelY: 402, nivelAlto: 38,
     camaraLabelY: 292, camaraY: 319, camaraAlto: 38,
-    invertirY: 400,
+    invertirY: 400, configurarY: 452,
     reducirY: 438, indicadoresY: 462,
     audio: { izquierdaX: 458, derechaX: 832, fila1Y: 500, fila2Y: 525, ancho: 320, alto: 23 },
     audioPrompt: { x: 640, y: 600 },

@@ -1,5 +1,5 @@
 import { EscenaBase } from './EscenaBase.js';
-import { contextoJuego } from './contexto.js';
+import { contextoJuego, fuenteInicial } from './contexto.js';
 import { leerPreferencia, guardarPreferencia } from './preferencias.js';
 import { obtenerSesionCamara, listarCamaras } from '../vision/servicioCamara.js';
 import { obtenerVideoPreview } from '../hmi/vistaCamara.js';
@@ -7,6 +7,7 @@ import { GestorEntrada } from '../entrada/gestorEntrada.js';
 import { cargarNiveles } from '../modelo/niveles.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteInterfaz } from '../hmi/estilo.js';
+import { abrirPanelControles } from './panelControles.js';
 import { GestorAudio, VOLUMENES_AUDIO_INICIALES } from './audio.js';
 
 const selectCss = 'box-sizing:border-box;background:#1C2026;color:#E6E8EA;border:1px solid #B85A24;border-radius:8px;padding:7px 10px;font:15px Segoe UI,Arial,sans-serif;';
@@ -30,14 +31,22 @@ export class Menu extends EscenaBase {
 
     const valoresFuente = ['camara', 'gamepad', 'teclado', 'escalon'];
     const solicitada = new URLSearchParams(location.search).get('control');
-    let fuenteActiva = valoresFuente.includes(solicitada) ? solicitada : 'camara';
+    let fuenteActiva = fuenteInicial(solicitada, contextoJuego.fuenteElegida); // recuerda la última usada
     const select = document.createElement('select');
     select.innerHTML = '<option value="camara">Cámara</option><option value="gamepad">Gamepad</option><option value="teclado">Teclado</option><option value="escalon">Escalón de prueba</option>';
     select.style.cssText = `${selectCss}width:${M.izquierda.ancho}px;height:${M.fuenteAlto}px`;
     const fuenteDom = this.add.dom(M.izquierda.x + M.izquierda.ancho / 2, M.fuenteY + M.fuenteAlto / 2, select);
     select.value = fuenteActiva;
-    select.addEventListener('change', () => { if (valoresFuente.includes(select.value)) fuenteActiva = select.value; });
+    // Botón "Configurar controles": solo con teclado o gamepad.
+    const botonConfig = document.createElement('button');
+    botonConfig.textContent = 'Configurar controles';
+    botonConfig.style.cssText = `${selectCss}width:${M.izquierda.ancho}px;height:34px;cursor:pointer;background:#2a2f36;text-align:center`;
+    const configDom = this.add.dom(M.izquierda.x + M.izquierda.ancho / 2, M.configurarY + 17, botonConfig);
+    const actualizarBotonConfig = () => { const v = select.value === 'teclado' || select.value === 'gamepad'; configDom.setVisible(v); botonConfig.disabled = !v; };
+    botonConfig.addEventListener('click', () => { this.audio.desbloquear(); abrirPanelControles(select.value); });
+    select.addEventListener('change', () => { if (valoresFuente.includes(select.value)) { fuenteActiva = select.value; contextoJuego.fuenteElegida = fuenteActiva; } actualizarBotonConfig(); });
     contextoJuego.fuenteElegida = fuenteActiva;
+    actualizarBotonConfig();
 
     const niveles = cargarNiveles();
     const nivelSelect = document.createElement('select');
@@ -115,14 +124,15 @@ export class Menu extends EscenaBase {
       const camara = contextoJuego.camara;
       if (camara?.activo) { try { await camara.iniciar(obtenerVideoPreview(), camSelect.value || undefined); } catch (e) { alert(`No se pudo abrir esa cámara: ${e.message}`); } }
     });
-    this.events.once('shutdown', () => [fuenteDom, nivelDom, cameraSelectDom, invertirDom, reducirDom, indicadoresDom, ...slidersAudio].forEach((dom) => dom.destroy()));
+    this.events.once('shutdown', () => { document.querySelector('[data-panel-controles]')?.remove(); });
+    this.events.once('shutdown', () => [fuenteDom, configDom, nivelDom, cameraSelectDom, invertirDom, reducirDom, indicadoresDom, ...slidersAudio].forEach((dom) => dom.destroy()));
     poblarCamaras().catch(() => {});
 
     const activarCamara = async () => {
       try {
         const camara = obtenerSesionCamara();
         camara.intercambiar = invertir.querySelector('input').checked;
-        const numHands = Number(nivelSelect.value) === 3 ? 2 : 1;
+        const numHands = 2; // siempre 2: con una sola mano MediaPipe confunde y alterna las manos
         await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined, { numHands });
         obtenerVideoPreview().style.display = 'block';
         return await poblarCamaras();
@@ -140,7 +150,7 @@ export class Menu extends EscenaBase {
       this.scene.start('Simulacion');
     });
     this.boton(M.botones[1], 'Calibrar cámara', async () => {
-      contextoJuego.fuenteElegida = 'camara'; contextoJuego.gestor = new GestorEntrada({ fuente: 'camara' });
+      contextoJuego.gestor = new GestorEntrada({ fuente: 'camara' }); // calibrar no cambia la fuente elegida
       try {
         const camara = obtenerSesionCamara(); camara.intercambiar = invertir.querySelector('input').checked;
         await camara.iniciar(obtenerVideoPreview(), camSelect.value || leerPreferencia('alambique.cameraId', '') || undefined, { numHands: 2 });

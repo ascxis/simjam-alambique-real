@@ -43,15 +43,17 @@ tar -a -cf ..\Grupo1_SimJam_Modelado.zip index.html assets favicon.ico favicon.s
 
 ## Controles
 
-| Acción | Cámara (manos) | Teclado | Gamepad |
+| Acción | Cámara (manos) | Teclado (por defecto) | Gamepad (por defecto) |
 |---|---|---|---|
-| Válvula de entrada v1 | Altura de la mano derecha | ↑ / ↓ | Stick derecho vertical |
-| Válvula de salida v2 (nivel 3) | Pellizco de la mano izquierda (abierto = v2 abierta) | E / Q | Gatillo izquierdo |
-| Pausa | Sacar las dos manos de la zona por más de 3 s | Enter | Start |
-| Terminar la partida | — | F | — |
-| Panel de parámetros y linealización | — | P | — |
-| Panel de depuración (FPS, filtro α, mediciones) | — | D | Select (mantener) |
+| Subir / bajar v1 | Altura de la mano (una sola mano en los niveles 1 y 2) | ↑ / ↓ | Stick derecho arriba / abajo |
+| Abrir / cerrar v2 (nivel 3) | Pellizco de la mano izquierda | E / Q | Gatillos RT / LT |
+| Pausa | Sacar las manos de la zona más de 3 s | Enter | Start |
+| Terminar la partida | — | F | Y |
+| Panel de parámetros / depuración / silencio | — | P / D / M | Select (mantener) = depuración |
 
+- **Configurar controles:** en el menú, al elegir Teclado o Gamepad aparece el botón **Configurar controles**. Ahí se reasigna cada acción (se guarda en el navegador) y, con gamepad, se ve en vivo qué botón o eje se pulsa. Chrome solo detecta el gamepad después de pulsar un botón.
+- **Teclado y gamepad** mueven la válvula poco a poco, como una perilla: al soltar la tecla o el stick la apertura se conserva.
+- **Cámara:** la mano derecha o izquierda se decide por su posición en la imagen espejada, no por la etiqueta de MediaPipe.
 - **Fuente de control:** se elige en el menú, o con `?control=camara`, `?control=teclado`, `?control=gamepad` o `?control=escalon` (escalón de verificación del modelo).
 - **Calibración:** se recomienda pulsar "Calibrar cámara" en el menú antes de jugar con las manos.
 
