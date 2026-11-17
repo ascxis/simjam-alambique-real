@@ -15,7 +15,7 @@ test('escenario: matriz de baldosas válida para la hoja 8x4 y decoraciones por 
   assert.equal(MATRIZ_LABORATORIO[0].length * 32, 640, 'cubre el ancho de la planta');
   for (const id of [1, 2, 3]) {
     const decos = DECORACIONES_NIVEL[id];
-    assert.ok(decos.length >= 3);
+    assert.ok(decos.length >= 1 && decos.some((d) => d.deco === 'vela'), `nivel ${id}: al menos una decoración animada`);
     for (const d of decos) assert.ok(d.x - d.tam / 2 >= 16 && d.x + d.tam / 2 <= 645, `nivel ${id}: ${d.deco} dentro de la planta, sin tapar la HMI`);
   }
   assert.ok(POLVO_MAXIMO <= 30);

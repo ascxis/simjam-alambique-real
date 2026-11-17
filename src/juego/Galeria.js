@@ -41,7 +41,7 @@ export class Galeria extends EscenaBase {
   // ---------- vista previa guiada por las variables ----------
   crearVistaPrevia() {
     this.add.text(36, 92, 'Representación guiada por el modelo', fuenteInterfaz(14, '#F2E6C9', { fontStyle: 'bold' }));
-    this.liquido = this.add.graphics().setDepth(1);
+    this.liquido = this.add.graphics().setDepth(2.5); // encima del sprite: los visores de la cascada son de vidrio opaco
     this.marcas = this.add.graphics().setDepth(3);
     // Alambique simple (niveles 1 y 2)
     const s = { x: 150, y: 300, w: 172, h: 240 };

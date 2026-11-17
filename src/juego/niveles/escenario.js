@@ -19,23 +19,24 @@ export const MATRIZ_LABORATORIO = [muro(0), muro(5), piso];
 export const ORIGEN_BALDOSAS = { x: 16, y: 650 - 2 * TAM_BALDOSA };
 
 // Decoraciones animadas (4 cuadros de 64x64 en el atlas 'piezas'); (x, y) = punto de apoyo
-// abajo al centro; enMuro = colgada en la pared (detrás de todo). Están puestas en huecos de cada nivel para no tapar la planta ni la HMI.
-const ENGRANAJES = [
-  { deco: 'engranaje', x: 576, y: 244, tam: 56, fase: 0, enMuro: true },
-  { deco: 'engranaje', x: 614, y: 272, tam: 40, fase: 2, inverso: true, enMuro: true },
-];
+// abajo al centro. Solo objetos que tienen sentido en un laboratorio: velas encendidas y un
+// frasco. No se ponen cerca de las tuberías para que no parezcan parte de la planta. Los
+// engranajes quedan en el atlas y en la Galería, pero no en la planta (flotaban sin mecanismo).
+// bajoLlave: en el nivel 2 el frasco recibe el chorro de la llave de consumo (q_d).
 export const DECORACIONES_NIVEL = {
-  1: [{ deco: 'vela', x: 176, y: 519, tam: 46 }, { deco: 'frasco', x: 478, y: 519, tam: 50 }, ...ENGRANAJES],
-  2: [{ deco: 'vela', x: 72, y: 650, tam: 46 }, { deco: 'frasco', x: 478, y: 519, tam: 50 }, ...ENGRANAJES],
-  3: [{ deco: 'vela', x: 172, y: 519, tam: 46 }, { deco: 'frasco', x: 72, y: 650, tam: 50 }, ...ENGRANAJES],
+  1: [{ deco: 'vela', x: 168, y: 519, tam: 44 }, { deco: 'frasco', x: 66, y: 650, tam: 46 }],
+  2: [{ deco: 'vela', x: 66, y: 650, tam: 44 }, { deco: 'frasco', x: 217, y: 519, tam: 48, bajoLlave: true }],
+  3: [{ deco: 'vela', x: 168, y: 519, tam: 44 }],
 };
 
 // Ambiente: capa de color semitransparente según la zona del laboratorio y partículas
 // lentas de polvo (máximo 30).
 export const AMBIENTE_NIVEL = {
-  1: { color: 0x3a2410, alfa: 0.14, nombre: 'taller a la luz de las velas' },
-  2: { color: 0x2a2614, alfa: 0.16, nombre: 'bodega del caldero real' },
-  3: { color: 0x1c1430, alfa: 0.20, nombre: 'torre de noche' },
+  // El fondo pintado tiene su propio alambique, frascos y estantes: se oscurece lo suficiente
+  // para que no se confundan con la planta del modelo.
+  1: { color: 0x1a1008, alfa: 0.42, nombre: 'taller a la luz de las velas' },
+  2: { color: 0x14120a, alfa: 0.44, nombre: 'bodega del caldero real' },
+  3: { color: 0x0e0a1a, alfa: 0.48, nombre: 'torre de noche' },
 };
 export const POLVO_MAXIMO = 30;
 

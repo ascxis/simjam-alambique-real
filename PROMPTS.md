@@ -87,6 +87,8 @@ Para cada uno se indica si funcionó, si hubo que corregirlo y qué errores de l
 | 80 | Día 2, 5.6 e) | Codex | Retroalimentación con sistemas de segundo orden (resorteVisual) | Funcionó |
 | 81 | Día 2, 5.6 f) | Codex | Música, efectos sonoros y sonificación | Funcionó |
 | 82 | Día 2, 5.5 a 5.7 | Claude Code | Continuar las fases pendientes del día 2 sobre el simulador desplegado | Funcionó |
+| 83 | Día 2, 5.8 | Claude Code + Antigravity | Build, ZIP medido y guion del video | Funcionó |
+| 84 | Día 2, 5.7 b) paso 12 | Claude Code | Revisión visual de los 3 niveles, la Galería y el menú; corrección de lo que no tenía sentido | Funcionó |
 ---
 
 ## 1. Skill `disenador-juegos-simulacion` (5.2)
@@ -1656,3 +1658,23 @@ Sí, arranca con las pruebas, el build, el ZIP y el guion con Antigravity. Dos c
 - **ZIP:** `Grupo1_SimJam_Modelado_Dia2.zip` con el contenido de `dist/` (85 archivos, 7,60 MB; `*.zip` está en `.gitignore`). El primer intento con `Compress-Archive` de PowerShell 5.1 guardaba las rutas con `\`, que en un servidor Linux pueden aplanar las carpetas; se rehízo con `tar -a` (rutas con `/`) y se comprobó que al extraerlo queda idéntico a `dist/`.
 - **Guion del video:** Antigravity (Gemini, modo de solo lectura) escribió un borrador desde `README.md`, `docs/pruebas_dia2.md` y este archivo. Se comprobó contra el código (teclas G y F, deslizadores de la Galería, nivel 2 con perturbación de 0,08 entre 40 y 80 s, pellizco para v₂) y se corrigió: los estados de alarma y desborde se muestran con la Galería, la perturbación del nivel 2 se graba aparte, y se quitaron los BPM, que no están en el código. Resultado en `docs/guion_video_dia2.md`.
 - Se agregó `CLAUDE.md` (contexto del proyecto para Claude Code).
+
+---
+
+## 84. Revisión visual y correcciones (5.7 b, paso 12)
+
+```
+Haz las pruebas y mira bien toda la parte visual, porque yo veo cosas que no tienen sentido.
+```
+
+Se recorrieron el menú, los 3 niveles (antes y durante la perturbación), la Galería y la pantalla final con capturas ampliadas. Hallazgos y correcciones:
+
+- **Engranajes flotando en la pared** sin ningún mecanismo: se quitaron de la planta (siguen en el atlas y en la Galería).
+- **El fondo pintado competía con la planta:** tiene su propio alambique con un tubo curvo azul detrás del tanque que parecía un chorro, además de frascos y estantes. La capa de ambiente pasó de 14–20 % a 42–48 % de opacidad.
+- **Frasco junto a la tubería de salida** en los niveles 1 y 2: parecía una pieza de la planta. En el nivel 1 pasó al piso; en el nivel 2 ahora está bajo la llave de consumo y el chorro de q_d cae dentro de él (antes caía sobre la mesa).
+- **Nivel 3, tubería de intercambio invisible:** iba casi por el mismo recorrido que la salida de v₂ y se confundía con ella. Ahora sale de la base del alambique 2 y entra por el lado izquierdo del caldero, y su etiqueta quedó junto a ella.
+- **Nivel 3, válvula v₁ sin tubería:** la entrada no venía de ningún lado. Se dibujó la tubería desde la pared derecha con su brida, como la entrada del nivel 1 viene de la pared izquierda.
+- **Galería:** el líquido de los visores de la cascada no se veía porque quedaba detrás del vidrio del sprite; ahora se dibuja encima.
+- **Menú:** el texto de controles quedaba casi invisible detrás del recuadro; se puso al frente.
+
+Se actualizaron las capturas de `docs/capturas/despues/`. Pruebas: 60/60.

@@ -109,7 +109,7 @@ export const LAYOUT = Object.freeze({
     perturbaciones: {
       llaveConsumo: { alto: 120, alturaUnionRel: .50, bordeIzquierdoRel: 23 / 215, insetUnion: 6, chorroMaximo: 7 },
       llaveEtiqueta: { ancho: 145, margenY: 4 },
-      intercambio: { separacionSalidaV2: 40, bocaXRel: .62, entradaBocaY: 8, anchoTubo: 7, velocidad: 1.8, etiqueta: { x: 28, y: 570, ancho: 185 } },
+      intercambio: { separacionSalidaV2: 62, bocaXRel: .26, entradaBocaY: 8, anchoTubo: 7, velocidad: 1.8, etiqueta: { x: 290, y: 604, ancho: 185 } },
     },
     tuberia: { ancho: 7, borde: 2, brillo: 2, chorroMinimo: 2, chorroMaximo: 8 },
     soporte: { x: 65, y: 360, ancho: 220, baseY: 600 },

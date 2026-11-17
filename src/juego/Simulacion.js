@@ -245,6 +245,7 @@ export class Simulacion extends EscenaBase {
       }
     }
     if (!this.esCascada) this.dibujarFijacionesEntrada();
+    else this.dibujarEntradaCascada();
     this.conSpritesValvula = this.hayPieza('valvula-cuerpo') && this.hayPieza('valvula-volante');
     if (this.conSpritesValvula && !this.esCascada) {
       const puntos = posicionSpritesValvulas(this.nivel.tanques);
@@ -526,7 +527,8 @@ export class Simulacion extends EscenaBase {
       for (const d of DECORACIONES_NIVEL[id] || []) {
         const clave = `deco-${d.deco}`;
         if (!this.anims.exists(clave)) continue;
-        const sprite = this.add.sprite(d.x, d.y, 'piezas', `${clave}-0`).setOrigin(.5, 1).setDisplaySize(d.tam, d.tam).setDepth(d.enMuro ? PROFUNDIDAD.decoraciones : PROFUNDIDAD.decoracionesApoyadas);
+        const sprite = this.add.sprite(d.x, d.y, 'piezas', `${clave}-0`).setOrigin(.5, 1).setDisplaySize(d.tam, d.tam).setDepth(d.enMuro ? PROFUNDIDAD.decoraciones : d.bajoLlave ? -.45 : PROFUNDIDAD.decoracionesApoyadas);
+        if (d.bajoLlave) this.frascoConsumo = sprite;
         sprite.play({ key: clave, startFrame: d.fase || 0 });
         if (d.inverso) sprite.anims.reverse();
         this.decoraciones.push(sprite);
@@ -611,6 +613,11 @@ export class Simulacion extends EscenaBase {
       const etiqueta = L.perturbaciones.llaveEtiqueta;
       this.etiquetaLlave = this.add.text(tank.x - tank.displayWidth / 2 - etiqueta.ancho - 8, this.llaveConsumo.y + cfg.alto / 2 + etiqueta.margenY, '', fuenteInterfaz(9, '#E6E8EA', { fontStyle: 'bold', backgroundColor: 'rgba(28,32,38,.92)', padding: { x: 3, y: 2 }, wordWrap: { width: etiqueta.ancho } })).setDepth(6);
       this.salpiqueLlave = { x: this.puntoBocaLlave.x, y: this.anclajesMesa?.apoyoTanque.y ?? L.mesa.patasY };
+      // El consumo cae dentro del frasco que está bajo la llave (no sobre la mesa).
+      if (this.frascoConsumo) {
+        this.frascoConsumo.setPosition(this.puntoBocaLlave.x, this.salpiqueLlave.y);
+        this.salpiqueLlave.y = this.salpiqueLlave.y - this.frascoConsumo.displayHeight * .82;
+      }
       return;
     }
     if (this.nivel.id === 3 && this.cajaCascada) {
@@ -877,6 +884,22 @@ export class Simulacion extends EscenaBase {
         this.renderBrilloBanda.lineStyle(3, 0x00e676, .65 * restante).strokeRoundedRect(visor.x - 3, y - 3, visor.w + 6, h + 6, 4);
       }
       this.renderBrilloBanda.lineStyle(2, 0x00e676, .55 * restante).strokeRoundedRect(l.hmi.x + 3, l.estado.y - 3, l.estado.ancho - 6, l.estado.alto + 6, 8);
+    }
+  }
+
+  // Nivel 3: la válvula v1 de la cascada recibe la poción por una tubería que viene de la
+  // pared derecha (como la entrada del nivel 1 viene de la pared izquierda).
+  dibujarEntradaCascada() {
+    const caja = this.cajaCascada, L = LAYOUT.simulacion;
+    if (!caja) return;
+    const rueda = L.cascada.ruedas.v1, x = caja.x + rueda.x * caja.w + L.cascada.ruedas.tamano * .55, y = caja.y + rueda.y * caja.h;
+    const P = L.planta, cfg = L.entradaSolo.brida, xPared = P.x + P.ancho - cfg.ancho, g = this.renderEntradaFixtures;
+    dibujarTuberia(g, [{ x, y }, { x: xPared, y }], L.tuberia.ancho);
+    g.fillStyle(0x4a5056, 1).fillRoundedRect(xPared, y - cfg.alto / 2, cfg.ancho, cfg.alto, 3);
+    g.lineStyle(2, 0x1a1b1d, 1).strokeRoundedRect(xPared, y - cfg.alto / 2, cfg.ancho, cfg.alto, 3);
+    for (const xr of [xPared + 5, xPared + cfg.ancho - 5]) for (const yr of [y - cfg.alto / 2 + 6, y + cfg.alto / 2 - 6]) {
+      g.fillStyle(0x1a1b1d).fillCircle(xr, yr, 2.7);
+      g.fillStyle(0xaeb5b8).fillCircle(xr - .5, yr - .5, 1.1);
     }
   }
 
