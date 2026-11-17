@@ -29,3 +29,6 @@ docs/guias/
 
 # Enlace local con el sitio de Netlify
 .netlify/
+
+# Entregables finales (ZIP e informes): se comparten aparte, no van al repositorio
+entregables/

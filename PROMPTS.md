@@ -1801,3 +1801,32 @@ Lee CLAUDE.md. Quiero que al terminar un nivel, en la pantalla final ("Lo que pa
 - **Error encontrado y corregido (ya existía):** Phaser reutiliza la instancia de Simulacion y `etiquetasValvulas` (solo en la cascada) nunca se reiniciaba: jugar el nivel 1 o 2 después del 3 daba `update TypeError: Cannot read properties of null (reading 'drawImage')` al escribir en una etiqueta destruida. Al empezar cada partida se reinician las referencias que solo existen en algunos niveles o tras un desborde.
 - **Comprobación en el navegador (desarrollo y Netlify):** R tres veces seguidas, N del 1 al 2 y del 2 al 3, N sin efecto en el 3, A del gamepad (simulado), Esc. En las 6 partidas: 40 escuchadores en `document`/`window` (sin duplicados), una sola pista de música y 0 errores en la consola. Con cámara simulada: un solo `getUserMedia` en tres partidas, detección activa en cada una y pausada en la pantalla final. En Netlify, sin respuestas 4xx/5xx (los 404 que aparecieron venían del propio script de prueba). Capturas `docs/capturas/despues/final_botones_nivel{1,2,3}.png`.
 - `npm test` 64/64, `npm run build` sin errores, desplegado en https://alambique-real-grupo1.netlify.app; ZIP 8,60 MB (9 017 868 bytes). `src/modelo/` y `niveles.json` sin cambios.
+
+---
+
+## 92. Entregables finales de las guías 1 y 2
+
+```
+Lee CLAUDE.md. Vamos a armar los entregables finales de las guías 1 y 2 en la carpeta entregables/ (agrega entregables/ al .gitignore; ahí ya está entregables/informe_dia1/ con el informe APA del día 1 en .docx y .pdf).
+
+A) ZIP del juego, como piden las guías (solo el contenido de dist/, index.html en la raíz, carpeta assets/, máximo 25 MB, rutas con /):
+1. Día 1: crea un git worktree temporal en el commit c168db4 ("Versión estable antes del día 2"), ejecuta npm install si hace falta, npm test y npm run build ahí, y empaqueta su dist/ como entregables/Grupo1_SimJam_Modelado.zip. Pruébalo con npm run preview y borra el worktree al terminar. Si ya existe un Grupo1_SimJam_Modelado.zip del día 1 en la raíz, compáralo y dime cuál dejaste.
+2. Día 2: con la versión actual (main), npm test, npm run build y empaqueta dist/ como entregables/Grupo1_SimJam_Modelado_Dia2.zip.
+3. Extrae cada ZIP en una carpeta temporal y verifica que index.html quede en la raíz, que no haya carpetas anidadas y que pese menos de 25 MB.
+
+B) ZIP de entregables (aparte, para compartir todo junto):
+4. entregables/Grupo1_SimJam_Entregables_Dia1.zip con lo que pide la sección 5.13 de la guía 1, tomado del commit c168db4: docs/ (diseno.md, niveles.md, modelo.md, recursos.md y los CSV de los ensayos), el modelo de Vensim (.mdl), analisis/ (identificar.py y las gráficas), README.md, PROMPTS.md y el informe de entregables/informe_dia1/. Agrega un ENLACES.txt con la URL del repositorio de GitHub.
+5. entregables/Grupo1_SimJam_Entregables_Dia2.zip con lo que pide la sección 5.9 de la guía 2, de la versión actual: docs/recursos.md, docs/audio.md, docs/linea_base_escalon.csv, docs/dia2_escalon.csv, docs/dia2_escalon_lento.csv, docs/dia2_regresion_salida.txt, docs/pruebas_dia2.md, docs/guion_video_dia2.md, docs/capturas/ (antes y después), analisis/regresion.py, PROMPTS.md y README.md. Agrega un ENLACES.txt con la URL de Netlify (la entrega, por indicación del docente) y la del repositorio. No incluyas docs/guias/ (material del docente).
+6. Los videos todavía no existen: deja en cada ENLACES.txt una línea "Video: pendiente" para completarla después.
+
+C) Cierre:
+7. Actualiza la tabla de la 5.8 en docs/pruebas_dia2.md con el tamaño final del ZIP del día 2, registra la entrada en PROMPTS.md y haz commit y push (los ZIP no van a git).
+8. Dame una tabla con cada archivo de entregables/, su tamaño y qué contiene, y la lista de lo que todavía falta según las guías.
+```
+
+- **Día 1 (juego):** worktree temporal en `c168db4`, `npm ci`, `npm test` (13/13) y `npm run build`. `entregables/Grupo1_SimJam_Modelado.zip`: 20 archivos, 2,19 MB, idéntico a ese `dist/`. Probado con `npm run preview` y servido desde el ZIP extraído (menú, nivel 1 y pantalla final, sin errores). Worktree borrado. El `Grupo1_SimJam_Modelado.zip` que había en la raíz (10,60 MB, 34 archivos, del 3 de noviembre a las 19:46, antes del commit) era un build anterior que además traía `assets/originales/` (fuentes del arte que el juego no usa, unos 9 MB): se dejó en `entregables/` el nuevo; el de la raíz no se tocó.
+- **Día 2 (juego):** `npm test` 64/64, `npm run build`; `entregables/Grupo1_SimJam_Modelado_Dia2.zip`: 87 archivos, 8,59 MB (9 010 152 bytes), idéntico a `dist/` y probado desde el ZIP extraído.
+- **Empaquetado:** con Python `zipfile` (rutas con `/` y nombres UTF-8: `analisis/identificación.png` y `validación.png` se extraen bien). Cada ZIP se extrajo en una carpeta nueva: `index.html` y `assets/` en la raíz, sin carpeta envolvente, sin rutas inseguras, menos de 25 MB.
+- **Entregables del día 1 (5.13 de la guía 1, de `c168db4`):** `docs/` (diseno, niveles, modelo, recursos; además `identificacion.md`, que enlaza el README, y `causal.png`, `forrester.png` y `vensim_h1.png`, que enlaza `modelo.md`), los 11 CSV de los ensayos, los 3 `.mdl` de Vensim, `analisis/` (identificar.py y las dos gráficas), README, PROMPTS (del día 1), el informe APA (.docx y .pdf) y `ENLACES.txt` (repositorio, commit del día 1, Netlify como opcional y "Video: pendiente").
+- **Entregables del día 2 (5.9 de la guía 2, versión actual):** los archivos pedidos, `docs/capturas/antes` y `despues`, y `ENLACES.txt` (Netlify como entrega, repositorio y "Video: pendiente"); sin `docs/guias/`.
+- `entregables/` en `.gitignore`; tabla de la 5.8 con el tamaño final del ZIP del día 2; `CLAUDE.md` actualizado.

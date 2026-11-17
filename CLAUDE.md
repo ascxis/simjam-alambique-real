@@ -7,7 +7,7 @@ Simulador N.º 1 "Operador de tanques" del laboratorio SimJam de Modelado y Simu
 - Mantener las posiciones de la planta y la HMI del día 1 (`src/hmi/layout.js`); solo cambia el arte.
 - Phaser 3.87 y MediaPipe tasks-vision 0.10.14 se cargan por CDN; nada de `import` de Phaser; rutas relativas y `base: './'`.
 - No abrir los CSV con Excel (la configuración regional los daña).
-- Un commit por etapa; registrar los prompts en `PROMPTS.md` (la última entrada es la 91).
+- Un commit por etapa; registrar los prompts en `PROMPTS.md` (la última entrada es la 92).
 - Comprobar siempre con `npm test` (64 pruebas) y `npm run build`.
 
 ## Modelo
@@ -18,7 +18,7 @@ Hecho (main en GitHub, commits 88fc776 a 1af0eba): etapas 1 a 8 de la guía 2 (e
 
 Pendiente:
 1. Mediciones con las manos (celdas "pendiente" de `docs/pruebas_dia2.md`): nivel 1 con gestos, FPS del juego y de la detección (panel D), 20 intentos por gesto, sonificación a ciegas (10), prueba con otra pareja (4 preguntas de la guía).
-2. 5.8: por indicación del docente la entrega es el enlace de Netlify (ya no el aula virtual). Para actualizarlo: `npm run build` y `npx netlify-cli deploy --prod --dir=dist --no-build`. El ZIP (`Grupo1_SimJam_Modelado_Dia2.zip`, 8,60 MB, fuera de git) se conserva como respaldo. Falta grabar el video según `docs/guion_video_dia2.md`.
+2. 5.8: por indicación del docente la entrega es el enlace de Netlify (ya no el aula virtual). Para actualizarlo: `npm run build` y `npx netlify-cli deploy --prod --dir=dist --no-build`. Entregables en `entregables/` (fuera de git): `Grupo1_SimJam_Modelado.zip` (juego del día 1, commit c168db4), `Grupo1_SimJam_Modelado_Dia2.zip` (juego actual), `Grupo1_SimJam_Entregables_Dia1.zip` y `_Dia2.zip` (documentos de la 5.13 de la guía 1 y la 5.9 de la guía 2, con `ENLACES.txt`), e `informe_dia1/`. Faltan los videos (día 1: máximo 3 min; día 2: máximo 1 min, guion en `docs/guion_video_dia2.md`): poner sus enlaces en los `ENLACES.txt`.
 
 ## Antigravity como ayudante
 Si el servidor MCP `antigravity-intern` está conectado, Claude Code es quien decide y revisa; a Antigravity se le delegan tareas acotadas (investigar, generar imágenes, revisar un archivo) y su resultado se verifica antes de usarlo. No se le pide modificar `src/modelo/`.
