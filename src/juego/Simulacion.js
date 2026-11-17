@@ -1,3 +1,6 @@
+import { giroVolante } from '../hmi/representacion.js';
+import { Equipo } from './entidades/Equipo.js';
+import { claveEquipo } from './animaciones.js';
 import { EscenaBase } from './EscenaBase.js';
 import { contextoJuego } from './contexto.js';
 import { cargarConfig, elegirGamepad } from '../entrada/configControles.js';
@@ -184,6 +187,8 @@ export class Simulacion extends EscenaBase {
     this.renderDestello = this.add.graphics().setDepth(4.6);
     this.renderBrilloBanda = this.add.graphics().setDepth(4.7);
     this.conSprites = this.textures.exists('alambique');
+    this.equipo = new Equipo();
+    this.cambiosEquipo = [];
     this.spritesTanques = [];
     this.spritesValvulas = [];
     if (this.textures.exists('mesa-laboratorio')) {
@@ -218,7 +223,7 @@ export class Simulacion extends EscenaBase {
       const anchoBase = (cuerpo.x1 - cuerpo.x0) * ancho;
       const sombra = this.add.graphics().setDepth(-.8);
       for (const [anchoSombra, alpha] of [[anchoBase + 38, .08], [anchoBase + 20, .13], [anchoBase + 5, .18]]) sombra.fillStyle(0x111315, alpha).fillEllipse(centroBase, surfaceY + 4, anchoSombra, 16);
-      this.spriteCascada = this.add.image(x, top + alto / 2, 'alambique-cascada').setDisplaySize(ancho, alto).setDepth(-.5);
+      this.spriteCascada = this.crearSpriteEquipo('alambique_cascada', 'alambique-cascada', x, top + alto / 2, ancho, alto);
       this.visoresCascada = convertirVisoresCascada(this.cajaCascada, this.cache.json.get('alambique-cascada-visores'));
       this.mascaraGeometricaVisores = this.make.graphics({ x: 0, y: 0, add: false });
       this.mascaraGeometricaVisores.fillStyle(0xffffff, 1);
@@ -230,26 +235,26 @@ export class Simulacion extends EscenaBase {
       for (let i = 0; i < this.nivel.tanques; i++) {
         if (!this.conSprites) continue;
         const p = posicionSpriteTanque(i, this.nivel.tanques);
-        this.spritesTanques.push(this.add.image(p.x, p.y, 'alambique').setDisplaySize(p.ancho, p.alto).setDepth(-.5));
+        this.spritesTanques.push(this.crearSpriteEquipo('alambique_simple', 'alambique', p.x, p.y, p.ancho, p.alto));
         const sombra = this.add.graphics().setDepth(-.7);
         for (const [anchoSombra, alpha] of [[p.ancho + 48, .08], [p.ancho + 28, .12], [p.ancho + 10, .16]]) sombra.fillStyle(0x111315, alpha).fillEllipse(p.x, p.y + p.alto / 2 + 4, anchoSombra, 16);
       }
     }
     if (!this.esCascada) this.dibujarFijacionesEntrada();
-    this.conSpritesValvula = this.textures.exists('valvula-cuerpo') && this.textures.exists('valvula-volante');
+    this.conSpritesValvula = this.hayPieza('valvula-cuerpo') && this.hayPieza('valvula-volante');
     if (this.conSpritesValvula && !this.esCascada) {
       const puntos = posicionSpritesValvulas(this.nivel.tanques);
       for (const [clave, punto] of [['v1', puntos.v1], ['v2', puntos.v2]]) {
         if (!punto || (clave === 'v2' && this.nivel.tanques !== 2)) continue;
-        const cuerpo = this.add.image(punto.x, punto.y, 'valvula-cuerpo').setDisplaySize(L.valvulaSprite.cuerpo, L.valvulaSprite.cuerpo);
-        const volante = this.add.sprite(punto.x, punto.y, 'valvula-volante').setDisplaySize(L.valvulaSprite.volante, L.valvulaSprite.volante).play('valvula-en-servicio');
+        const cuerpo = this.add.image(punto.x, punto.y, 'piezas', 'valvula-cuerpo').setDisplaySize(L.valvulaSprite.cuerpo, L.valvulaSprite.cuerpo);
+        const volante = this.add.sprite(punto.x, punto.y, 'piezas', 'valvula-volante').setDisplaySize(L.valvulaSprite.volante, L.valvulaSprite.volante).play('valvula-en-servicio');
         this.spritesValvulas.push({ clave, cuerpo, volante });
       }
-    } else if (this.esCascada && this.textures.exists('valvula-volante')) {
+    } else if (this.esCascada && this.hayPieza('valvula-volante')) {
       const cfg = L.cascada;
       for (const clave of ['v1', 'v2']) {
         const r = cfg.ruedas[clave], x = this.cajaCascada.x + r.x * this.cajaCascada.w, y = this.cajaCascada.y + r.y * this.cajaCascada.h;
-        const volante = this.add.sprite(x, y, 'valvula-volante').setDisplaySize(cfg.ruedas.tamano, cfg.ruedas.tamano).play('valvula-en-servicio');
+        const volante = this.add.sprite(x, y, 'piezas', 'valvula-volante').setDisplaySize(cfg.ruedas.tamano, cfg.ruedas.tamano).play('valvula-en-servicio');
         this.spritesValvulas.push({ clave, volante });
       }
     }
@@ -264,8 +269,8 @@ export class Simulacion extends EscenaBase {
         : visor.x - L.equilibrio.etiquetaAncho - L.equilibrio.etiquetaOffsetX;
       return this.add.text(x, visor.y, 'equilibrio', fuenteInterfaz(9, '#FFFFFF', { backgroundColor: 'rgba(28,32,38,0.9)', padding: { x: 2, y: 1 } })).setDepth(6).setVisible(false);
     });
-    if (this.textures.exists('caldero-real')) {
-      const cfg = L.caldero, fuente = this.textures.get('caldero-real').getSourceImage();
+    if (this.hayPieza('caldero-real')) {
+      const cfg = L.caldero, fuente = this.textures.getFrame('piezas', 'caldero-real');
       const ancho = cfg.ancho, alto = ancho * fuente.height / fuente.width;
       const x = this.esCascada
         ? this.cajaCascada.x + L.cascada.salida.x * this.cajaCascada.w
@@ -273,7 +278,7 @@ export class Simulacion extends EscenaBase {
       this.calderoCaja = { x: x - ancho / 2, y: cfg.baseY - alto, w: ancho, h: alto };
       const sombraCaldero = this.add.graphics().setDepth(-.7);
       for (const [anchoSombra, alpha] of [[ancho + 38, .08], [ancho + 20, .13], [ancho + 5, .18]]) sombraCaldero.fillStyle(0x111315, alpha).fillEllipse(x, cfg.baseY + 3, anchoSombra, 13);
-      this.add.image(x, cfg.baseY - alto / 2, 'caldero-real').setDisplaySize(ancho, alto).setDepth(1);
+      this.add.image(x, cfg.baseY - alto / 2, 'piezas', 'caldero-real').setDisplaySize(ancho, alto).setDepth(1);
       this.anclajeBocaCaldero = { x, y: this.calderoCaja.y + alto * cfg.boca.yRel };
       this.superficiePocionCaldero = { x, y: this.calderoCaja.y + alto * cfg.pocion.yRel };
       this.picoSalida = this.esCascada
@@ -282,13 +287,13 @@ export class Simulacion extends EscenaBase {
     }
     this.placasAlarmas = [];
     this.runasAlarmas = [];
-    if (this.textures.exists('alarma-placa') && this.textures.exists('alarma-runa')) {
+    if (this.hayPieza('alarma-placa') && this.hayPieza('alarma-runa')) {
       const puntos = this.esCascada
         ? ['superior', 'inferior'].map((key, i) => ({ x: L.cascada.etiquetasTanque[i].x + L.cascada.etiquetasTanque[i].placa / 2, y: this.visoresCascada[key].y + this.visoresCascada[key].h / 2, tamano: L.cascada.etiquetasTanque[i].placa }))
         : posicionSpritesValvulas(this.nivel.tanques).alarmas.map((p) => ({ ...p, tamano: L.alarmaSolo.tamano }));
       for (const p of puntos) {
-        this.placasAlarmas.push(this.add.image(p.x, p.y, 'alarma-placa').setDisplaySize(p.tamano, p.tamano).setDepth(3));
-        this.runasAlarmas.push(this.add.sprite(p.x, p.y, 'alarma-runa').setDisplaySize(p.tamano, p.tamano).setDepth(4).play('runa-alerta'));
+        this.placasAlarmas.push(this.add.image(p.x, p.y, 'piezas', 'alarma-placa').setDisplaySize(p.tamano, p.tamano).setDepth(3));
+        this.runasAlarmas.push(this.add.sprite(p.x, p.y, 'piezas', 'alarma-runa').setDisplaySize(p.tamano, p.tamano).setDepth(4).play('runa-alerta'));
       }
     }
     this.etiquetasEscala = [];
@@ -484,6 +489,36 @@ export class Simulacion extends EscenaBase {
     try { this.crearVisualPerturbacion(); }
     catch (error) { console.warn('[AVISO JUEGO] No se pudo dibujar la perturbación; la simulación continúa.', error); }
     this.crearRetroalimentacion();
+  }
+
+  hayPieza(frame) { return this.textures.exists('piezas') && this.textures.get('piezas').has(frame); }
+
+  // Equipo principal: sprite con sus hojas de estados (mismo tamaño que el sprite del día 1,
+  // así la planta no se mueve). Si faltan las hojas, se usa la imagen fija de respaldo.
+  crearSpriteEquipo(equipo, respaldo, x, y, ancho, alto) {
+    const clave = claveEquipo(equipo, 'reposo');
+    const sprite = this.textures.exists(clave)
+      ? this.add.sprite(x, y, clave, 0).setOrigin(.5)
+      : this.add.image(x, y, respaldo);
+    sprite.setDisplaySize(ancho, alto).setDepth(-.5);
+    sprite.setData('equipo', this.textures.exists(clave) ? equipo : null);
+    return sprite;
+  }
+
+  actualizarEquipo(dt, hs) {
+    if (!this.equipo) return;
+    const qin = .4 * this.actuador1.salida();
+    const anterior = this.equipo.estado;
+    const estado = this.equipo.actualizar(dt, { h: hs, qin });
+    const sprites = this.esCascada ? [this.spriteCascada] : this.spritesTanques;
+    for (const sprite of sprites) {
+      const equipo = sprite?.getData?.('equipo');
+      if (!equipo || !sprite.anims) continue;
+      const clave = claveEquipo(equipo, this.equipo.hoja());
+      if (this.anims.exists(clave) && sprite.anims.currentAnim?.key !== clave) sprite.play(clave);
+      sprite.anims.timeScale = this.equipo.velocidad();
+    }
+    if (estado !== anterior) this.cambiosEquipo.push({ t: this.tiempoJuego, de: anterior, a: estado });
   }
 
   crearVisualPerturbacion() {
@@ -912,6 +947,7 @@ export class Simulacion extends EscenaBase {
       if (this.registro.reloj + 1e-9 >= this.registro.periodo) { this.registro.reloj %= this.registro.periodo; this.registro.filas.push([muestra.t, muestra.u_crudo, muestra.u, hs[0], hs[1] ?? '', y, v2, qd, muestra.h_sp]); }
       if (this.tiempoJuego - (this.ultimoVista || 0) >= 1 / 30) { this.muestrasVista.push(muestra); this.ultimoVista = this.tiempoJuego; }
       this.registrarAlarmas(hs);
+      this.actualizarEquipo(dt, hs);
       this.actualizarEventosAudio(hs, qd, referenciaActual);
       const desborde = hs.some((h) => h >= PARAMETROS_TANQUES.alturaMaxima);
       if (desborde) { this.iniciarEfectoDesborde(hs); return; }
@@ -1003,7 +1039,7 @@ export class Simulacion extends EscenaBase {
       const color = h >= 2.8 ? 0xff1744 : h >= 2.4 ? 0xffd700 : 0x70777a;
       runa.setTint(color).setAlpha(h >= 2.4 ? 1 : .8);
     });
-    for (const valve of this.spritesValvulas || []) valve.volante.setRotation((valve.clave === 'v1' ? this.actuador1.salida() : this.actuador2.salida()) * Math.PI * 1.5);
+    for (const valve of this.spritesValvulas || []) valve.volante.setRotation(giroVolante(valve.clave === 'v1' ? this.actuador1.salida() : this.actuador2.salida()));
     this.etiquetasValvulas?.v1?.setText(`v1 ${Math.round(this.actuador1.salida() * 100)} %`);
     this.etiquetasValvulas?.v2?.setText(`v2 ${Math.round(this.actuador2.salida() * 100)} %`);
     this.dibujarMarcasEquilibrio();

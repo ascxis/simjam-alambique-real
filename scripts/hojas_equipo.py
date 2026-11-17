@@ -1,126 +1,140 @@
-"""Arma las hojas de estados del alambique simple y de la cascada a partir de un solo
-cuerpo limpio (sin grifo), para que el cuerpo quede en los mismos píxeles en todos los
-cuadros y estados (sin temblor). Guarda también los puntos de conexión medidos."""
+"""Arma las hojas de estados del equipo principal (alambique simple y cascada) a partir
+de los sprites del día 1, con el MISMO tamaño de cuadro que el sprite original. Así el
+juego cambia de textura sin mover el equipo ni sus visores (sin temblor ni saltos).
+
+Estados (una fila por hoja, misma escala y posición en todos los cuadros):
+  reposo 1 · funcionando 4 · falla 4 · alarma 2
+
+Uso (desde la raíz del proyecto):  python scripts/hojas_equipo.py
+Requiere: pip install pillow numpy
+"""
 import json
+from pathlib import Path
+
 import numpy as np
 from PIL import Image, ImageFilter
 
-DESBORDE = '/home/claude/dia2/arte/efecto_desborde.png'
+RAIZ = Path(__file__).resolve().parent.parent
+SPRITES = RAIZ / 'public' / 'assets' / 'sprites'
+SALIDA = SPRITES / 'equipo'
+EQUIPOS = {
+    'alambique_simple': SPRITES / 'alambique_cuerpo_vacio.png',
+    'alambique_cascada': SPRITES / 'alambique_cascada.png',
+}
+CUADROS = {'reposo': 1, 'funcionando': 4, 'falla': 4, 'alarma': 2}
+LIQUIDO = np.array([92, 214, 120], float)  # verde de la poción (igual al visor)
+ROJO = np.array([255, 40, 60], float)
 
 
-def cargar(f):
-    return Image.open(f).convert('RGBA')
+def cargar(ruta):
+    return np.asarray(Image.open(ruta).convert('RGBA')).astype(float)
 
 
-def brillo(body, pos, ancho=0.10, fuerza=0.14):
-    a = np.asarray(body).astype(float)
-    h, w = a.shape[:2]
-    x = np.arange(w)[None, :] / w
-    banda = np.exp(-((x - pos) / ancho) ** 2) * fuerza
-    banda = np.repeat(banda, h, 0)[..., None]
-    rgb = a[..., :3] + (255 - a[..., :3]) * banda
-    out = np.dstack([rgb, a[..., 3]])
-    return Image.fromarray(np.clip(out, 0, 255).astype('uint8'), 'RGBA')
+def a_imagen(a):
+    return Image.fromarray(np.clip(a, 0, 255).astype('uint8'), 'RGBA')
 
 
-def alarma(body, runas, escala):
-    a = np.asarray(body).astype(float)
+def brillo(a, pos, ancho=0.09, fuerza=0.16):
+    """Reflejo diagonal que recorre el cobre: el equipo 'trabaja'. Solo aclara los
+    píxeles ya visibles, así la silueta no cambia."""
     h, w = a.shape[:2]
     yy, xx = np.mgrid[0:h, 0:w]
-    rgb = a[..., :3].copy()
-    for (cx, cy, r) in runas:
-        cx, cy, r = cx * escala, cy * escala, r * escala
-        d = np.hypot(xx - cx, yy - cy)
-        m = (d < r) & (a[..., 3] > 0)
-        lum = rgb[..., :3].mean(-1)
-        base_l = np.median(lum[m])
-        oscuro = m & (lum < base_l * 0.62)  # grabado de la runa y remaches
-        rgb[oscuro] = rgb[oscuro] * 0.25 + np.array([255, 30, 50]) * 0.75
-        rgb[m & ~oscuro] = rgb[m & ~oscuro] * 0.8 + np.array([255, 40, 60]) * 0.2
-    cuerpo = Image.fromarray(np.dstack([np.clip(rgb, 0, 255), a[..., 3]]).astype('uint8'), 'RGBA')
-    # resplandor rojo alrededor de la silueta
-    al = body.split()[3]
-    halo = al.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(6))
-    glow = Image.new('RGBA', body.size, (255, 23, 68, 0))
-    glow.putalpha(halo.point(lambda v: int(v * 0.8)))
-    base = Image.new('RGBA', body.size, (0, 0, 0, 0))
-    base.alpha_composite(glow)
-    base.alpha_composite(cuerpo)
-    return base
-
-
-def desborde_frames():
-    s = cargar(DESBORDE)
-    n = 6
-    w = s.width // n
-    return [s.crop((k * w, 0, (k + 1) * w, s.height)) for k in range(n)]
-
-
-def falla(body, dome_x, dome_y, dome_w, idx):
-    fr = desborde_frames()[idx]
-    bb = fr.getbbox()
-    fr = fr.crop(bb)
-    # quita el magenta
-    a = np.asarray(fr).astype(int)
-    mag = (a[..., 0] > 200) & (a[..., 1] < 60) & (a[..., 2] > 200)
-    a[mag, 3] = 0
-    fr = Image.fromarray(a.astype('uint8'), 'RGBA')
-    s = dome_w / fr.width
-    fr = fr.resize((max(1, int(fr.width * s)), max(1, int(fr.height * s))), Image.LANCZOS)
-    out = body.copy()
-    out.alpha_composite(fr, (int(dome_x - fr.width / 2), int(dome_y)))
+    u = (xx / w) + 0.35 * (yy / h)  # banda inclinada
+    banda = np.exp(-((u - pos) / ancho) ** 2) * fuerza
+    out = a.copy()
+    out[..., :3] += (255 - a[..., :3]) * banda[..., None]
     return out
 
 
-def construir(nombre, cuerpo, alto_cuerpo, FW, FH, top, puntos, runas, dome_w_frac):
-    body = cargar(cuerpo)
-    esc = alto_cuerpo / body.height
-    body = body.resize((round(body.width * esc), alto_cuerpo), Image.LANCZOS)
-    ox = (FW - body.width) // 2
-    oy = top
+def borde_interior(alfa, radio):
+    """Máscara (0..1) de la franja interior del contorno, para un resplandor sin
+    salirse del cuadro."""
+    m = Image.fromarray((alfa > 8).astype('uint8') * 255)
+    erosion = m.filter(ImageFilter.MinFilter(2 * radio + 1))
+    franja = np.asarray(m, float) - np.asarray(erosion, float)
+    franja = Image.fromarray(franja.clip(0, 255).astype('uint8')).filter(ImageFilter.GaussianBlur(radio / 2))
+    return np.asarray(franja, float) / 255.0
 
-    def lienzo(img):
-        c = Image.new('RGBA', (FW, FH), (0, 0, 0, 0))
-        c.alpha_composite(img, (ox, oy))
-        return c
 
-    dome_x = body.width / 2
+def alarma(a, fuerte=True):
+    if not fuerte:
+        return a.copy()
+    out = a.copy()
+    alfa = a[..., 3]
+    lum = a[..., :3].mean(-1)
+    # tinte rojo general suave y más fuerte en los remaches y bordes oscuros
+    tinte = np.where(lum < 90, 0.45, 0.10) * (alfa > 8)
+    out[..., :3] = out[..., :3] * (1 - tinte[..., None]) + ROJO * tinte[..., None]
+    franja = borde_interior(alfa, 6) * 0.6
+    out[..., :3] = out[..., :3] * (1 - franja[..., None]) + np.array([255, 23, 68]) * franja[..., None]
+    return out
+
+
+def falla(a, k, n=4, semilla=11):
+    """Cobre oscurecido y chorreado de poción que escurre desde la tapa: el líquido
+    rebasó el alambique. k = 0..n-1 avanza el chorreado."""
+    rng = np.random.default_rng(semilla)
+    out = a.copy()
+    alfa = a[..., 3]
+    visible = alfa > 8
+    gris = out[..., :3].mean(-1, keepdims=True)
+    out[..., :3] = (out[..., :3] * 0.55 + gris * 0.45) * 0.72  # quemado
+    h, w = alfa.shape
+    filas = np.where(visible.any(1))[0]
+    top = filas.min()
+    # columnas donde nace cada gota (sobre la tapa)
+    cols = np.where(visible[top + int(0.06 * h)])[0]
+    x0, x1 = cols.min(), cols.max()
+    gotas = rng.uniform(x0 + 6, x1 - 6, 7)
+    largos = rng.uniform(0.25, 0.75, 7)
+    grosor = rng.uniform(2.5, 5.0, 7)
+    yy, xx = np.mgrid[0:h, 0:w]
+    capa = np.zeros((h, w))
+    avance = (k + 1) / n
+    for gx, lg, gr in zip(gotas, largos, grosor):
+        ymax = top + (0.05 + lg * avance) * h
+        ondula = gx + 1.5 * np.sin(yy / 9.0 + gx)
+        cuerpo = (np.abs(xx - ondula) < gr) & (yy > top) & (yy < ymax)
+        punta = (xx - gx) ** 2 + (yy - ymax) ** 2 < (gr * 1.5) ** 2
+        capa = np.maximum(capa, (cuerpo | punta).astype(float))
+    # charco en la tapa
+    capa[top:top + int(0.05 * h)] = np.maximum(capa[top:top + int(0.05 * h)], 0.9)
+    capa = np.asarray(Image.fromarray((capa * 255).astype('uint8')).filter(ImageFilter.GaussianBlur(0.8)), float) / 255
+    capa *= visible
+    liquido = LIQUIDO * (0.85 + 0.25 * np.sin(yy / 6.0 + k)[..., None])
+    out[..., :3] = out[..., :3] * (1 - capa[..., None]) + liquido * capa[..., None]
+    return out
+
+
+def hoja(cuadros):
+    h, w = cuadros[0].shape[:2]
+    lienzo = np.zeros((h, w * len(cuadros), 4))
+    for i, c in enumerate(cuadros):
+        lienzo[:, i * w:(i + 1) * w] = c
+    return a_imagen(lienzo)
+
+
+def construir(nombre, ruta):
+    a = cargar(ruta)
+    h, w = a.shape[:2]
     estados = {
-        'reposo': [body],
-        'funcionando': [brillo(body, p) for p in (0.25, 0.45, 0.65, 0.85)],
-        'alarma': [alarma(body, runas, esc), body],
-        'falla': [falla(body, dome_x, -8, body.width * dome_w_frac, i) for i in (1, 3, 4, 5)],
+        'reposo': [a],
+        'funcionando': [brillo(a, p) for p in (-0.05, 0.35, 0.75, 1.15)],
+        'falla': [falla(a, k) for k in range(4)],
+        'alarma': [alarma(a, True), alarma(a, False)],
     }
-    meta = {'frameWidth': FW, 'frameHeight': FH, 'cuadros': {}, 'puntos': {}}
-    for est, frames in estados.items():
-        hoja = Image.new('RGBA', (FW * len(frames), FH), (0, 0, 0, 0))
-        for k, f in enumerate(frames):
-            hoja.alpha_composite(lienzo(f), (k * FW, 0))
-        hoja.save(f'{nombre}_{est}.png', optimize=True)
-        meta['cuadros'][est] = len(frames)
-
-    def frac(x, y):
-        return [round((ox + x * esc) / FW, 4), round((oy + y * esc) / FH, 4)]
-
-    for k, v in puntos.items():
-        if len(v) == 2:
-            meta['puntos'][k] = frac(*v)
-        else:
-            x0, x1, y0, y1 = v
-            p0, p1 = frac(x0, y0), frac(x1, y1)
-            meta['puntos'][k] = {'x': p0[0], 'y': p0[1], 'w': round(p1[0] - p0[0], 4), 'h': round(p1[1] - p0[1], 4)}
-    json.dump(meta, open(f'{nombre}.json', 'w'), indent=2, ensure_ascii=False)
-    return meta, esc, ox, oy
+    SALIDA.mkdir(parents=True, exist_ok=True)
+    meta = {'fuente': ruta.name, 'frameWidth': w, 'frameHeight': h, 'estados': {}}
+    for estado, cuadros in estados.items():
+        assert len(cuadros) == CUADROS[estado]
+        archivo = f'{nombre}_{estado}.png'
+        hoja(cuadros).save(SALIDA / archivo, optimize=True)
+        meta['estados'][estado] = {'archivo': archivo, 'cuadros': len(cuadros)}
+    (SALIDA / f'{nombre}.json').write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding='utf-8')
+    return meta
 
 
 if __name__ == '__main__':
-    m1 = construir('alambique_simple', 's_reposo_body.png', 620, 320, 680, 40, {
-        'entrada': (462, 0), 'salida': (960, 1550), 'base': (450, 2100),
-        'visor1': (408, 514, 430, 1194),
-    }, [(461, 1448, 165)], 0.62)
-    m2 = construir('alambique_cascada', 'c_reposo_body.png', 740, 320, 800, 40, {
-        'entrada': (303, 0), 'salida': (633, 1744), 'base': (298, 2103),
-        'visor1': (269, 339, 278, 566), 'visor2': (268, 340, 1219, 1532),
-        'q12': (707, 769, 922, 1089),
-    }, [(309, 700, 100), (300, 1705, 100)], 0.62)
-    print(json.dumps(m1[0]['puntos'], indent=1)); print(json.dumps(m2[0]['puntos'], indent=1))
+    for nombre, ruta in EQUIPOS.items():
+        m = construir(nombre, ruta)
+        print(nombre, m['frameWidth'], 'x', m['frameHeight'], {k: v['cuadros'] for k, v in m['estados'].items()})

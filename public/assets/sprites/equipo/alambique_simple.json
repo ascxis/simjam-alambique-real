@@ -1,0 +1,23 @@
+{
+  "fuente": "alambique_cuerpo_vacio.png",
+  "frameWidth": 215,
+  "frameHeight": 300,
+  "estados": {
+    "reposo": {
+      "archivo": "alambique_simple_reposo.png",
+      "cuadros": 1
+    },
+    "funcionando": {
+      "archivo": "alambique_simple_funcionando.png",
+      "cuadros": 4
+    },
+    "falla": {
+      "archivo": "alambique_simple_falla.png",
+      "cuadros": 4
+    },
+    "alarma": {
+      "archivo": "alambique_simple_alarma.png",
+      "cuadros": 2
+    }
+  }
+}

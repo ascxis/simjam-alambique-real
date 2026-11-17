@@ -1,3 +1,4 @@
+import { giroVolante } from './representacion.js';
 import { LAYOUT, obtenerCajasTanques } from './layout.js';
 
 const { simulacion: L } = LAYOUT;
@@ -224,7 +225,7 @@ function dibujarValvulaFallback(g, x, y, apertura) {
   g.fillStyle(0x4a5056, 1).fillCircle(x, y, radioCuerpo);
   g.lineStyle(3, 0x1a1b1d, 1).strokeCircle(x, y, radioCuerpo);
   g.lineStyle(3, 0xb85a24, 1).strokeCircle(x, y, radioVolante);
-  const giro = Math.max(0, Math.min(1, apertura)) * Math.PI * 1.5;
+  const giro = giroVolante(apertura);
   for (let k = 0; k < 4; k++) {
     const a = giro + k * Math.PI / 2;
     g.lineBetween(x, y, x + Math.cos(a) * (radioVolante - 2), y + Math.sin(a) * (radioVolante - 2));

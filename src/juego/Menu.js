@@ -162,8 +162,13 @@ export class Menu extends EscenaBase {
       if (cams?.length) alert(`Cámara activa. ${cams.length} dispositivo(s) disponible(s).`);
     });
     this.add.text(M.controles.x + M.controles.ancho / 2, M.controles.y + M.controles.alto / 2,
-      'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar · M / Select silencio',
+      'Controles: derecha → entrada · pellizco izquierdo → salida v2 · teclado / gamepad · P parámetros · D depuración · F terminar · M / Select silencio · G galería',
       fuenteInterfaz(14, '#E6E8EA', { align: 'center', lineSpacing: 4 })).setOrigin(.5).setWordWrapWidth(M.controles.ancho - M.margenControl.horizontal).setAlpha(1);
+    // Tecla G: escena Galería (no se activa con el panel Configurar controles abierto).
+    this.input.keyboard?.on('keydown-G', () => {
+      if (document.querySelector('[data-panel-controles]')) return;
+      this.scene.start('Galeria');
+    });
   }
 
   update() { this.audio?.actualizarDesbloqueo(); }

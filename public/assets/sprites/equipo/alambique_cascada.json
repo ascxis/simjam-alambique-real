@@ -1,0 +1,23 @@
+{
+  "fuente": "alambique_cascada.png",
+  "frameWidth": 395,
+  "frameHeight": 510,
+  "estados": {
+    "reposo": {
+      "archivo": "alambique_cascada_reposo.png",
+      "cuadros": 1
+    },
+    "funcionando": {
+      "archivo": "alambique_cascada_funcionando.png",
+      "cuadros": 4
+    },
+    "falla": {
+      "archivo": "alambique_cascada_falla.png",
+      "cuadros": 4
+    },
+    "alarma": {
+      "archivo": "alambique_cascada_alarma.png",
+      "cuadros": 2
+    }
+  }
+}

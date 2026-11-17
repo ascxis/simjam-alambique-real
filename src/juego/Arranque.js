@@ -1,6 +1,7 @@
 import { EscenaBase } from './EscenaBase.js';
 import { LAYOUT } from '../hmi/layout.js';
 import { fuenteTitulo } from '../hmi/estilo.js';
+import { cargarHojasEquipo, registrarAnimaciones, EFECTOS } from './animaciones.js';
 
 export class Arranque extends EscenaBase {
   constructor() { super('Arranque'); }
@@ -28,11 +29,9 @@ export class Arranque extends EscenaBase {
     this.load.image('alambique-cascada', 'assets/sprites/alambique_cascada.png');
     this.load.json('alambique-cascada-visores', 'assets/sprites/alambique_cascada.json');
     this.load.image('mesa-laboratorio', 'assets/sprites/mesa_laboratorio.png');
-    this.load.image('caldero-real', 'assets/sprites/caldero_real.png');
-    this.load.image('valvula-cuerpo', 'assets/sprites/valvula_cuerpo_estatico.png');
-    this.load.image('valvula-volante', 'assets/sprites/valvula_volante_aislado.png');
-    this.load.image('alarma-placa', 'assets/sprites/alarma_placa.png');
-    this.load.image('alarma-runa', 'assets/sprites/alarma_runa.png');
+    // Sprites pequeños agrupados en un atlas (npm run atlas): válvula, alarma, caldero y decoraciones.
+    this.load.atlas('piezas', 'assets/sprites/piezas.png', 'assets/sprites/piezas.json');
+    cargarHojasEquipo(this);
     this.load.image('fondo-laboratorio', 'assets/fondos/fondo_laboratorio.png');
     this.load.spritesheet('baldosas', 'assets/sprites/baldosas_laboratorio.png', { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('interfaz', 'assets/sprites/interfaz_iconos.png', { frameWidth: 64, frameHeight: 64 });
@@ -42,27 +41,13 @@ export class Arranque extends EscenaBase {
       this.load.spritesheet(`llave-consumo-${estado}`, `assets/sprites/llave_consumo_${estado}.png`, { frameWidth: 144, frameHeight: 180 });
     }
     this.load.json('llave-consumo-puntos', 'assets/sprites/llave_consumo.json');
-    const cuadrosEfecto = { salpicadura: 5, vapor: 6, chispa: 4, polvo: 4, aparicion: 5, desborde: 6 };
-    for (const [nombre, cuadros] of Object.entries(cuadrosEfecto)) {
+    for (const nombre of Object.keys(EFECTOS)) {
       this.load.spritesheet(`efecto-${nombre}`, `assets/efectos/efecto_${nombre}.png`, { frameWidth: 64, frameHeight: 64 });
       this.load.json(`efecto-${nombre}-meta`, `assets/efectos/efecto_${nombre}.json`);
     }
   }
   create() {
-    // El volante sigue la salida del actuador; la animación provee el estado activo
-    // del sprite y la escena aplica su giro a partir del modelo.
-    this.anims.create({ key: 'valvula-en-servicio', frames: [{ key: 'valvula-volante', frame: '__BASE' }], frameRate: 1, repeat: -1 });
-    this.anims.create({ key: 'runa-alerta', frames: [{ key: 'alarma-runa', frame: '__BASE' }], frameRate: 1, repeat: -1 });
-    if (this.textures.exists('llave-consumo-aviso') && !this.anims.exists('llave-consumo-aviso')) {
-      this.anims.create({ key: 'llave-consumo-aviso', frames: this.anims.generateFrameNumbers('llave-consumo-aviso', { start: 0, end: 2 }), frameRate: 6, repeat: -1 });
-    }
-    const cuadrosEfecto = { salpicadura: 5, vapor: 6, chispa: 4, polvo: 4, aparicion: 5, desborde: 6 };
-    for (const [nombre, cuadros] of Object.entries(cuadrosEfecto)) {
-      const clave = `efecto-${nombre}`;
-      if (this.textures.exists(clave) && !this.anims.exists(clave)) {
-        this.anims.create({ key: clave, frames: this.anims.generateFrameNumbers(clave, { start: 0, end: cuadros - 1 }), frameRate: nombre === 'desborde' ? 18 : 15, repeat: nombre === 'desborde' ? 0 : -1 });
-      }
-    }
+    registrarAnimaciones(this);
     this.scene.start('Menu');
   }
 }
