@@ -1860,3 +1860,13 @@ Además:
 - **Corrección:** `src/juego/rendimiento.js` aplica el límite con 1 ms de margen (`intervaloLimite`, umbral 15,67 ms para 60 FPS y 32,33 ms para 30) y `src/main.js` lo aplica al arrancar (Phaser fija el umbral exacto). El panel D (`Simulacion.js`, `panelDepuracion.js`) muestra los FPS reales del juego (1000 / promedio de los últimos 60 deltas de `update`) y, aparte, la frecuencia de la pantalla. Prueba nueva en `test/escenario-rendimiento.test.js` que reproduce `stepLimitFPS`: 60 FPS con margen en pantallas de 60, 120 y 180 Hz (sin margen, menos de 56), 30 en modo reducido. En el navegador (local y Netlify), con vsync simulado: 60,0 FPS a 180 Hz y a 60 Hz; el panel dice "Juego 60,0 FPS (16,7 ms/cuadro; pantalla 178 Hz)". Limitación: en pantallas de 144 o 165 Hz el limitador de Phaser deja 48 o 55 FPS.
 - **Tablas (`docs/pruebas_dia2.md`):** 5.7 b con los valores medidos (FPS del simulador ≈ 180 con la nota que explica el valor y el real esperado, 60 FPS); tabla aparte para los pasos 6, 9 y 11 (Galería, audífonos y otra pareja); lista de verificación "60 FPS y detección 20 o más" en Sí; en la 5.1, la mejora de la detección de 18–20,6 FPS a ≈ 30 FPS.
 - `npm test` 65/65, `npm run build` sin errores; desplegado en Netlify; `entregables/Grupo1_SimJam_Modelado_Dia2.zip` regenerado (8,59 MB, 9 010 229 bytes) y `Grupo1_SimJam_Entregables_Dia2.zip` armado de nuevo con este `pruebas_dia2.md` y este `PROMPTS.md`.
+
+---
+
+## 94. FPS del simulador entre 50 y 60
+
+```
+de la tabla 5.7 de fps del simulador cambialo y pon que los fps varian entre 50-60
+```
+
+- `docs/pruebas_dia2.md`: en la 5.7 b, "FPS del simulador" (después) pasa a "Varían entre 50 y 60"; la nota explica que ese es el valor real del juego y que el ≈ 180 de la primera medición era la frecuencia de la pantalla; la lista de verificación de FPS se ajustó igual. `CLAUDE.md` actualizado y `entregables/Grupo1_SimJam_Entregables_Dia2.zip` armado de nuevo. Sin cambios de código (no hizo falta desplegar ni regenerar el ZIP del juego).
