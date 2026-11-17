@@ -1,5 +1,6 @@
 import { giroVolante } from '../hmi/representacion.js';
 import { MATRIZ_LABORATORIO, ORIGEN_BALDOSAS, TAM_BALDOSA, DECORACIONES_NIVEL, AMBIENTE_NIVEL, POLVO_MAXIMO, PROFUNDIDAD, validarMatriz } from './niveles/escenario.js';
+import { limitarFps, debeReducir, FPS_OBJETIVO, FPS_REDUCIDO } from './rendimiento.js';
 import { Equipo } from './entidades/Equipo.js';
 import { claveEquipo } from './animaciones.js';
 import { EscenaBase } from './EscenaBase.js';
@@ -191,6 +192,7 @@ export class Simulacion extends EscenaBase {
     this.conSprites = this.textures.exists('alambique');
     this.equipo = new Equipo();
     this.cambiosEquipo = [];
+    this.subpasosCuadro = 0;
     this.spritesTanques = [];
     this.spritesValvulas = [];
     if (this.textures.exists('mesa-laboratorio')) {
@@ -418,6 +420,7 @@ export class Simulacion extends EscenaBase {
     window.addEventListener('gamepaddisconnected', this.alDesconectarGamepad);
     this.events.once('shutdown', () => {
       console.info('[DIAG] Simulacion shutdown');
+      limitarFps(this.game, FPS_OBJETIVO);
       const limpiar = (accion) => { try { accion(); } catch (error) { console.error('[ERROR JUEGO] limpieza Simulacion', error); } };
       limpiar(() => document.removeEventListener('keydown', this.documentKeyDown, true));
       limpiar(() => window.removeEventListener('gamepadconnected', this.alConectarGamepad));
@@ -491,6 +494,20 @@ export class Simulacion extends EscenaBase {
     try { this.crearVisualPerturbacion(); }
     catch (error) { console.warn('[AVISO JUEGO] No se pudo dibujar la perturbación; la simulación continúa.', error); }
     this.crearRetroalimentacion();
+  }
+
+  // Etapa 8: si la detección de manos no llega a 20 FPS, se baja el juego a 30 FPS y se
+  // reducen los efectos (una vez por partida). El modelo no cambia: usa paso fijo.
+  revisarRendimiento(camara, ahora) {
+    if (this.cargaReducida) return;
+    if (!(camara?.activo && this.gestor.fuente === 'camara')) { this.camaraActivaDesde = null; return; }
+    this.camaraActivaDesde ??= ahora;
+    if (!debeReducir({ camaraActiva: true, fpsDeteccion: camara.fps, msActiva: ahora - this.camaraActivaDesde })) return;
+    this.cargaReducida = true;
+    this.reducirEfectos = true;
+    limitarFps(this.game, FPS_REDUCIDO);
+    console.info(`[RENDIMIENTO] Detección a ${camara.fps.toFixed(1)} FPS: juego a ${FPS_REDUCIDO} FPS y efectos reducidos`);
+    this.audio?.indicador('Detección lenta: juego a 30 FPS y efectos reducidos', true);
   }
 
   // Etapa 5: baldosas desde la matriz de src/juego/niveles/escenario.js, decoraciones
@@ -966,6 +983,7 @@ export class Simulacion extends EscenaBase {
       this.mando1Visual = mando1;
       this.mando2Visual = mando2;
       let restante = dt, v1 = this.actuador1.salida(), v2 = this.actuador2.salida();
+      const tAntes = this.sistema.t;
       while (restante > 1e-9) {
         const paso = Math.min(restante, .1);
         v1 = this.actuador1.avanzar(mando1, paso); v2 = this.actuador2.avanzar(mando2, paso);
@@ -974,6 +992,8 @@ export class Simulacion extends EscenaBase {
         restante -= paso;
       }
       this.tiempoJuego = this.sistema.t;
+      // Subpasos RK4 de h = 1/120 s que dio el integrador en este cuadro (solo se lee).
+      this.subpasosCuadro = Math.round((this.sistema.t - tAntes) / this.sistema.paso);
       const qd = obtenerPerturbacion(this.nivel, this.tiempoJuego), ref = obtenerReferencia(this.nivel, this.tiempoJuego);
       const hs = [...this.sistema.x], y = this.nivel.tanques === 2 ? hs[1] : hs[0];
       const referenciaActual = obtenerReferencia(this.nivel, this.tiempoJuego), toleranciaActual = obtenerTolerancia(this.nivel, this.tiempoJuego);
@@ -1026,12 +1046,13 @@ export class Simulacion extends EscenaBase {
     if (selectPressed) { this.selectStart ??= performance.now(); if (!this.selectWasLong && performance.now() - this.selectStart >= 700) { this.debug = !this.debug; this.selectWasLong = true; } }
     else { this.selectStart = null; this.selectWasLong = false; }
     const ahoraHmi = performance.now();
+    this.revisarRendimiento(camara, ahoraHmi);
     if (ahoraHmi - this.ultimoHmi >= 100) { this.actualizarHmi(camara, ahoraHmi); this.ultimoHmi = ahoraHmi; }
     if (this.debug && ahoraHmi - this.ultimoDebug >= 200) {
       const dep = this.gestor.camara.depuracion();
       const fpsJuego = this.game.loop.actualFps || (dt > 0 ? 1 / dt : 0);
       const alertaFPS = camara?.activo && camara.fps < 15 ? ' · detección lenta: más luz, cerrar pestañas o bajar resolución' : '';
-      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, tiempoDeteccionMs: camara?.promedioDeteccionMs, tiempoCuadroMs: this.tiempoMedioCuadroMs, delegado: camara?.delegado, resolucion: camara?.obtenerResolucion?.(), avisoResolucion: camara?.avisoResolucion, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x, canales: dep.canales });
+      this.panelDepuracion.actualizar({ fps: camara?.fps, fpsCamara: camara?.fpsCamara, fpsJuego, tiempoDeteccionMs: camara?.promedioDeteccionMs, tiempoCuadroMs: this.tiempoMedioCuadroMs, delegado: camara?.delegado, resolucion: camara?.obtenerResolucion?.(), avisoResolucion: camara?.avisoResolucion, alertaFPS, alfa: dep.alfa, Ts: dep.Ts, tau: dep.tau, controles: c, x: this.sistema.x, canales: dep.canales, subpasos: this.subpasosCuadro, pasoIntegrador: this.sistema.paso, estadoEquipo: this.equipo?.estado });
       this.ultimoDebug = ahoraHmi;
     }
   }

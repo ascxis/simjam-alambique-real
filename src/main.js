@@ -21,7 +21,10 @@ const config = {
   backgroundColor: 0xe7e8e8,
   dom: { createContainer: true },
   physics: { default: 'arcade', arcade: { debug: false } },
-  fps: { target: 30, limit: 30 },
+  // 60 FPS de objetivo; con la cámara, src/juego/rendimiento.js baja a 30 si la detección
+  // promedia menos de 20 FPS. El arte no es pixel art: antialias y posiciones redondeadas.
+  fps: { target: 60, limit: 60 },
+  render: { antialias: true, roundPixels: true },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [Arranque, Menu, Calibracion, Simulacion, Fin, Galeria]
 };
