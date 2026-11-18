@@ -21,16 +21,16 @@ Tablas de las secciones 5.1, 5.5 y 5.7 de la guía del día 2. Las mediciones co
 
 | Etapa | Descripción | Archivos modificados | ¿Pasa la regresión? | Commit |
 |---|---|---|---|---|
-| 1 | Carga de recursos | `src/juego/Arranque.js`, `src/juego/contexto.js`, `test/regresion.test.js` | Sí | `8b29c35` Procesa y centraliza la carga de recursos del día 2 |
-| 2 | Equipo principal y estados | `scripts/hojas_equipo.py`, `public/assets/sprites/equipo/`, `src/juego/animaciones.js`, `src/juego/entidades/Equipo.js`, `src/juego/Galeria.js`, `src/juego/Menu.js`, `src/juego/Simulacion.js`, `src/main.js`, atlas `piezas` | Sí | `10bc7e1` Etapas 2 y 3 (el primer intento, `f821c6d`, se revirtió en `8ae076c`) |
-| 3 | Actuadores y piezas del modelo | `src/hmi/representacion.js`, `src/hmi/tanques.js`, `src/juego/Simulacion.js` | Sí | `10bc7e1` (el primer intento, `1e299e4`, se revirtió en `8ae076c`) |
-| 4 | Perturbaciones y avisos | `src/juego/perturbaciones.js`, `src/juego/Simulacion.js`, `src/hmi/tendencia.js`, `public/assets/sprites/llave_consumo_*` | Sí | `18a806e` |
-| 5 | Escenario | `src/juego/niveles/escenario.js`, `public/assets/tiles/laboratorio_tiles.png`, `src/juego/Arranque.js`, `src/juego/Simulacion.js` | Sí | `08c8bab` Etapa 5: escenario con Tilemap, decoraciones animadas y ambiente |
-| 6 | Efectos y retroalimentación | `src/juego/efectos/resorteVisual.js`, `src/juego/Simulacion.js`, `src/juego/Menu.js` | Sí | `18a806e` |
-| 7 | Música, efectos sonoros y sonificación | `scripts/procesar-audio.mjs`, `src/juego/audio.js`, `src/juego/EscenaBase.js`, `src/juego/Menu.js`, `src/juego/Simulacion.js`, `public/assets/audio/` | Sí | `18a806e` Música, efectos sonoros y sonificación (etapa 7) |
-| 8 | Rendimiento, robustez y tamaño | `src/main.js`, `src/juego/rendimiento.js`, `src/hmi/panelDepuracion.js`, `src/juego/Simulacion.js`, `scripts/crear-atlas.mjs`, `test/paso-fijo.test.js`, `test/escenario-rendimiento.test.js` | Sí | `a4d68e7` Etapa 8: rendimiento, robustez del paso fijo y tamaño |
+| 1 | Carga de recursos | `src/juego/Arranque.js`, `src/juego/contexto.js`, `test/regresion.test.js` | Sí | `4afbd62` Procesa y centraliza la carga de recursos del día 2 |
+| 2 | Equipo principal y estados | `scripts/hojas_equipo.py`, `public/assets/sprites/equipo/`, `src/juego/animaciones.js`, `src/juego/entidades/Equipo.js`, `src/juego/Galeria.js`, `src/juego/Menu.js`, `src/juego/Simulacion.js`, `src/main.js`, atlas `piezas` | Sí | `b702b59` Etapas 2 y 3 (el primer intento, `fd3379c`, se revirtió en `8ff152d`) |
+| 3 | Actuadores y piezas del modelo | `src/hmi/representacion.js`, `src/hmi/tanques.js`, `src/juego/Simulacion.js` | Sí | `b702b59` (el primer intento, `c030866`, se revirtió en `8ff152d`) |
+| 4 | Perturbaciones y avisos | `src/juego/perturbaciones.js`, `src/juego/Simulacion.js`, `src/hmi/tendencia.js`, `public/assets/sprites/llave_consumo_*` | Sí | `1481a09` |
+| 5 | Escenario | `src/juego/niveles/escenario.js`, `public/assets/tiles/laboratorio_tiles.png`, `src/juego/Arranque.js`, `src/juego/Simulacion.js` | Sí | `e0da729` Etapa 5: escenario con Tilemap, decoraciones animadas y ambiente |
+| 6 | Efectos y retroalimentación | `src/juego/efectos/resorteVisual.js`, `src/juego/Simulacion.js`, `src/juego/Menu.js` | Sí | `1481a09` |
+| 7 | Música, efectos sonoros y sonificación | `scripts/procesar-audio.mjs`, `src/juego/audio.js`, `src/juego/EscenaBase.js`, `src/juego/Menu.js`, `src/juego/Simulacion.js`, `public/assets/audio/` | Sí | `1481a09` Música, efectos sonoros y sonificación (etapa 7) |
+| 8 | Rendimiento, robustez y tamaño | `src/main.js`, `src/juego/rendimiento.js`, `src/hmi/panelDepuracion.js`, `src/juego/Simulacion.js`, `scripts/crear-atlas.mjs`, `test/paso-fijo.test.js`, `test/escenario-rendimiento.test.js` | Sí | `8a749f8` Etapa 8: rendimiento, robustez del paso fijo y tamaño |
 
-Antes de las etapas 2, 5 y 8 se incorporaron los cambios del despliegue (gamepad, cámara y "Configurar controles") en `5063076`.
+Antes de las etapas 2, 5 y 8 se incorporaron los cambios del despliegue (gamepad, cámara y "Configurar controles") en `c80bb41`.
 
 ## 5.7 a) Regresión del modelo
 
@@ -76,21 +76,21 @@ docs/dia2_escalon_lento.csv: valor final 0.00 %, tr 0.00 %, Mp 0.00 puntos -> pa
 
 | Criterio | Cumple (sí/no) | Commit |
 |---|---|---|
-| La prueba de regresión del modelo pasa, también con la CPU ralentizada, y niveles.json no cambió. | Sí | `a4d68e7` (pruebas) y el commit de este documento (CSV) |
-| El equipo principal se reconoce a primera vista y se distingue de las perturbaciones. | Sí: alambique de cobre; las perturbaciones son una llave de bronce y una tubería con pulsos | `10bc7e1`, `18a806e` |
-| Todas las animaciones se ven en la escena Galería sin saltos ni cambios de tamaño. | Sí: 18 animaciones; cada hoja del equipo tiene el mismo cuadro que el sprite del día 1 | `10bc7e1` |
-| Los estados del equipo (funcionando, falla, alarma) cambian con el modelo y la alarma no parpadea. | Sí: máquina de estados con histéresis (entra en 2,8 m, sale en 2,7 m) | `10bc7e1` |
-| Cada actuador muestra el mando de la mano y su posición real. | Sí: barra con ▲ del mando y relleno de la apertura real; volante girado con la salida del Actuador | `18a806e`, `10bc7e1` |
-| Las piezas del modelo se deforman con el estado, sin retardo y de forma fiel a la física. | Sí: líquido, chorros y flujo se dibujan cada cuadro desde x(t), sin tweens | `10bc7e1` |
-| Cada perturbación tiene un aviso de al menos 400 ms y no menor al doble del retardo medido. | Sí: 2000 ms (mínimo: máx(400 ms; 2 × (161 + 111) ms) ≈ 544 ms) | `18a806e` |
-| La vibración de cámara y el oleaje se calculan con un sistema de segundo orden. | Sí: `resorteVisual.js` (ζ = 0,3, 12 Hz y ζ = 0,2, 2 Hz) | `18a806e` |
-| El escenario tiene baldosas sin cortes y decoraciones animadas, y no compite con la HMI. | Sí: Tilemap de 32 × 32, vela, frasco y engranajes; capa de ambiente oscurece el fondo | `08c8bab` |
-| El evento principal del modelo tiene un efecto visual y sonoro propio. | Sí: desborde (h ≥ 3 m) con estado "falla", efecto de desborde, vibración y `sfx_modelo_desborde` | `18a806e`, `10bc7e1` |
-| La sonificación sigue a la variable del modelo sin chasquidos. | Sí: setTargetAtTime con τ = 0,03 s (filtro) y 0,05 s (burbujeo) | `18a806e` |
-| La música se repite sin cortes y las alarmas se oyen sobre ella. | Sí: bucles con fundido cruzado y ducking del 40 % | `18a806e` |
-| El sonido se activa tras la primera interacción y hay volumen por canal y silencio. | Sí | `18a806e` |
-| El simulador mantiene 60 FPS y la detección 20 FPS o más. | Sí: el juego varía entre 50 y 60 FPS, con límite de 60 (el ≈ 180 que marcaba antes el panel D era la frecuencia de la pantalla; ver la nota de la 5.7 b) y detección ≈ 30 FPS | `a4d68e7` y la corrección del límite de FPS (PROMPTS 93) |
-| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 8,59 MB en total (4,89 sin audio, con las tres capas de fondo); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 87 archivos): 8,59 MB (9 010 229 bytes, versión final en `entregables/`) | `a4d68e7` |
+| La prueba de regresión del modelo pasa, también con la CPU ralentizada, y niveles.json no cambió. | Sí | `8a749f8` (pruebas) y el commit de este documento (CSV) |
+| El equipo principal se reconoce a primera vista y se distingue de las perturbaciones. | Sí: alambique de cobre; las perturbaciones son una llave de bronce y una tubería con pulsos | `b702b59`, `1481a09` |
+| Todas las animaciones se ven en la escena Galería sin saltos ni cambios de tamaño. | Sí: 18 animaciones; cada hoja del equipo tiene el mismo cuadro que el sprite del día 1 | `b702b59` |
+| Los estados del equipo (funcionando, falla, alarma) cambian con el modelo y la alarma no parpadea. | Sí: máquina de estados con histéresis (entra en 2,8 m, sale en 2,7 m) | `b702b59` |
+| Cada actuador muestra el mando de la mano y su posición real. | Sí: barra con ▲ del mando y relleno de la apertura real; volante girado con la salida del Actuador | `1481a09`, `b702b59` |
+| Las piezas del modelo se deforman con el estado, sin retardo y de forma fiel a la física. | Sí: líquido, chorros y flujo se dibujan cada cuadro desde x(t), sin tweens | `b702b59` |
+| Cada perturbación tiene un aviso de al menos 400 ms y no menor al doble del retardo medido. | Sí: 2000 ms (mínimo: máx(400 ms; 2 × (161 + 111) ms) ≈ 544 ms) | `1481a09` |
+| La vibración de cámara y el oleaje se calculan con un sistema de segundo orden. | Sí: `resorteVisual.js` (ζ = 0,3, 12 Hz y ζ = 0,2, 2 Hz) | `1481a09` |
+| El escenario tiene baldosas sin cortes y decoraciones animadas, y no compite con la HMI. | Sí: Tilemap de 32 × 32, vela, frasco y engranajes; capa de ambiente oscurece el fondo | `e0da729` |
+| El evento principal del modelo tiene un efecto visual y sonoro propio. | Sí: desborde (h ≥ 3 m) con estado "falla", efecto de desborde, vibración y `sfx_modelo_desborde` | `1481a09`, `b702b59` |
+| La sonificación sigue a la variable del modelo sin chasquidos. | Sí: setTargetAtTime con τ = 0,03 s (filtro) y 0,05 s (burbujeo) | `1481a09` |
+| La música se repite sin cortes y las alarmas se oyen sobre ella. | Sí: bucles con fundido cruzado y ducking del 40 % | `1481a09` |
+| El sonido se activa tras la primera interacción y hay volumen por canal y silencio. | Sí | `1481a09` |
+| El simulador mantiene 60 FPS y la detección 20 FPS o más. | Sí: el juego varía entre 50 y 60 FPS, con límite de 60 (el ≈ 180 que marcaba antes el panel D era la frecuencia de la pantalla; ver la nota de la 5.7 b) y detección ≈ 30 FPS | `8a749f8` y la corrección del límite de FPS (PROMPTS 93) |
+| La carpeta public/assets pesa menos de 10 MB y el ZIP menos de 25 MB. | Sí: 8,59 MB en total (4,89 sin audio, con las tres capas de fondo); `Grupo1_SimJam_Modelado_Dia2.zip` (contenido de `dist/`, 87 archivos): 8,59 MB (9 010 229 bytes, versión final en `entregables/`) | `8a749f8` |
 
 ## 5.8 Entrega
 
